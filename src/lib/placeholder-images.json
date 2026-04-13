@@ -1,0 +1,22 @@
+{
+  "placeholderImages": [
+    {
+      "id": "logo",
+      "description": "GetMeDZ App Logo",
+      "imageUrl": "https://picsum.photos/seed/getmedz-logo/200/200",
+      "imageHint": "marketplace delivery"
+    },
+    {
+      "id": "traveler-hero",
+      "description": "Traveler hero image",
+      "imageUrl": "https://picsum.photos/seed/traveler/800/400",
+      "imageHint": "travel airplane"
+    },
+    {
+      "id": "buyer-hero",
+      "description": "Buyer hero image",
+      "imageUrl": "https://picsum.photos/seed/shopping/800/400",
+      "imageHint": "shopping product"
+    }
+  ]
+}

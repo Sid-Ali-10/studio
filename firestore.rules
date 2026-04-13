@@ -1,0 +1,76 @@
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Helper Functions ---
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isExistingOwner(ownerId) {
+      return resource != null && isOwner(ownerId);
+    }
+
+    function isParticipant(participantIds) {
+      return isSignedIn() && participantIds != null && (request.auth.uid in participantIds);
+    }
+
+    // --- Collection Rules ---
+
+    match /userProfiles/{userId} {
+      allow get, list: if true;
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      // Allow users to update their own profile (stats and balance)
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+
+      match /favorites/{favoriteId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId);
+        allow delete: if isExistingOwner(userId);
+      }
+
+      match /transactions/{transactionId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId);
+        allow update: if false;
+        allow delete: if false;
+      }
+    }
+
+    match /listings/{listingId} {
+      allow get, list: if true;
+      allow create: if isSignedIn() && request.resource.data.listerId == request.auth.uid;
+      allow update: if isExistingOwner(resource.data.listerId);
+      allow delete: if isExistingOwner(resource.data.listerId);
+    }
+
+    match /conversations/{conversationId} {
+      allow get: if isParticipant(resource.data.participantIds);
+      allow list: if isSignedIn() && (request.auth.uid in resource.data.participantIds);
+      allow create: if isSignedIn() && isParticipant(request.resource.data.participantIds);
+      // Allow updates to unread status, rating flags, finalization tracking, and soft-delete field
+      allow update: if isParticipant(resource.data.participantIds);
+      allow delete: if isParticipant(resource.data.participantIds);
+
+      match /messages/{messageId} {
+        // Messages are accessible to conversation participants
+        allow get, list, create, update, delete: if isSignedIn();
+      }
+    }
+
+    match /ratings/{ratingId} {
+      allow get, list: if true;
+      allow create: if isSignedIn() && request.resource.data.raterId == request.auth.uid;
+      allow update: if isExistingOwner(resource.data.raterId);
+      allow delete: if isExistingOwner(resource.data.raterId);
+    }
+  }
+}
