@@ -286,52 +286,80 @@ export default function AdminDashboard() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6">
-          <Card className="rounded-3xl border-none shadow-sm">
-            <CardContent className="p-6 flex items-center gap-4">
-              <Users className="text-blue-500" />
-              <div>
-                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Users</p>
-                <p className="text-xl font-black">{stats.totalUsers}</p>
+        <div className="space-y-6">
+          {/* Main Commissions Card - Largest Element */}
+          <Card className="rounded-[2.5rem] border-none shadow-xl bg-primary text-primary-foreground overflow-hidden">
+            <CardContent className="p-8 md:p-12 flex flex-col md:flex-row md:items-center justify-between gap-8">
+              <div className="flex items-center gap-8">
+                <div className="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center text-white shrink-0 shadow-inner">
+                  <Banknote size={40} />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm opacity-80 uppercase font-black tracking-widest">Total Platform Commissions</p>
+                  <p className="text-5xl md:text-6xl font-black tracking-tighter">
+                    {stats.totalCommission.toLocaleString()} <span className="text-2xl font-medium opacity-60">DA</span>
+                  </p>
+                </div>
+              </div>
+              <div className="hidden lg:block border-l border-white/10 pl-8 h-24 flex flex-col justify-center">
+                <div className="flex items-center gap-3 bg-white/10 px-6 py-4 rounded-3xl backdrop-blur-md">
+                   <div className="w-3 h-3 bg-accent rounded-full animate-pulse" />
+                   <div className="space-y-0.5">
+                     <p className="text-[10px] uppercase font-black opacity-60">Status</p>
+                     <p className="font-bold text-sm">System Healthy</p>
+                   </div>
+                </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="rounded-3xl border-none shadow-sm">
-            <CardContent className="p-6 flex items-center gap-4">
-              <Package className="text-green-500" />
-              <div>
-                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Listings</p>
-                <p className="text-xl font-black">{stats.totalListings}</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="rounded-3xl border-none shadow-sm">
-            <CardContent className="p-6 flex items-center gap-4">
-              <MessageSquare className="text-purple-500" />
-              <div>
-                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Chats</p>
-                <p className="text-xl font-black">{stats.totalConvos}</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="rounded-3xl border-none shadow-sm">
-            <CardContent className="p-6 flex items-center gap-4">
-              <Flag className="text-destructive" />
-              <div>
-                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Reports</p>
-                <p className="text-xl font-black">{stats.totalReports}</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="rounded-3xl border-none shadow-sm bg-primary text-primary-foreground sm:col-span-2 lg:col-span-1">
-            <CardContent className="p-6 flex items-center gap-4">
-              <Banknote />
-              <div>
-                <p className="text-[10px] opacity-70 uppercase font-bold tracking-wider">Commissions</p>
-                <p className="text-xl font-black">{stats.totalCommission.toLocaleString()} DA</p>
-              </div>
-            </CardContent>
-          </Card>
+
+          {/* Secondary Stats Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            <Card className="rounded-3xl border-none shadow-sm hover:shadow-md transition-shadow duration-200">
+              <CardContent className="p-6 flex items-center gap-4">
+                <div className="w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center">
+                  <Users className="text-blue-500" />
+                </div>
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Users</p>
+                  <p className="text-2xl font-black">{stats.totalUsers}</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="rounded-3xl border-none shadow-sm hover:shadow-md transition-shadow duration-200">
+              <CardContent className="p-6 flex items-center gap-4">
+                <div className="w-12 h-12 bg-green-500/10 rounded-2xl flex items-center justify-center">
+                  <Package className="text-green-500" />
+                </div>
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Listings</p>
+                  <p className="text-2xl font-black">{stats.totalListings}</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="rounded-3xl border-none shadow-sm hover:shadow-md transition-shadow duration-200">
+              <CardContent className="p-6 flex items-center gap-4">
+                <div className="w-12 h-12 bg-purple-500/10 rounded-2xl flex items-center justify-center">
+                  <MessageSquare className="text-purple-500" />
+                </div>
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Chats</p>
+                  <p className="text-2xl font-black">{stats.totalConvos}</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="rounded-3xl border-none shadow-sm hover:shadow-md transition-shadow duration-200">
+              <CardContent className="p-6 flex items-center gap-4">
+                <div className="w-12 h-12 bg-destructive/10 rounded-2xl flex items-center justify-center">
+                  <Flag className="text-destructive" />
+                </div>
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Reports</p>
+                  <p className="text-2xl font-black">{stats.totalReports}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         <Tabs defaultValue="reports" className="space-y-6">
