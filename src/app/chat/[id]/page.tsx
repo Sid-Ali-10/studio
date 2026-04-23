@@ -199,17 +199,10 @@ export default function ChatRoomPage() {
           }
 
           const messagesRef = collection(db, "conversations", conversationId, "messages");
-          let messagesQuery;
-
-          if (profile?.isAdmin) {
-            messagesQuery = query(messagesRef, orderBy("timestamp", "asc"));
-          } else {
-            messagesQuery = query(
-              messagesRef,
-              where("participantIds", "array-contains", user.uid),
-              orderBy("timestamp", "asc")
-            );
-          }
+          
+          // No where filter needed here as Security Rules and the conversation listener 
+          // already verify access. Removing it fixes the composite index requirement.
+          const messagesQuery = query(messagesRef, orderBy("timestamp", "asc"));
 
           unsubscribeMessages = onSnapshot(messagesQuery, (snapshot) => {
             const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message));
@@ -260,11 +253,6 @@ export default function ChatRoomPage() {
       if (!adminId) {
         console.error("No platform admin found for commission.");
       }
-
-      // Calculations for records
-      // Buyer: - (Price + 1000)
-      // Traveler: + (Price - 1000)
-      // Admin: + 2000
 
       if (user.uid === buyerId) {
         const amount = agreedPrice + commission;
@@ -594,7 +582,7 @@ export default function ChatRoomPage() {
                   disabled={hasUserRated}
                 >
                   <CheckCircle2 size={16} />
-                  <span className="hidden sm:inline">{hasUserRated ? "Rated" : "Rate & Settle"}</span>
+                  <span className="hidden sm:inline">{hasUserRated ? "Rated" : "Complete Deal"}</span>
                 </Button>
               ) : (
                 <Button variant="outline" size="sm" className="rounded-full gap-2 font-bold" onClick={() => setIsOfferDialogOpen(true)}>
@@ -609,7 +597,6 @@ export default function ChatRoomPage() {
         </div>
       </div>
 
-      {/* Offer Banner */}
       {convData?.offeredPrice && (
         <Alert className="mt-4 rounded-2xl bg-primary/5 border-primary/20 animate-in slide-in-from-top duration-300">
           <Banknote className="h-4 w-4 text-primary" />
@@ -633,7 +620,6 @@ export default function ChatRoomPage() {
         </Alert>
       )}
 
-      {/* Agreed Price Indicator */}
       {convData?.agreedPrice && (
         <div className="mt-2 px-4 py-2 bg-accent/10 border border-accent/20 rounded-xl flex items-center justify-between">
           <span className="text-xs font-bold text-accent uppercase tracking-wider">Agreed Price</span>
@@ -733,7 +719,6 @@ export default function ChatRoomPage() {
         </form>
       </div>
 
-      {/* Offer Dialog */}
       <Dialog open={isOfferDialogOpen} onOpenChange={setIsOfferDialogOpen}>
         <DialogContent className="max-w-md rounded-2xl">
           <DialogHeader>
