@@ -11,9 +11,11 @@ import Link from "next/link";
 import { ListingCard, type Listing } from "@/components/listings/ListingCard";
 import { ListingFilters } from "@/components/listings/ListingFilters";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function FavoritesPage() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const { toast } = useToast();
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,7 +81,7 @@ export default function FavoritesPage() {
     try {
       await deleteDoc(doc(db, "userProfiles", user.uid, "favorites", listingId));
       setListings(prev => prev.filter(l => l.id !== listingId));
-      toast({ title: "Removed from favorites" });
+      toast({ title: t('removed_favorite') || "Removed from favorites" });
     } catch (err) {
       console.error(err);
     }
@@ -106,9 +108,9 @@ export default function FavoritesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight">Saved Listings</h1>
-        <p className="text-muted-foreground">Your personal wishlist of interesting deals.</p>
+      <div className="space-y-1 text-start">
+        <h1 className="text-2xl font-bold tracking-tight">{t('saved_title')}</h1>
+        <p className="text-muted-foreground">{t('saved_subtitle')}</p>
       </div>
 
       <ListingFilters filters={advancedFilters} onFilterChange={setAdvancedFilters} />
@@ -130,10 +132,10 @@ export default function FavoritesPage() {
           <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto">
             <Heart className="text-muted-foreground" size={40} />
           </div>
-          <h3 className="text-lg font-semibold">Nothing saved</h3>
-          <p className="text-muted-foreground">Go to the main board and heart some posts!</p>
+          <h3 className="text-lg font-semibold">{t('no_saved')}</h3>
+          <p className="text-muted-foreground">{t('no_saved_desc')}</p>
           <Link href="/">
-            <Button className="rounded-xl">Browse Board</Button>
+            <Button className="rounded-xl">{t('browse_board')}</Button>
           </Link>
         </div>
       )}

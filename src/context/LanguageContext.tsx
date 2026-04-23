@@ -37,6 +37,13 @@ export const translations: Translations = {
   buyers: { en: "Buyers", ar: "المشترون", fr: "Acheteurs" },
   no_results: { en: "No results found", ar: "لا توجد نتائج", fr: "Aucun résultat trouvé" },
   
+  // Saved Listings Page
+  saved_title: { en: "Saved Listings", ar: "الإعلانات المحفوظة", fr: "Annonces enregistrées" },
+  saved_subtitle: { en: "Your personal wishlist of interesting deals.", ar: "قائمة أمنياتك الشخصية للعروض المثيرة للاهتمام.", fr: "Votre liste de souhaits personnelle pour des offres intéressantes." },
+  no_saved: { en: "Nothing saved", ar: "لا يوجد شيء محفوظ", fr: "Rien d'enregistré" },
+  no_saved_desc: { en: "Go to the main board and heart some posts!", ar: "اذهب إلى اللوحة الرئيسية وأضف بعض المنشورات للمفضلة!", fr: "Allez sur le tableau principal et mettez des cœurs sur des publications !" },
+  browse_board: { en: "Browse Board", ar: "تصفح اللوحة", fr: "Parcourir le tableau" },
+
   // Listing Card
   connect: { en: "Connect", ar: "تواصل", fr: "Connecter" },
   connected: { en: "Connected", ar: "متصل", fr: "Connecté" },
