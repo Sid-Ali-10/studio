@@ -19,7 +19,8 @@ import {
   deleteDoc,
   increment,
   arrayUnion,
-  arrayRemove
+  arrayRemove,
+  orderBy
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useAuth } from "@/context/AuthContext";
@@ -38,7 +39,8 @@ import {
   Pencil, 
   Trash2, 
   X,
-  Info
+  Info,
+  ShieldAlert
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -60,6 +62,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { type Listing } from "@/components/listings/ListingCard";
 import { ListingDetailView } from "@/components/listings/ListingDetailView";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface Message {
   id: string;
@@ -120,6 +123,7 @@ export default function ChatRoomPage() {
   
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
 
+  const isAdminView = profile?.isAdmin && !participants.includes(user?.uid || "");
   const isLister = user?.uid === listing?.listerId;
   const hasUserRated = isLister ? convData?.travelerRated : convData?.buyerRated;
 
@@ -151,15 +155,15 @@ export default function ChatRoomPage() {
             setConvData(data);
             setParticipants(data.participantIds);
             
-            // Mark as read
-            if (data.unreadBy?.includes(user.uid)) {
+            // Mark as read ONLY if participant
+            if (data.unreadBy?.includes(user.uid) && data.participantIds.includes(user.uid)) {
               updateDoc(convRef, {
                 unreadBy: arrayRemove(user.uid)
               });
             }
 
-            // Automatically finalize deal for this user if both rated
-            if (data.buyerRated && data.travelerRated) {
+            // Automatically finalize deal for this user if both rated (participant only)
+            if (data.buyerRated && data.travelerRated && data.participantIds.includes(user.uid)) {
               handleFinalizeDeal(data);
             }
           } else {
@@ -176,7 +180,8 @@ export default function ChatRoomPage() {
           const data = convSnap.data() as ConversationData;
           setActiveConvId(conversationId);
           
-          const otherUserId = data.participantIds.find(p => p !== user.uid);
+          // Determine "other user" for UI context
+          const otherUserId = data.participantIds.find(p => p !== user.uid) || data.participantIds[0];
           if (otherUserId) {
             const otherUserDoc = await getDoc(doc(db, "userProfiles", otherUserId));
             if (otherUserDoc.exists()) setOtherUser(otherUserDoc.data());
@@ -187,19 +192,31 @@ export default function ChatRoomPage() {
             setListing({ id: lDoc.id, ...lDoc.data() } as Listing);
           }
 
-          const q = query(
-            collection(db, "conversations", conversationId, "messages"),
-            where("participantIds", "array-contains", user.uid)
-          );
+          // Fetch messages: Admins can see all, participants see their filtered stream
+          const messagesRef = collection(db, "conversations", conversationId, "messages");
+          let messagesQuery;
 
-          unsubscribeMessages = onSnapshot(q, (snapshot) => {
+          if (profile?.isAdmin && !data.participantIds.includes(user.uid)) {
+            // Admin Super View: No participant filter
+            messagesQuery = query(messagesRef, orderBy("timestamp", "asc"));
+          } else {
+            // Standard User View
+            messagesQuery = query(
+              messagesRef,
+              where("participantIds", "array-contains", user.uid),
+              orderBy("timestamp", "asc")
+            );
+          }
+
+          unsubscribeMessages = onSnapshot(messagesQuery, (snapshot) => {
             const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message));
-            setMessages(msgs.sort((a, b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0)));
+            setMessages(msgs);
             setLoading(false);
           }, (error) => {
             if (error.code !== 'permission-denied') {
               console.error("Messages listener error:", error);
             }
+            setLoading(false);
           });
         } else {
           setError("Conversation not found.");
@@ -216,7 +233,7 @@ export default function ChatRoomPage() {
       unsubscribeMessages?.();
       unsubscribeConv?.();
     };
-  }, [id, user]);
+  }, [id, user, profile?.isAdmin]);
 
   const handleFinalizeDeal = async (data: ConversationData) => {
     if (!user || data.finalizedUsers?.includes(user.uid)) return;
@@ -262,6 +279,7 @@ export default function ChatRoomPage() {
   };
 
   const handleSendMessage = async (e?: React.FormEvent, imageUrl?: string) => {
+    if (isAdminView) return; // Prevent admin interference
     if (e) e.preventDefault();
     if (editingMessage) { handleSaveEdit(); return; }
     if ((!newMessage.trim() && !imageUrl) || !user || !activeConvId) return;
@@ -303,7 +321,7 @@ export default function ChatRoomPage() {
   };
 
   const handleReaction = async (messageId: string, emoji: string) => {
-    if (!user || !activeConvId) return;
+    if (!user || !activeConvId || isAdminView) return;
     const msgRef = doc(db, "conversations", activeConvId, "messages", messageId);
     try {
       const msgSnap = await getDoc(msgRef);
@@ -323,12 +341,13 @@ export default function ChatRoomPage() {
   };
 
   const handleEditInit = (msg: Message) => {
+    if (isAdminView) return;
     setEditingMessage(msg);
     setNewMessage(msg.messageText);
   };
 
   const handleSaveEdit = async () => {
-    if (!editingMessage || !activeConvId || !newMessage.trim()) return;
+    if (isAdminView || !editingMessage || !activeConvId || !newMessage.trim()) return;
     try {
       const msgRef = doc(db, "conversations", activeConvId, "messages", editingMessage.id);
       await updateDoc(msgRef, {
@@ -356,13 +375,13 @@ export default function ChatRoomPage() {
 
   const handleDeleteConversation = async () => {
     if (!activeConvId || !user || !convData) return;
-    if (!confirm("Remove this conversation from your list?")) return;
+    if (!confirm("Remove this conversation?")) return;
 
     try {
       const deletedByList = [...(convData.deletedBy || []), user.uid];
       const convRef = doc(db, "conversations", activeConvId);
 
-      if (deletedByList.length >= convData.participantIds.length) {
+      if (deletedByList.length >= convData.participantIds.length || profile?.isAdmin) {
         const batch = writeBatch(db);
         const messagesSnap = await getDocs(collection(db, "conversations", activeConvId, "messages"));
         messagesSnap.docs.forEach(doc => batch.delete(doc.ref));
@@ -374,7 +393,7 @@ export default function ChatRoomPage() {
         });
       }
       
-      router.push("/chat");
+      router.push(profile?.isAdmin ? "/admin/dashboard" : "/chat");
       toast({ title: "Conversation removed" });
     } catch (err) {
       console.error("Deletion failed:", err);
@@ -383,7 +402,7 @@ export default function ChatRoomPage() {
   };
 
   const handleRateDeal = async () => {
-    if (!activeConvId || !user || !convData) return;
+    if (isAdminView || !activeConvId || !user || !convData) return;
     
     if ((profile?.walletBalance || 0) < 1000) {
       toast({
@@ -420,6 +439,7 @@ export default function ChatRoomPage() {
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isAdminView) return;
     const file = e.target.files?.[0];
     if (!file || !user) return;
     setUploading(true);
@@ -436,6 +456,7 @@ export default function ChatRoomPage() {
   };
 
   const canModify = (timestamp: any) => {
+    if (isAdminView) return false;
     if (!timestamp) return true;
     const sentAt = timestamp.toDate().getTime();
     return (Date.now() - sentAt) < (10 * 60 * 1000);
@@ -446,17 +467,29 @@ export default function ChatRoomPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] md:h-[calc(100vh-6rem)] max-w-4xl mx-auto">
+      {isAdminView && (
+        <Alert variant="destructive" className="mb-4 rounded-2xl bg-destructive/5 border-destructive/20">
+          <ShieldAlert className="h-4 w-4" />
+          <AlertTitle className="font-bold">Administrative View Only</AlertTitle>
+          <AlertDescription className="text-xs">
+            You are monitoring this conversation for quality and safety purposes. Privacy policy strictly prohibits disclosing this content.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="flex items-center gap-3 pb-4 border-b">
         <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full hover:bg-primary/10 hover:text-primary"><ArrowLeft size={20} /></Button>
-        <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center font-bold text-primary border border-primary/20">{otherUser?.username?.charAt(0).toUpperCase()}</div>
+        <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center font-bold text-primary border border-primary/20">
+          {otherUser?.username?.charAt(0).toUpperCase() || "U"}
+        </div>
         <div className="flex-1 min-w-0">
-          <h2 className="font-bold truncate text-sm sm:text-base hover:text-primary cursor-default">{otherUser?.username}</h2>
+          <h2 className="font-bold truncate text-sm sm:text-base hover:text-primary cursor-default">{otherUser?.username || "Private User"}</h2>
           <button onClick={() => setIsDetailsOpen(true)} className="text-[10px] sm:text-xs text-muted-foreground truncate italic hover:text-primary flex items-center gap-1 transition-colors">
-            {listing?.title} <Info size={10} />
+            {listing?.title || "Marketplace Listing"} <Info size={10} />
           </button>
         </div>
         <div className="flex items-center gap-2">
-          {!convData?.isFinalized && (
+          {!convData?.isFinalized && !isAdminView && (
             <Button 
               variant={hasUserRated ? "outline" : "default"}
               size="sm" 
@@ -477,7 +510,7 @@ export default function ChatRoomPage() {
       <div className="flex-1 overflow-y-auto py-4 space-y-4 px-1">
         {messages.map((msg) => {
           const isOwn = msg.senderId === user?.uid;
-          const editAllowed = isOwn && canModify(msg.timestamp);
+          const editAllowed = !isAdminView && isOwn && canModify(msg.timestamp);
           return (
             <div key={msg.id} className={cn("flex flex-col group", isOwn ? "items-end" : "items-start")}>
               {msg.replyTo && (
@@ -518,9 +551,9 @@ export default function ChatRoomPage() {
                     </div>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem className="gap-2 rounded-lg" onClick={() => setReplyingTo(msg)}><Reply size={14} /> Reply</DropdownMenuItem>
-                    {editAllowed && (
+                    {(editAllowed || profile?.isAdmin) && (
                       <>
-                        <DropdownMenuItem className="gap-2 rounded-lg" onClick={() => handleEditInit(msg)}><Pencil size={14} /> Edit</DropdownMenuItem>
+                        {editAllowed && <DropdownMenuItem className="gap-2 rounded-lg" onClick={() => handleEditInit(msg)}><Pencil size={14} /> Edit</DropdownMenuItem>}
                         <DropdownMenuItem className="gap-2 text-destructive rounded-lg" onClick={() => handleDeleteMessage(msg.id)}><Trash2 size={14} /> Delete</DropdownMenuItem>
                       </>
                     )}
@@ -533,25 +566,32 @@ export default function ChatRoomPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="pt-4 border-t space-y-2">
+      <div className={cn("pt-4 border-t space-y-2", isAdminView && "opacity-50 pointer-events-none")}>
         {replyingTo && (
           <div className="flex items-center justify-between bg-muted/50 p-2 rounded-xl text-xs border-l-4 border-primary animate-in slide-in-from-left duration-200">
-            <div className="flex flex-col min-w-0"><span className="font-bold text-primary">Replying to {replyingTo.senderId === user?.uid ? "yourself" : (otherUser?.username || "User")}</span><span className="truncate italic">"{replyingTo.messageText || "Image"}"</span></div>
+            <div className="flex flex-col min-w-0">
+              <span className="font-bold text-primary">Replying to {replyingTo.senderId === user?.uid ? "yourself" : (otherUser?.username || "User")}</span>
+              <span className="truncate italic">"{replyingTo.messageText || "Image"}"</span>
+            </div>
             <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => setReplyingTo(null)}><X size={14} /></Button>
           </div>
         )}
         <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-          <input type="file" id="image-upload" className="hidden" accept="image/*" onChange={handleImageUpload} disabled={uploading} />
-          <label htmlFor="image-upload" className="flex items-center justify-center w-11 h-11 rounded-full bg-muted cursor-pointer shrink-0 hover:bg-primary/10 hover:text-primary transition-colors">
+          <input type="file" id="image-upload" className="hidden" accept="image/*" onChange={handleImageUpload} disabled={uploading || isAdminView} />
+          <label htmlFor="image-upload" className={cn(
+            "flex items-center justify-center w-11 h-11 rounded-full bg-muted cursor-pointer shrink-0 hover:bg-primary/10 hover:text-primary transition-colors",
+            isAdminView && "cursor-not-allowed"
+          )}>
             {uploading ? <Loader2 size={20} className="animate-spin" /> : <ImageIcon size={20} />}
           </label>
           <Input 
-            placeholder={editingMessage ? "Update message..." : "Type message..."} 
+            placeholder={isAdminView ? "Admin: Read-Only View" : (editingMessage ? "Update message..." : "Type message...")} 
             className="flex-1 h-11 rounded-full px-5 bg-muted border-none focus-visible:ring-2 focus-visible:ring-primary/20" 
             value={newMessage} 
-            onChange={(e) => setNewMessage(e.target.value)} 
+            onChange={(e) => setNewMessage(e.target.value)}
+            disabled={isAdminView}
           />
-          <Button type="submit" size="icon" className="w-11 h-11 rounded-full shadow-md active:scale-95 transition-transform" disabled={!newMessage.trim() && !uploading}>
+          <Button type="submit" size="icon" className="w-11 h-11 rounded-full shadow-md active:scale-95 transition-transform" disabled={(!newMessage.trim() && !uploading) || isAdminView}>
             {editingMessage ? <CheckCircle2 size={20} /> : <Send size={20} />}
           </Button>
         </form>

@@ -34,12 +34,8 @@ service cloud.firestore {
       allow get: if true;
       allow list: if isAdmin();
       
-      // Allow users to create their profile, and allow them to set isAdmin to true 
-      // ONLY if they are the owner (enabling the secret key flow)
       allow create: if isOwner(userId) && request.resource.data.id == userId;
       
-      // Allow users to update their own profile, or allow an existing admin to update any profile.
-      // We explicitly allow a regular owner to set isAdmin to true for the secret key promotion.
       allow update: if isExistingOwner(userId) || 
                        isAdmin() || 
                        (isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isAdmin', 'updatedAt']));
@@ -69,18 +65,17 @@ service cloud.firestore {
     }
 
     match /conversations/{conversationId} {
-      // Global list for admins, filtered list for participants
       allow list: if isAdmin() || (isSignedIn() && request.query.limit <= 50);
-      
       allow get: if isParticipant(resource.data.participantIds) || isAdmin();
-      
       allow create: if isSignedIn() && isParticipant(request.resource.data.participantIds);
       allow update: if isParticipant(resource.data.participantIds) || isAdmin();
       allow delete: if isParticipant(resource.data.participantIds) || isAdmin();
 
       match /messages/{messageId} {
-        allow get, list: if isSignedIn();
-        allow create: if isSignedIn();
+        // Tightened: Only participants or Admins can read messages
+        allow get, list: if isParticipant(get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds) || isAdmin();
+        // Only participants can create messages
+        allow create: if isParticipant(get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds);
         allow update, delete: if isAdmin();
       }
     }

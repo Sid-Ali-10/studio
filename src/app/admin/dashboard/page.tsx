@@ -24,7 +24,8 @@ import {
   ShieldAlert,
   Search,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  Eye
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,7 @@ import { Badge } from "@/components/ui/badge";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import Link from "next/link";
 
 interface AdminStats {
   totalUsers: number;
@@ -358,6 +360,11 @@ export default function AdminDashboard() {
                       <Badge variant="outline" className="hidden sm:inline-flex">
                         {c.participantIds?.length || 0} Participants
                       </Badge>
+                      <Link href={`/chat/${c.id}`}>
+                        <Button variant="ghost" size="icon" className="text-primary rounded-xl hover:bg-primary/10">
+                          <Eye size={18} />
+                        </Button>
+                      </Link>
                       <Button variant="ghost" size="icon" className="text-destructive rounded-xl hover:bg-destructive/10" onClick={() => handleDelete("conversations", c.id)}>
                         <Trash2 size={18} />
                       </Button>
