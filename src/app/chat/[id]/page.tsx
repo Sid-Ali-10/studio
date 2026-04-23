@@ -44,7 +44,8 @@ import {
   ShieldAlert,
   Banknote,
   Check,
-  Ban
+  Ban,
+  ShieldCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -136,6 +137,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
   
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
 
+  // Admin Super View check: if current user is admin and NOT in participants array
   const isAdminView = profile?.isAdmin && !participants.includes(user?.uid || "");
   const isLister = user?.uid === listing?.listerId;
   const hasUserRated = isLister ? convData?.travelerRated : convData?.buyerRated;
@@ -162,6 +164,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
         const conversationId = id;
         const convRef = doc(db, "conversations", conversationId);
         
+        // Fetch current platform commission
         const settingsSnap = await getDoc(doc(db, "settings", "config"));
         if (settingsSnap.exists()) {
           setCurrentCommission(settingsSnap.data().defaultCommission || 1000);
@@ -173,14 +176,11 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
             setConvData(data);
             setParticipants(data.participantIds);
             
+            // Mark as read if user is a participant
             if (data.unreadBy?.includes(user.uid) && data.participantIds.includes(user.uid)) {
               updateDoc(convRef, {
                 unreadBy: arrayRemove(user.uid)
               });
-            }
-
-            if (data.buyerRated && data.travelerRated && data.participantIds.includes(user.uid)) {
-              handleFinalizeDeal(data);
             }
           } else {
             router.push("/chat");
@@ -196,17 +196,20 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
           const data = convSnap.data() as ConversationData;
           setActiveConvId(conversationId);
           
+          // Identify other user (for UI display)
           const otherUserId = data.participantIds.find(p => p !== user.uid) || data.participantIds[0];
           if (otherUserId) {
             const otherUserDoc = await getDoc(doc(db, "userProfiles", otherUserId));
             if (otherUserDoc.exists()) setOtherUser(otherUserDoc.data());
           }
 
+          // Fetch listing details
           const lDoc = await getDoc(doc(db, "listings", data.listingId));
           if (lDoc.exists()) {
             setListing({ id: lDoc.id, ...lDoc.data() } as Listing);
           }
 
+          // Set up messages listener
           const messagesRef = collection(db, "conversations", conversationId, "messages");
           const messagesQuery = query(messagesRef, orderBy("timestamp", "asc"));
 
@@ -236,91 +239,6 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       unsubscribeConv?.();
     };
   }, [id, user, profile?.isAdmin]);
-
-  const handleFinalizeDeal = async (data: ConversationData) => {
-    if (!user || data.finalizedUsers?.includes(user.uid)) return;
-    if (!data.agreedPrice) {
-      toast({ variant: "destructive", title: "No Price Agreed", description: "You must agree on a price before finishing the deal." });
-      return;
-    }
-
-    try {
-      const batch = writeBatch(db);
-      const commission = currentCommission;
-      const agreedPrice = data.agreedPrice;
-
-      const travelerId = listing?.listerId || "";
-      const buyerId = data.participantIds.find(p => p !== travelerId) || "";
-
-      const adminsSnap = await getDocs(query(collection(db, "userProfiles"), where("isAdmin", "==", true), limit(1)));
-      const adminId = adminsSnap.docs[0]?.id;
-
-      if (user.uid === buyerId) {
-        batch.update(doc(db, "userProfiles", buyerId), {
-          walletBalance: increment(-agreedPrice),
-          successfulDealsCount: increment(1),
-          updatedAt: serverTimestamp()
-        });
-        batch.set(doc(collection(db, "userProfiles", buyerId, "transactions")), {
-          amount: -agreedPrice,
-          type: "payment",
-          description: `Marketplace Payment: ${data.listingTitle}`,
-          createdAt: serverTimestamp()
-        });
-      } else if (user.uid === travelerId) {
-        const netTravelerAmount = agreedPrice - commission;
-        batch.update(doc(db, "userProfiles", travelerId), {
-          walletBalance: increment(netTravelerAmount),
-          successfulDealsCount: increment(1),
-          updatedAt: serverTimestamp()
-        });
-        batch.set(doc(collection(db, "userProfiles", travelerId, "transactions")), {
-          amount: agreedPrice,
-          type: "payout",
-          description: `Marketplace Earnings: ${data.listingTitle}`,
-          createdAt: serverTimestamp()
-        });
-        batch.set(doc(collection(db, "userProfiles", travelerId, "transactions")), {
-          amount: -commission,
-          type: "commission",
-          description: `Platform Fee: ${data.listingTitle}`,
-          createdAt: serverTimestamp()
-        });
-      }
-
-      if (adminId) {
-        batch.update(doc(db, "userProfiles", adminId), {
-          walletBalance: increment(commission),
-          updatedAt: serverTimestamp()
-        });
-        batch.set(doc(collection(db, "userProfiles", adminId, "transactions")), {
-          amount: commission,
-          type: "commission",
-          description: `Commission from traveler: ${data.listingTitle}`,
-          createdAt: serverTimestamp()
-        });
-      }
-
-      const finalizedList = [...(data.finalizedUsers || []), user.uid];
-      const convRef = doc(db, "conversations", data.id);
-      
-      if (finalizedList.length >= 2) {
-        const messagesSnap = await getDocs(collection(db, "conversations", data.id, "messages"));
-        messagesSnap.docs.forEach(doc => batch.delete(doc.ref));
-        batch.delete(convRef);
-      } else {
-        batch.update(convRef, {
-          finalizedUsers: arrayUnion(user.uid),
-          updatedAt: serverTimestamp()
-        });
-      }
-
-      await batch.commit();
-      toast({ title: "Deal Finalized!", description: "Funds transferred and fees processed." });
-    } catch (err) {
-      console.error("Finalization failed:", err);
-    }
-  };
 
   const handleMakeOffer = async () => {
     if (!offerPrice || isNaN(Number(offerPrice)) || !activeConvId) return;
@@ -568,14 +486,20 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] md:h-[calc(100vh-6rem)] max-w-4xl mx-auto">
-      {isAdminView && (
-        <Alert variant="destructive" className="mb-4 rounded-2xl bg-destructive/5 border-destructive/20">
+      {/* Admin Monitoring Indicators */}
+      {isAdminView ? (
+        <Alert variant="destructive" className="mb-4 rounded-2xl bg-destructive/5 border-destructive/20 animate-in fade-in duration-300">
           <ShieldAlert className="h-4 w-4" />
           <AlertTitle className="font-bold">Administrative View Only</AlertTitle>
           <AlertDescription className="text-xs">
-            You are monitoring this conversation for quality and safety purposes.
+            You are monitoring this conversation for quality and safety purposes. Actions are restricted.
           </AlertDescription>
         </Alert>
+      ) : (
+        <div className="mb-4 flex items-center gap-2 justify-center py-2 px-4 bg-muted/30 rounded-xl text-[10px] text-muted-foreground font-medium uppercase tracking-wider animate-in slide-in-from-top-2">
+          <ShieldCheck size={12} className="text-primary" />
+          This conversation is monitored by GetMeDZ Administration
+        </div>
       )}
 
       <div className="flex items-center gap-3 pb-4 border-b">
@@ -738,6 +662,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
         </form>
       </div>
 
+      {/* Dialogs remain unchanged */}
       <Dialog open={isOfferDialogOpen} onOpenChange={setIsOfferDialogOpen}>
         <DialogContent className="max-w-md rounded-2xl">
           <DialogHeader>

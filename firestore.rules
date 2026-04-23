@@ -43,7 +43,7 @@ service cloud.firestore {
       
       allow update: if isExistingOwner(userId) || 
                        isAdmin() || 
-                       (isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isAdmin', 'updatedAt']));
+                       (isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isAdmin', 'updatedAt', 'walletBalance', 'successfulDealsCount']));
       
       allow delete: if isAdmin() || isExistingOwner(userId);
 
