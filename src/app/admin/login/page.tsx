@@ -6,8 +6,10 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ShieldCheck, Lock, ArrowRight, AlertCircle } from "lucide-react";
+import { ShieldCheck, Lock, ArrowRight, AlertCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { auth, db } from "@/lib/firebase";
+import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 
 // The secret key for admin access
 const ADMIN_SECRET = "GetMeDZ_Admin_2025";
@@ -15,17 +17,52 @@ const ADMIN_SECRET = "GetMeDZ_Admin_2025";
 export default function AdminLoginPage() {
   const [key, setKey] = useState("");
   const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+    
     if (key === ADMIN_SECRET) {
-      sessionStorage.setItem("admin_token", "authorized_dz_admin");
-      toast({ title: "Access Granted", description: "Welcome to the GetMeDZ Admin Panel." });
-      router.push("/admin/dashboard");
+      try {
+        const currentUser = auth.currentUser;
+        
+        // If a user is logged in, promote them to Admin in Firestore
+        // so the Security Rules allow them to fetch all data.
+        if (currentUser) {
+          const profileRef = doc(db, "userProfiles", currentUser.uid);
+          await updateDoc(profileRef, {
+            isAdmin: true,
+            updatedAt: serverTimestamp()
+          });
+        } else {
+          toast({ 
+            variant: "destructive", 
+            title: "Authentication Required", 
+            description: "You must be logged into your account before unlocking the admin panel." 
+          });
+          setLoading(false);
+          return;
+        }
+
+        sessionStorage.setItem("admin_token", "authorized_dz_admin");
+        toast({ title: "Access Granted", description: "Admin privileges synchronized with your account." });
+        router.push("/admin/dashboard");
+      } catch (err: any) {
+        console.error("Admin promotion failed:", err);
+        toast({ 
+          variant: "destructive", 
+          title: "Sync Error", 
+          description: "Could not verify admin status in the database. Please try again." 
+        });
+      } finally {
+        setLoading(false);
+      }
     } else {
       setError(true);
+      setLoading(false);
       toast({ 
         variant: "destructive", 
         title: "Access Denied", 
@@ -43,7 +80,7 @@ export default function AdminLoginPage() {
             <ShieldCheck className="text-primary" size={32} />
           </div>
           <CardTitle className="text-2xl font-bold">Admin Portal</CardTitle>
-          <CardDescription>Enter the secret key to access the control center.</CardDescription>
+          <CardDescription>Enter the secret key to synchronize admin status.</CardDescription>
         </CardHeader>
         <CardContent className="p-8 pt-4">
           <form onSubmit={handleLogin} className="space-y-6">
@@ -69,8 +106,8 @@ export default function AdminLoginPage() {
               )}
             </div>
 
-            <Button type="submit" className="w-full h-14 rounded-2xl font-bold text-lg gap-2 shadow-lg">
-              Unlock Panel <ArrowRight size={20} />
+            <Button type="submit" className="w-full h-14 rounded-2xl font-bold text-lg gap-2 shadow-lg" disabled={loading}>
+              {loading ? <Loader2 className="animate-spin" /> : <>Unlock Panel <ArrowRight size={20} /></>}
             </Button>
           </form>
           
