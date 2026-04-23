@@ -45,7 +45,8 @@ import {
   Banknote,
   Check,
   Ban,
-  ShieldCheck
+  ShieldCheck,
+  Flag
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -65,6 +66,9 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { type Listing } from "@/components/listings/ListingCard";
 import { ListingDetailView } from "@/components/listings/ListingDetailView";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -132,12 +136,17 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isOfferDialogOpen, setIsOfferDialogOpen] = useState(false);
 
+  // Reporting state
+  const [isReportOpen, setIsReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportType, setReportType] = useState("other");
+  const [isReporting, setIsReporting] = useState(false);
+
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
 
-  // Admin Super View check: if current user is admin and NOT in participants array
   const isAdminView = profile?.isAdmin && !participants.includes(user?.uid || "");
   const isLister = user?.uid === listing?.listerId;
   const hasUserRated = isLister ? convData?.travelerRated : convData?.buyerRated;
@@ -164,7 +173,6 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
         const conversationId = id;
         const convRef = doc(db, "conversations", conversationId);
         
-        // Fetch current platform commission
         const settingsSnap = await getDoc(doc(db, "settings", "config"));
         if (settingsSnap.exists()) {
           setCurrentCommission(settingsSnap.data().defaultCommission || 1000);
@@ -176,7 +184,6 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
             setConvData(data);
             setParticipants(data.participantIds);
             
-            // Mark as read if user is a participant
             if (data.unreadBy?.includes(user.uid) && data.participantIds.includes(user.uid)) {
               updateDoc(convRef, {
                 unreadBy: arrayRemove(user.uid)
@@ -196,20 +203,17 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
           const data = convSnap.data() as ConversationData;
           setActiveConvId(conversationId);
           
-          // Identify other user (for UI display)
           const otherUserId = data.participantIds.find(p => p !== user.uid) || data.participantIds[0];
           if (otherUserId) {
             const otherUserDoc = await getDoc(doc(db, "userProfiles", otherUserId));
             if (otherUserDoc.exists()) setOtherUser(otherUserDoc.data());
           }
 
-          // Fetch listing details
           const lDoc = await getDoc(doc(db, "listings", data.listingId));
           if (lDoc.exists()) {
             setListing({ id: lDoc.id, ...lDoc.data() } as Listing);
           }
 
-          // Set up messages listener
           const messagesRef = collection(db, "conversations", conversationId, "messages");
           const messagesQuery = query(messagesRef, orderBy("timestamp", "asc"));
 
@@ -474,6 +478,33 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
     }
   };
 
+  const handleReportIssue = async () => {
+    if (!user || !activeConvId || !reportReason.trim()) return;
+    setIsReporting(true);
+    try {
+      const reportsRef = collection(db, "reports");
+      await addDoc(reportsRef, {
+        reporterId: user.uid,
+        conversationId: activeConvId,
+        targetUserId: otherUser?.id || null,
+        type: reportType,
+        reason: reportReason,
+        status: "pending",
+        createdAt: serverTimestamp()
+      });
+      toast({ 
+        title: "Report Sent", 
+        description: "Your report has been sent. The admin will review it." 
+      });
+      setIsReportOpen(false);
+      setReportReason("");
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: "Could not send report." });
+    } finally {
+      setIsReporting(false);
+    }
+  };
+
   const canModify = (timestamp: any) => {
     if (isAdminView) return false;
     if (!timestamp) return true;
@@ -486,7 +517,6 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] md:h-[calc(100vh-6rem)] max-w-4xl mx-auto">
-      {/* Admin Monitoring Indicators */}
       {isAdminView ? (
         <Alert variant="destructive" className="mb-4 rounded-2xl bg-destructive/5 border-destructive/20 animate-in fade-in duration-300">
           <ShieldAlert className="h-4 w-4" />
@@ -514,6 +544,24 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
           </button>
         </div>
         <div className="flex items-center gap-2">
+          {!isAdminView && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full">
+                  <MoreHorizontal size={20} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="rounded-xl p-2 w-48">
+                <DropdownMenuItem className="gap-2 rounded-lg text-destructive" onClick={() => setIsReportOpen(true)}>
+                  <Flag size={14} /> Report Problem
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="gap-2 rounded-lg text-destructive" onClick={handleDeleteConversation}>
+                  <Trash2 size={14} /> Delete Chat
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           {!convData?.isFinalized && !isAdminView && (
             <div className="flex gap-1">
               {convData?.agreedPrice ? (
@@ -534,9 +582,6 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
               )}
             </div>
           )}
-          <Button variant="ghost" size="icon" className="rounded-full text-destructive hover:bg-destructive/10 transition-colors" onClick={handleDeleteConversation}>
-            <Trash2 size={18} />
-          </Button>
         </div>
       </div>
 
@@ -662,7 +707,50 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
         </form>
       </div>
 
-      {/* Dialogs remain unchanged */}
+      {/* Report Dialog */}
+      <Dialog open={isReportOpen} onOpenChange={setIsReportOpen}>
+        <DialogContent className="max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Flag className="text-destructive" /> Report Problem</DialogTitle>
+            <DialogDescription>Describe the issue you're facing in this chat. Our team will review the conversation history.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Type of Issue</Label>
+              <Select value={reportType} onValueChange={setReportType}>
+                <SelectTrigger className="rounded-xl h-12">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fraud">Potential Fraud</SelectItem>
+                  <SelectItem value="harassment">Harassment / Bullying</SelectItem>
+                  <SelectItem value="scam">Scam / Fake Post</SelectItem>
+                  <SelectItem value="other">Other Issue</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Details</Label>
+              <Textarea 
+                placeholder="Please provide as much detail as possible..."
+                className="rounded-xl min-h-[100px] resize-none"
+                value={reportReason}
+                onChange={(e) => setReportReason(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              className="w-full h-12 rounded-xl font-bold bg-destructive hover:bg-destructive/90" 
+              onClick={handleReportIssue}
+              disabled={isReporting || !reportReason.trim()}
+            >
+              {isReporting ? <Loader2 className="animate-spin" /> : "Send Report"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={isOfferDialogOpen} onOpenChange={setIsOfferDialogOpen}>
         <DialogContent className="max-w-md rounded-2xl">
           <DialogHeader>

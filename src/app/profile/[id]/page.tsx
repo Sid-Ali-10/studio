@@ -4,12 +4,12 @@
 import React, { useState, useEffect, useMemo, use } from "react";
 import { useRouter } from "next/navigation";
 import { db, auth } from "@/lib/firebase";
-import { doc, getDoc, collection, query, where, getDocs, deleteDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs, deleteDoc, setDoc, serverTimestamp, addDoc } from "firebase/firestore";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Star, CheckCircle, Package, LogOut, Loader2, Trash2, Wallet, Moon, Sun } from "lucide-react";
+import { Star, CheckCircle, Package, LogOut, Loader2, Trash2, Wallet, Moon, Sun, Flag, AlertTriangle } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { useAuth } from "@/context/AuthContext";
 import { ListingCard, type Listing } from "@/components/listings/ListingCard";
@@ -18,6 +18,16 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useTheme } from "@/context/ThemeContext";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 declare global {
   interface Window {
@@ -42,6 +52,10 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
   const [totalRatings, setTotalRatings] = useState(0);
   const [avgRating, setAvgRating] = useState(0);
   const router = useRouter();
+
+  const [isReportOpen, setIsReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [isReporting, setIsReporting] = useState(false);
 
   const [advancedFilters, setAdvancedFilters] = useState({
     search: "",
@@ -171,6 +185,32 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
     }
   };
 
+  const handleReportUser = async () => {
+    if (!currentUser || !reportReason.trim()) return;
+    setIsReporting(true);
+    try {
+      const reportsRef = collection(db, "reports");
+      await addDoc(reportsRef, {
+        reporterId: currentUser.uid,
+        targetUserId: id,
+        type: "scam",
+        reason: reportReason,
+        status: "pending",
+        createdAt: serverTimestamp()
+      });
+      toast({ 
+        title: "Report Sent", 
+        description: "Your report has been sent. The admin will review it." 
+      });
+      setIsReportOpen(false);
+      setReportReason("");
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: "Could not send report." });
+    } finally {
+      setIsReporting(false);
+    }
+  };
+
   const deleteRating = async () => {
     if (!ratingId) return;
     try {
@@ -225,6 +265,11 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                       <CheckCircle size={14} /> Verified
                     </Badge>
                   )}
+                  {profileToShow?.isBanned && (
+                    <Badge variant="destructive" className="rounded-full px-3 gap-1">
+                      <Ban size={14} /> Suspended
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-muted-foreground">{profileToShow?.email}</p>
               </div>
@@ -247,34 +292,43 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                 )}
               </div>
 
-              {!isOwnProfile && currentUser && (
-                <div className="pt-2 space-y-2">
-                  <div className="flex items-center justify-center md:justify-start gap-1">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        onClick={() => handleRating(star)}
-                        className={cn(
-                          "p-1 rounded-full transition-all hover:bg-muted",
-                          (userRating || 0) >= star ? "text-yellow-400" : "text-muted-foreground/30"
-                        )}
-                      >
-                        <Star size={28} fill={(userRating || 0) >= star ? "currentColor" : "none"} />
-                      </button>
-                    ))}
-                    {userRating && (
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={deleteRating}
-                        className="ml-2 rounded-full hover:bg-muted text-destructive"
-                      >
-                        <Trash2 size={18} />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              )}
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
+                {!isOwnProfile && currentUser && (
+                  <>
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          onClick={() => handleRating(star)}
+                          className={cn(
+                            "p-1 rounded-full transition-all hover:bg-muted",
+                            (userRating || 0) >= star ? "text-yellow-400" : "text-muted-foreground/30"
+                          )}
+                        >
+                          <Star size={24} fill={(userRating || 0) >= star ? "currentColor" : "none"} />
+                        </button>
+                      ))}
+                      {userRating && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={deleteRating}
+                          className="rounded-full hover:bg-muted text-destructive"
+                        >
+                          <Trash2 size={16} />
+                        </Button>
+                      )}
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      className="rounded-xl border-destructive/20 text-destructive hover:bg-destructive/10 h-10 px-6 gap-2"
+                      onClick={() => setIsReportOpen(true)}
+                    >
+                      <Flag size={18} /> Report Scammer
+                    </Button>
+                  </>
+                )}
+              </div>
 
               {isOwnProfile && (
                 <div className="flex flex-col gap-4 pt-2 items-center md:items-start">
@@ -336,6 +390,37 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
           )}
         </div>
       </div>
+
+      {/* Report Dialog */}
+      <Dialog open={isReportOpen} onOpenChange={setIsReportOpen}>
+        <DialogContent className="max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><AlertTriangle className="text-destructive" /> Report Scammer</DialogTitle>
+            <DialogDescription>
+              Provide details about why you believe this user is a scammer. The admin will review their profile and activity.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="reason">Reason for reporting</Label>
+            <Textarea 
+              id="reason"
+              placeholder="e.g., Fake listing, attempted off-platform payment, suspicious behavior..."
+              className="rounded-xl min-h-[120px] resize-none mt-2"
+              value={reportReason}
+              onChange={(e) => setReportReason(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button 
+              className="w-full h-12 rounded-xl font-bold bg-destructive hover:bg-destructive/90" 
+              onClick={handleReportUser}
+              disabled={isReporting || !reportReason.trim()}
+            >
+              {isReporting ? <Loader2 className="animate-spin" /> : "Submit Report"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

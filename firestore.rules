@@ -35,6 +35,13 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /reports/{reportId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
     match /userProfiles/{userId} {
       allow get: if true;
       allow list: if isAdmin();
@@ -43,7 +50,7 @@ service cloud.firestore {
       
       allow update: if isExistingOwner(userId) || 
                        isAdmin() || 
-                       (isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isAdmin', 'updatedAt', 'walletBalance', 'successfulDealsCount']));
+                       (isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isAdmin', 'updatedAt', 'walletBalance', 'successfulDealsCount', 'isBanned']));
       
       allow delete: if isAdmin() || isExistingOwner(userId);
 

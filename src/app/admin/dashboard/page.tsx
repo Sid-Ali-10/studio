@@ -4,7 +4,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { db, auth } from '@/lib/firebase';
-import { collection, getDocs, doc, getDoc, setDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, setDoc, serverTimestamp, deleteDoc, updateDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/tabs';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,10 @@ import {
   Save,
   Copy,
   Check,
+  Flag,
+  UserX,
+  UserCheck,
+  ExternalLink,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
@@ -39,21 +43,22 @@ interface AdminStats {
   totalListings: number;
   totalConvos: number;
   totalCommission: number;
+  totalReports: number;
 }
 
 export default function AdminDashboard() {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isAdminInDb, setIsAdminInDb] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<AdminStats>({ totalUsers: 0, totalListings: 0, totalConvos: 0, totalCommission: 0 });
+  const [stats, setStats] = useState<AdminStats>({ totalUsers: 0, totalListings: 0, totalConvos: 0, totalCommission: 0, totalReports: 0 });
   const [users, setUsers] = useState<any[]>([]);
   const [listings, setListings] = useState<any[]>([]);
   const [convos, setConvos] = useState<any[]>([]);
+  const [reports, setReports] = useState<any[]>([]);
   const [allTransactions, setAllTransactions] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // Platform Settings
   const [platformCommission, setPlatformCommission] = useState(1000);
   const [savingSettings, setSavingSettings] = useState(false);
   const [processingAction, setProcessingAction] = useState<string | null>(null);
@@ -131,22 +136,25 @@ export default function AdminDashboard() {
     setLoading(true);
 
     try {
-      // Fetch users
-      const usersSnap = await getDocs(collection(db, 'userProfiles'));
+      const [usersSnap, listingsSnap, convosSnap, reportsSnap] = await Promise.all([
+        getDocs(collection(db, 'userProfiles')),
+        getDocs(collection(db, 'listings')),
+        getDocs(collection(db, 'conversations')),
+        getDocs(collection(db, 'reports')),
+      ]);
+
       const usersData = usersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
       setUsers(usersData);
 
-      // Fetch listings
-      const listingsSnap = await getDocs(collection(db, 'listings'));
       const listingsData = listingsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
       setListings(listingsData);
 
-      // Fetch conversations
-      const convosSnap = await getDocs(collection(db, 'conversations'));
       const convosData = convosSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
       setConvos(convosData);
 
-      // Fetch transactions for commissions (this admin's wallet acts as platform wallet)
+      const reportsData = reportsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setReports(reportsData);
+
       const transSnap = await getDocs(collection(db, 'userProfiles', adminUid, 'transactions'));
       const transData = transSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
       setAllTransactions(transData);
@@ -160,6 +168,7 @@ export default function AdminDashboard() {
         totalListings: listingsSnap.size,
         totalConvos: convosSnap.size,
         totalCommission: commSum,
+        totalReports: reportsSnap.size,
       });
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Data Load Error', description: 'Could not retrieve platform statistics.' });
@@ -177,10 +186,46 @@ export default function AdminDashboard() {
       
       if (coll === 'listings') setListings((prev) => prev.filter((l) => l.id !== id));
       if (coll === 'conversations') setConvos((prev) => prev.filter((c) => c.id !== id));
+      if (coll === 'reports') setReports((prev) => prev.filter((r) => r.id !== id));
 
       toast({ title: 'Success', description: 'Resource removed successfully.' });
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Deletion Failed', description: err.message });
+    } finally {
+      setProcessingAction(null);
+    }
+  };
+
+  const handleReportAction = async (reportId: string, action: 'resolved' | 'ignored') => {
+    setProcessingAction(`report-${reportId}`);
+    try {
+      await updateDoc(doc(db, 'reports', reportId), {
+        status: action,
+        updatedAt: serverTimestamp()
+      });
+      setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: action } : r));
+      toast({ title: 'Report Updated', description: `Report marked as ${action}.` });
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Update Failed' });
+    } finally {
+      setProcessingAction(null);
+    }
+  };
+
+  const handleToggleBan = async (userId: string, currentBanned: boolean) => {
+    setProcessingAction(`ban-${userId}`);
+    try {
+      await updateDoc(doc(db, 'userProfiles', userId), {
+        isBanned: !currentBanned,
+        updatedAt: serverTimestamp()
+      });
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, isBanned: !currentBanned } : u));
+      toast({ 
+        title: !currentBanned ? 'User Banned' : 'User Unbanned', 
+        description: `Access for this user has been ${!currentBanned ? 'restricted' : 'restored'}.` 
+      });
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Action Failed' });
     } finally {
       setProcessingAction(null);
     }
@@ -241,7 +286,7 @@ export default function AdminDashboard() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
           <Card className="rounded-3xl border-none shadow-sm">
             <CardContent className="p-6 flex items-center gap-4">
               <Users className="text-blue-500" />
@@ -269,6 +314,15 @@ export default function AdminDashboard() {
               </div>
             </CardContent>
           </Card>
+          <Card className="rounded-3xl border-none shadow-sm">
+            <CardContent className="p-6 flex items-center gap-4">
+              <Flag className="text-destructive" />
+              <div>
+                <p className="text-xs text-muted-foreground uppercase">Reports</p>
+                <p className="text-xl font-bold">{stats.totalReports}</p>
+              </div>
+            </CardContent>
+          </Card>
           <Card className="rounded-3xl border-none shadow-sm bg-primary text-primary-foreground">
             <CardContent className="p-6 flex items-center gap-4">
               <Banknote />
@@ -280,8 +334,14 @@ export default function AdminDashboard() {
           </Card>
         </div>
 
-        <ShadcnTabs defaultValue="users" className="space-y-6">
+        <ShadcnTabs defaultValue="reports" className="space-y-6">
           <ShadcnTabsList className="rounded-2xl h-14 w-full md:w-auto overflow-x-auto bg-card p-1 shadow-sm">
+            <ShadcnTabsTrigger
+              value="reports"
+              className="rounded-xl px-8 transition-all duration-200 data-[state=active]:shadow-md"
+            >
+              Reports
+            </ShadcnTabsTrigger>
             <ShadcnTabsTrigger
               value="users"
               className="rounded-xl px-8 transition-all duration-200 data-[state=active]:shadow-md"
@@ -324,6 +384,92 @@ export default function AdminDashboard() {
             />
           </div>
 
+          <ShadcnTabsContent value="reports">
+            <div className="grid gap-4">
+              {reports.length === 0 ? (
+                <div className="text-center py-12 bg-card rounded-3xl">
+                  <Flag className="mx-auto text-muted-foreground mb-4 opacity-20" size={48} />
+                  <p className="text-muted-foreground">No reports currently pending review.</p>
+                </div>
+              ) : (
+                reports.map((r) => (
+                  <Card key={r.id} className="rounded-2xl border-none shadow-sm overflow-hidden animate-in fade-in">
+                    <div className="p-4 sm:p-6 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Badge variant={r.status === 'pending' ? 'destructive' : 'secondary'} className="rounded-lg">
+                            {r.status.toUpperCase()}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {r.createdAt ? format(r.createdAt.toDate(), 'PPpp') : 'Recent'}
+                          </span>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="rounded-full text-muted-foreground hover:bg-muted"
+                            onClick={() => handleReportAction(r.id, 'ignored')}
+                            title="Ignore Report"
+                          >
+                            <Trash2 size={16} />
+                          </Button>
+                          <Button 
+                            variant="secondary" 
+                            size="sm" 
+                            className="rounded-xl h-8 gap-1"
+                            onClick={() => handleReportAction(r.id, 'resolved')}
+                          >
+                            <CheckCircle2 size={14} /> Resolve
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <p className="font-bold text-lg flex items-center gap-2">
+                          {r.type === 'scam' ? '🚨' : '⚠️'} {r.type.toUpperCase()} Report
+                        </p>
+                        <p className="text-sm bg-muted/50 p-3 rounded-xl italic">"{r.reason}"</p>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                        <div className="space-y-1">
+                          <p className="text-muted-foreground font-bold uppercase">Reporter</p>
+                          <p className="font-medium truncate">{users.find(u => u.id === r.reporterId)?.username || 'Unknown User'}</p>
+                        </div>
+                        {r.targetUserId && (
+                          <div className="space-y-1">
+                            <p className="text-muted-foreground font-bold uppercase">Targeted User</p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium truncate">{users.find(u => u.id === r.targetUserId)?.username || 'User'}</p>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-6 px-2 text-[10px] rounded-lg text-destructive hover:bg-destructive/10"
+                                onClick={() => handleToggleBan(r.targetUserId, users.find(u => u.id === r.targetUserId)?.isBanned)}
+                              >
+                                {users.find(u => u.id === r.targetUserId)?.isBanned ? 'Unban' : 'Ban User'}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                        {r.conversationId && (
+                          <div className="col-span-full pt-2">
+                            <Link href={`/chat/${r.conversationId}`}>
+                              <Button variant="outline" className="w-full rounded-xl gap-2 h-10 border-primary/20 hover:bg-primary/10">
+                                <ExternalLink size={16} /> Review Conversation
+                              </Button>
+                            </Link>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                ))
+              )}
+            </div>
+          </ShadcnTabsContent>
+
           <ShadcnTabsContent value="users">
             <div className="grid gap-3">
               {users
@@ -331,15 +477,23 @@ export default function AdminDashboard() {
                 .map((u) => (
                   <Card
                     key={u.id}
-                    className="rounded-2xl border-none shadow-sm p-4 flex items-center justify-between hover:bg-muted/30 transition-all duration-200"
+                    className={cn(
+                      "rounded-2xl border-none shadow-sm p-4 flex items-center justify-between hover:bg-muted/30 transition-all duration-200",
+                      u.isBanned && "opacity-60 bg-destructive/5"
+                    )}
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center font-bold text-primary">
+                      <div className={cn(
+                        "w-10 h-10 rounded-full flex items-center justify-center font-bold",
+                        u.isBanned ? "bg-destructive/20 text-destructive" : "bg-primary/10 text-primary"
+                      )}>
                         {u.username?.charAt(0)}
                       </div>
                       <div className="flex flex-col">
                         <div className="font-bold flex items-center gap-2">
-                          {u.username} {u.isVerified && <CheckCircle2 size={12} className="text-accent" />}
+                          {u.username} 
+                          {u.isVerified && <CheckCircle2 size={12} className="text-accent" />}
+                          {u.isBanned && <Badge variant="destructive" className="h-4 text-[8px] px-1">BANNED</Badge>}
                         </div>
                         <div className="flex items-center gap-2">
                           <p className="text-xs text-muted-foreground">{u.email}</p>
@@ -347,6 +501,18 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                     <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(
+                          "rounded-full transition-all duration-200 active:scale-90",
+                          u.isBanned ? "text-accent" : "text-destructive hover:bg-destructive/10"
+                        )}
+                        onClick={() => handleToggleBan(u.id, u.isBanned)}
+                        title={u.isBanned ? "Unban User" : "Ban User"}
+                      >
+                        {u.isBanned ? <UserCheck size={18} /> : <UserX size={18} />}
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"

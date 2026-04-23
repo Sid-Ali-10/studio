@@ -40,6 +40,10 @@
           "type": "boolean",
           "description": "Indicates if the user has administrative privileges."
         },
+        "isBanned": {
+          "type": "boolean",
+          "description": "Indicates if the user's account has been suspended for violations."
+        },
         "createdAt": {
           "type": "string",
           "format": "date-time"
@@ -57,6 +61,42 @@
         "createdAt",
         "updatedAt"
       ]
+    },
+    "Report": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Report",
+      "type": "object",
+      "description": "Represents a user report regarding another user or a specific conversation.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "reporterId": {
+          "type": "string"
+        },
+        "targetUserId": {
+          "type": "string"
+        },
+        "conversationId": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["scam", "harassment", "fraud", "other"]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "reviewed", "ignored", "resolved"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "reporterId", "type", "reason", "status", "createdAt"]
     },
     "Transaction": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -325,6 +365,22 @@
             {
               "name": "userId",
               "description": "The unique ID of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/reports/{reportId}",
+        "definition": {
+          "entityName": "Report",
+          "schema": {
+            "$ref": "#/backend/entities/Report"
+          },
+          "description": "Stores user complaints and fraud reports.",
+          "params": [
+            {
+              "name": "reportId",
+              "description": "The unique ID of the report."
             }
           ]
         }
