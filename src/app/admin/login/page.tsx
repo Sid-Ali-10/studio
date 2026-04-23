@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ShieldCheck, Lock, ArrowRight, AlertCircle, Loader2 } from "lucide-react";
+import { ShieldCheck, Lock, ArrowRight, AlertCircle, Loader2, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { auth, db } from "@/lib/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
@@ -16,6 +16,7 @@ const ADMIN_SECRET = "GetMeDZ_Admin";
 
 export default function AdminLoginPage() {
   const [key, setKey] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -89,9 +90,9 @@ export default function AdminLoginPage() {
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                 <Input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="Enter Secret Key"
-                  className={`pl-10 h-14 rounded-2xl border-2 transition-all ${error ? 'border-destructive' : 'focus:border-primary'}`}
+                  className={`pl-10 pr-10 h-14 rounded-2xl border-2 transition-all ${error ? 'border-destructive' : 'focus:border-primary'}`}
                   value={key}
                   onChange={(e) => {
                     setKey(e.target.value);
@@ -99,6 +100,14 @@ export default function AdminLoginPage() {
                   }}
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors focus:outline-none"
+                  title={showPassword ? "Hide secret key" : "Show secret key"}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
               {error && (
                 <p className="text-xs text-destructive flex items-center gap-1 pl-1">
