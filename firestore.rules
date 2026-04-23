@@ -21,47 +21,50 @@ service cloud.firestore {
       return isSignedIn() && participantIds != null && (request.auth.uid in participantIds);
     }
 
+    function isAdmin() {
+      // Check if the user document has the isAdmin flag set
+      return isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isAdmin == true;
+    }
+
     // --- Collection Rules ---
 
     match /userProfiles/{userId} {
       allow get, list: if true;
       allow create: if isOwner(userId) && request.resource.data.id == userId;
       // Allow users to update their own profile (stats and balance)
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+      allow update: if isExistingOwner(userId) || isAdmin();
+      allow delete: if isExistingOwner(userId) || isAdmin();
 
       match /favorites/{favoriteId} {
-        allow get, list: if isOwner(userId);
+        allow get, list: if isOwner(userId) || isAdmin();
         allow create: if isOwner(userId) && request.resource.data.userId == userId;
-        allow update: if isExistingOwner(userId);
-        allow delete: if isExistingOwner(userId);
+        allow update: if isExistingOwner(userId) || isAdmin();
+        allow delete: if isExistingOwner(userId) || isAdmin();
       }
 
       match /transactions/{transactionId} {
-        allow get, list: if isOwner(userId);
+        allow get, list: if isOwner(userId) || isAdmin();
         allow create: if isOwner(userId);
-        allow update: if false;
-        allow delete: if false;
+        allow update: if isAdmin();
+        allow delete: if isAdmin();
       }
     }
 
     match /listings/{listingId} {
       allow get, list: if true;
       allow create: if isSignedIn() && request.resource.data.listerId == request.auth.uid;
-      allow update: if isExistingOwner(resource.data.listerId);
-      allow delete: if isExistingOwner(resource.data.listerId);
+      allow update: if isExistingOwner(resource.data.listerId) || isAdmin();
+      allow delete: if isExistingOwner(resource.data.listerId) || isAdmin();
     }
 
     match /conversations/{conversationId} {
-      allow get: if isParticipant(resource.data.participantIds);
-      allow list: if isSignedIn() && (request.auth.uid in resource.data.participantIds);
+      allow get: if isParticipant(resource.data.participantIds) || isAdmin();
+      allow list: if isSignedIn() && ((request.auth.uid in resource.data.participantIds) || isAdmin());
       allow create: if isSignedIn() && isParticipant(request.resource.data.participantIds);
-      // Allow updates to unread status, rating flags, finalization tracking, and soft-delete field
-      allow update: if isParticipant(resource.data.participantIds);
-      allow delete: if isParticipant(resource.data.participantIds);
+      allow update: if isParticipant(resource.data.participantIds) || isAdmin();
+      allow delete: if isParticipant(resource.data.participantIds) || isAdmin();
 
       match /messages/{messageId} {
-        // Messages are accessible to conversation participants
         allow get, list, create, update, delete: if isSignedIn();
       }
     }
@@ -69,8 +72,8 @@ service cloud.firestore {
     match /ratings/{ratingId} {
       allow get, list: if true;
       allow create: if isSignedIn() && request.resource.data.raterId == request.auth.uid;
-      allow update: if isExistingOwner(resource.data.raterId);
-      allow delete: if isExistingOwner(resource.data.raterId);
+      allow update: if isExistingOwner(resource.data.raterId) || isAdmin();
+      allow delete: if isExistingOwner(resource.data.raterId) || isAdmin();
     }
   }
 }

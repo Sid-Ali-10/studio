@@ -36,6 +36,10 @@
           "type": "boolean",
           "description": "Indicates if the user's account has been verified."
         },
+        "isAdmin": {
+          "type": "boolean",
+          "description": "Indicates if the user has administrative privileges."
+        },
         "createdAt": {
           "type": "string",
           "format": "date-time"

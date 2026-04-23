@@ -8,13 +8,8 @@ import {
   collection, 
   getDocs, 
   doc, 
-  deleteDoc, 
-  query, 
-  orderBy,
-  limit,
-  Timestamp 
 } from "firebase/firestore";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { 
@@ -25,15 +20,17 @@ import {
   Trash2, 
   LogOut, 
   Loader2, 
-  ExternalLink,
   ShieldAlert,
   Search,
-  CheckCircle2,
-  XCircle
+  CheckCircle2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
+import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 interface AdminStats {
   totalUsers: number;
@@ -65,39 +62,76 @@ export default function AdminDashboard() {
 
   const fetchData = async () => {
     setLoading(true);
-    try {
-      const [usersSnap, listingsSnap, convosSnap] = await Promise.all([
-        getDocs(collection(db, "userProfiles")),
-        getDocs(collection(db, "listings")),
-        getDocs(collection(db, "conversations"))
-      ]);
-
-      setUsers(usersSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setListings(listingsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setConvos(convosSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-
-      setStats({
-        totalUsers: usersSnap.size,
-        totalListings: listingsSnap.size,
-        totalConvos: convosSnap.size
+    
+    // Fetch users
+    const usersPromise = getDocs(collection(db, "userProfiles"))
+      .then(snap => {
+        const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setUsers(data);
+        return snap.size;
+      })
+      .catch(async () => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: 'userProfiles',
+          operation: 'list'
+        }));
+        return 0;
       });
-    } catch (err) {
-      console.error(err);
-      toast({ variant: "destructive", title: "Data Fetch Failed" });
+
+    // Fetch listings
+    const listingsPromise = getDocs(collection(db, "listings"))
+      .then(snap => {
+        const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setListings(data);
+        return snap.size;
+      })
+      .catch(async () => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: 'listings',
+          operation: 'list'
+        }));
+        return 0;
+      });
+
+    // Fetch conversations
+    const convosPromise = getDocs(collection(db, "conversations"))
+      .then(snap => {
+        const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setConvos(data);
+        return snap.size;
+      })
+      .catch(async () => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: 'conversations',
+          operation: 'list'
+        }));
+        return 0;
+      });
+
+    try {
+      const [uCount, lCount, cCount] = await Promise.all([usersPromise, listingsPromise, convosPromise]);
+      setStats({
+        totalUsers: uCount,
+        totalListings: lCount,
+        totalConvos: cCount
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (coll: string, id: string) => {
+  const handleDelete = (coll: string, id: string) => {
     if (!confirm(`Are you sure you want to delete this ${coll.slice(0, -1)}? This action cannot be undone.`)) return;
-    try {
-      await deleteDoc(doc(db, coll, id));
-      toast({ title: "Deleted Successfully" });
-      fetchData(); // Refresh
-    } catch (err) {
-      toast({ variant: "destructive", title: "Delete Failed" });
-    }
+    
+    const docRef = doc(db, coll, id);
+    deleteDocumentNonBlocking(docRef);
+    
+    // Optimistic update
+    if (coll === "userProfiles") setUsers(prev => prev.filter(u => u.id !== id));
+    if (coll === "listings") setListings(prev => prev.filter(l => l.id !== id));
+    if (coll === "conversations") setConvos(prev => prev.filter(c => c.id !== id));
+    
+    toast({ title: "Deletion initiated", description: "The resource is being removed." });
   };
 
   const handleLogout = () => {
@@ -205,6 +239,7 @@ export default function AdminDashboard() {
                         <p className="font-bold flex items-center gap-2">
                           {u.username} 
                           {u.isVerified && <CheckCircle2 size={14} className="text-accent" />}
+                          {u.isAdmin && <Badge variant="outline" className="text-[8px] h-4">ADMIN</Badge>}
                         </p>
                         <p className="text-xs text-muted-foreground">{u.email}</p>
                       </div>
