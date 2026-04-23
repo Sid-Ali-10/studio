@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation';
 import { db, auth } from '@/lib/firebase';
 import { collection, getDocs, doc, getDoc, setDoc, serverTimestamp, deleteDoc, updateDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/tabs';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   Users,
   Package,
@@ -36,7 +36,8 @@ import { Input } from '@/components/ui/input';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { Label } from '@/components/ui/label';
-import { Tabs as ShadcnTabs, TabsContent as ShadcnTabsContent, TabsList as ShadcnTabsList, TabsTrigger as ShadcnTabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
 
 interface AdminStats {
   totalUsers: number;
@@ -334,45 +335,45 @@ export default function AdminDashboard() {
           </Card>
         </div>
 
-        <ShadcnTabs defaultValue="reports" className="space-y-6">
-          <ShadcnTabsList className="rounded-2xl h-14 w-full md:w-auto overflow-x-auto bg-card p-1 shadow-sm">
-            <ShadcnTabsTrigger
+        <Tabs defaultValue="reports" className="space-y-6">
+          <TabsList className="rounded-2xl h-14 w-full md:w-auto overflow-x-auto bg-card p-1 shadow-sm">
+            <TabsTrigger
               value="reports"
               className="rounded-xl px-8 transition-all duration-200 data-[state=active]:shadow-md"
             >
               Reports
-            </ShadcnTabsTrigger>
-            <ShadcnTabsTrigger
+            </TabsTrigger>
+            <TabsTrigger
               value="users"
               className="rounded-xl px-8 transition-all duration-200 data-[state=active]:shadow-md"
             >
               Users
-            </ShadcnTabsTrigger>
-            <ShadcnTabsTrigger
+            </TabsTrigger>
+            <TabsTrigger
               value="listings"
               className="rounded-xl px-8 transition-all duration-200 data-[state=active]:shadow-md"
             >
               Listings
-            </ShadcnTabsTrigger>
-            <ShadcnTabsTrigger
+            </TabsTrigger>
+            <TabsTrigger
               value="convos"
               className="rounded-xl px-8 transition-all duration-200 data-[state=active]:shadow-md"
             >
               Chats
-            </ShadcnTabsTrigger>
-            <ShadcnTabsTrigger
+            </TabsTrigger>
+            <TabsTrigger
               value="revenue"
               className="rounded-xl px-8 transition-all duration-200 data-[state=active]:shadow-md"
             >
               Revenue Log
-            </ShadcnTabsTrigger>
-            <ShadcnTabsTrigger
+            </TabsTrigger>
+            <TabsTrigger
               value="settings"
               className="rounded-xl px-8 transition-all duration-200 data-[state=active]:shadow-md"
             >
               Settings
-            </ShadcnTabsTrigger>
-          </ShadcnTabsList>
+            </TabsTrigger>
+          </TabsList>
 
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
@@ -384,7 +385,7 @@ export default function AdminDashboard() {
             />
           </div>
 
-          <ShadcnTabsContent value="reports">
+          <TabsContent value="reports">
             <div className="grid gap-4">
               {reports.length === 0 ? (
                 <div className="text-center py-12 bg-card rounded-3xl">
@@ -468,9 +469,9 @@ export default function AdminDashboard() {
                 ))
               )}
             </div>
-          </ShadcnTabsContent>
+          </TabsContent>
 
-          <ShadcnTabsContent value="users">
+          <TabsContent value="users">
             <div className="grid gap-3">
               {users
                 .filter((u) => u.username?.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -526,9 +527,9 @@ export default function AdminDashboard() {
                   </Card>
                 ))}
             </div>
-          </ShadcnTabsContent>
+          </TabsContent>
 
-          <ShadcnTabsContent value="listings">
+          <TabsContent value="listings">
             <div className="grid gap-3">
               {listings
                 .filter((l) => l.title?.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -555,9 +556,9 @@ export default function AdminDashboard() {
                   </Card>
                 ))}
             </div>
-          </ShadcnTabsContent>
+          </TabsContent>
 
-          <ShadcnTabsContent value="convos">
+          <TabsContent value="convos">
             <div className="grid gap-3">
               {convos.map((c) => (
                 <Card
@@ -591,9 +592,9 @@ export default function AdminDashboard() {
                 </Card>
               ))}
             </div>
-          </ShadcnTabsContent>
+          </TabsContent>
 
-          <ShadcnTabsContent value="revenue">
+          <TabsContent value="revenue">
             <div className="grid gap-3">
               {allTransactions
                 .filter((t) => t.type === 'commission')
@@ -617,9 +618,9 @@ export default function AdminDashboard() {
                   </Card>
                 ))}
             </div>
-          </ShadcnTabsContent>
+          </TabsContent>
 
-          <ShadcnTabsContent value="settings">
+          <TabsContent value="settings">
             <Card className="rounded-3xl border-none shadow-sm overflow-hidden">
               <CardHeader className="bg-muted/30">
                 <CardTitle className="flex items-center gap-2">
@@ -662,8 +663,8 @@ export default function AdminDashboard() {
                 </div>
               </CardContent>
             </Card>
-          </ShadcnTabsContent>
-        </ShadcnTabs>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
