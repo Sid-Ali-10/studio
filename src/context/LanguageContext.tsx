@@ -57,9 +57,22 @@ export const translations: Translations = {
   welcome: { en: "Welcome", ar: "مرحباً", fr: "Bienvenue" },
   
   // Wallet
-  balance: { en: "Balance", ar: "الرصيد", fr: "Solde" },
-  recharge: { en: "Recharge", ar: "شحن", fr: "Recharger" },
-  history: { en: "History", ar: "السجل", fr: "Historique" },
+  wallet_title: { en: "Wallet", ar: "المحفظة", fr: "Portefeuille" },
+  wallet_subtitle: { en: "Manage your marketplace funds and commissions.", ar: "إدارة أموال السوق والعمولات الخاصة بك.", fr: "Gérez vos fonds et vos commissions." },
+  recharge_funds: { en: "Recharge Funds", ar: "شحن الرصيد", fr: "Recharger les fonds" },
+  recharge_subtitle: { en: "Add money to your account for upcoming deals.", ar: "أضف أموالاً إلى حسابك للصفقات القادمة.", fr: "Ajoutez de l'argent à votre compte pour vos futures transactions." },
+  balance_label: { en: "Balance", ar: "الرصيد", fr: "Solde" },
+  balance_subtitle: { en: "Funds for deals and fees", ar: "أموال للصفقات والرسوم", fr: "Fonds pour les transactions et les frais" },
+  add_plus: { en: "Add +", ar: "إضافة +", fr: "Ajouter +" },
+  transaction_history: { en: "Transaction History", ar: "سجل العمليات", fr: "Historique des transactions" },
+  currency_da: { en: "DA", ar: "د.ج", fr: "DA" },
+  type_recharge: { en: "Recharge", ar: "شحن", fr: "Recharge" },
+  type_payment: { en: "Payment", ar: "دفع", fr: "Paiement" },
+  type_payout: { en: "Payout", ar: "سحب", fr: "Retrait" },
+  type_commission: { en: "Commission", ar: "عمولة", fr: "Commission" },
+  recharge_desc: { en: "Wallet Recharge", ar: "شحن المحفظة", fr: "Recharge du portefeuille" },
+  marketplace_fee: { en: "Marketplace fee", ar: "رسوم السوق", fr: "Frais de marché" },
+  platform_fee_deal: { en: "Platform Fee from deal", ar: "رسوم المنصة من الصفقة", fr: "Frais de plateforme de la transaction" },
   
   // Chat
   type_message: { en: "Type message...", ar: "اكتب رسالة...", fr: "Écrire..." },

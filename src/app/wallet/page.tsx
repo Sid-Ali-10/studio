@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -20,6 +21,7 @@ import { Wallet, ArrowUpCircle, Banknote, History, Plus, Loader2, Clock } from "
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface Transaction {
   id: string;
@@ -31,6 +33,7 @@ interface Transaction {
 
 export default function WalletPage() {
   const { user, profile } = useAuth();
+  const { t } = useLanguage();
   const { toast } = useToast();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,32 +94,45 @@ export default function WalletPage() {
 
   const rechargeAmounts = [1000, 2000, 5000];
 
+  const translateDescription = (desc: string) => {
+    if (desc === "Wallet Recharge") return t('recharge_desc');
+    if (desc.startsWith("Marketplace fee")) {
+      const parts = desc.split(":");
+      return `${t('marketplace_fee')}${parts[1] ? ':' + parts[1] : ''}`;
+    }
+    if (desc.startsWith("Platform Fee from deal")) {
+      const parts = desc.split(":");
+      return `${t('platform_fee_deal')}${parts[1] ? ':' + parts[1] : ''}`;
+    }
+    return desc;
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
-      <div className="space-y-1">
-        <h1 className="text-3xl font-bold tracking-tight">Wallet</h1>
-        <p className="text-muted-foreground">Manage your marketplace funds and commissions.</p>
+      <div className="space-y-1 text-start">
+        <h1 className="text-3xl font-bold tracking-tight">{t('wallet_title')}</h1>
+        <p className="text-muted-foreground">{t('wallet_subtitle')}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="md:col-span-1 border-none shadow-xl bg-primary text-primary-foreground overflow-hidden">
-          <CardHeader>
+          <CardHeader className="text-start">
             <CardTitle className="flex items-center gap-2">
-              <Wallet size={24} /> Balance
+              <Wallet size={24} /> {t('balance_label')}
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-2 text-start">
             <div className="text-4xl font-black">
-              {profile?.walletBalance?.toLocaleString() || "0"} <span className="text-xl font-medium">DA</span>
+              {profile?.walletBalance?.toLocaleString() || "0"} <span className="text-xl font-medium">{t('currency_da')}</span>
             </div>
-            <p className="text-primary-foreground/70 text-sm">Funds for deals and fees</p>
+            <p className="text-primary-foreground/70 text-sm">{t('balance_subtitle')}</p>
           </CardContent>
         </Card>
 
         <Card className="md:col-span-2 border-none shadow-md bg-card">
-          <CardHeader>
-            <CardTitle>Recharge Funds</CardTitle>
-            <CardDescription>Add money to your account for upcoming deals.</CardDescription>
+          <CardHeader className="text-start">
+            <CardTitle>{t('recharge_funds')}</CardTitle>
+            <CardDescription>{t('recharge_subtitle')}</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-4">
             {rechargeAmounts.map((amount) => (
@@ -127,7 +143,7 @@ export default function WalletPage() {
                 onClick={() => handleRecharge(amount)}
                 disabled={rechargeLoading !== null}
               >
-                {rechargeLoading === amount ? <Loader2 className="animate-spin" /> : <><span className="font-bold">{amount} DA</span><span className="text-[10px] text-muted-foreground">+ Add</span></>}
+                {rechargeLoading === amount ? <Loader2 className="animate-spin" /> : <><span className="font-bold">{amount} {t('currency_da')}</span><span className="text-[10px] text-muted-foreground">{t('add_plus')}</span></>}
               </Button>
             ))}
           </CardContent>
@@ -135,7 +151,7 @@ export default function WalletPage() {
       </div>
 
       <div className="space-y-4">
-        <h2 className="text-xl font-bold flex items-center gap-2"><Clock size={20} /> Transaction History</h2>
+        <h2 className="text-xl font-bold flex items-center gap-2 text-start"><Clock size={20} /> {t('transaction_history')}</h2>
         
         {loading ? (
           <div className="flex justify-center py-12"><Loader2 className="animate-spin text-primary" size={32} /></div>
@@ -144,7 +160,7 @@ export default function WalletPage() {
             {transactions.map((tx) => (
               <Card key={tx.id} className="border-none shadow-sm rounded-2xl overflow-hidden hover:bg-muted/50 transition-colors">
                 <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 text-start">
                     <div className={cn(
                       "w-12 h-12 rounded-xl flex items-center justify-center shrink-0",
                       tx.amount > 0 ? "bg-accent/10 text-accent" : "bg-primary/10 text-primary"
@@ -152,12 +168,12 @@ export default function WalletPage() {
                       {tx.amount > 0 ? <Plus size={24} /> : <Banknote size={24} />}
                     </div>
                     <div>
-                      <p className="font-bold truncate">{tx.description}</p>
-                      <p className="text-[10px] text-muted-foreground uppercase">{tx.type} • {tx.createdAt ? format(tx.createdAt.toDate(), "PPpp") : "Processing..."}</p>
+                      <p className="font-bold truncate">{translateDescription(tx.description)}</p>
+                      <p className="text-[10px] text-muted-foreground uppercase">{t(`type_${tx.type}`)} • {tx.createdAt ? format(tx.createdAt.toDate(), "PPpp") : "..."}</p>
                     </div>
                   </div>
-                  <div className={cn("text-lg font-black shrink-0 text-left sm:text-right", tx.amount > 0 ? "text-accent" : "text-primary")}>
-                    {tx.amount > 0 ? "+" : ""}{tx.amount.toLocaleString()} DA
+                  <div className={cn("text-lg font-black shrink-0 text-start sm:text-end", tx.amount > 0 ? "text-accent" : "text-primary")}>
+                    {tx.amount > 0 ? "+" : ""}{tx.amount.toLocaleString()} {t('currency_da')}
                   </div>
                 </CardContent>
               </Card>
