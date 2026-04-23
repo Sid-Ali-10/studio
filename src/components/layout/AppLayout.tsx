@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -12,6 +13,7 @@ import { signOut, sendEmailVerification } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { Logo } from "@/components/Logo";
+import { useLanguage } from "@/context/LanguageContext";
 
 const SplashScreen = () => (
   <div className="splash-screen">
@@ -66,17 +68,13 @@ const VerificationScreen = () => {
           <LogOut className="mr-2" size={18} /> Logout
         </Button>
       </div>
-      
-      <div className="mt-12 p-4 bg-muted/50 rounded-2xl text-xs text-muted-foreground max-w-xs">
-        <ShieldCheck className="inline-block mr-1" size={12} />
-        Verification ensures a safe and trusted community for all Algerians.
-      </div>
     </div>
   );
 };
 
 export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
+  const { t, isRTL } = useLanguage();
   const [showSplash, setShowSplash] = useState(true);
   const [hasUnread, setHasUnread] = useState(false);
   const pathname = usePathname();
@@ -125,17 +123,20 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   }
 
   const navItems = [
-    { label: "Board", icon: Home, href: "/" },
-    { label: "Inbox", icon: MessageSquare, href: "/chat", badge: hasUnread },
-    { label: "New", icon: PlusSquare, href: "/listings/new" },
-    { label: "Saved", icon: Heart, href: "/favorites" },
-    { label: "Wallet", icon: Wallet, href: "/wallet" },
-    { label: "Profile", icon: User, href: `/profile/${user?.uid}` },
+    { label: t('feed'), icon: Home, href: "/" },
+    { label: t('messages'), icon: MessageSquare, href: "/chat", badge: hasUnread },
+    { label: t('newPost'), icon: PlusSquare, href: "/listings/new" },
+    { label: t('saved'), icon: Heart, href: "/favorites" },
+    { label: t('wallet'), icon: Wallet, href: "/wallet" },
+    { label: t('profile'), icon: User, href: `/profile/${user?.uid}` },
   ];
 
   return (
-    <div className="flex flex-col min-h-screen pb-20 md:pb-0 transition-colors duration-300 md:pl-20">
-      <aside className="hidden md:flex fixed top-0 left-0 h-full w-20 flex-col items-center py-8 bg-card border-r z-50">
+    <div className={cn("flex flex-col min-h-screen pb-20 md:pb-0 transition-all", isRTL ? "md:pr-20" : "md:pl-20")}>
+      <aside className={cn(
+        "hidden md:flex fixed top-0 h-full w-20 flex-col items-center py-8 bg-card border-l border-r z-50",
+        isRTL ? "right-0" : "left-0"
+      )}>
         <Logo size={40} className="mb-8" />
         <nav className="flex flex-col gap-6">
           {navItems.map((item) => (
@@ -151,7 +152,7 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
             >
               <item.icon size={24} />
               {item.badge && (
-                <span className="absolute top-2 right-2 w-3 h-3 bg-red-500 border-2 border-card rounded-full" />
+                <span className={cn("absolute top-2 w-3 h-3 bg-red-500 border-2 border-card rounded-full", isRTL ? "left-2" : "right-2")} />
               )}
             </Link>
           ))}
@@ -171,7 +172,7 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
             <div className="relative">
               <item.icon size={24} />
               {item.badge && (
-                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 border-2 border-card rounded-full" />
+                <span className={cn("absolute -top-1 w-2.5 h-2.5 bg-red-500 border-2 border-card rounded-full", isRTL ? "-left-1" : "-right-1")} />
               )}
             </div>
             <span className="text-[10px]">{item.label}</span>

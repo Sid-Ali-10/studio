@@ -1,3 +1,4 @@
+
 import type {Metadata} from 'next';
 import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
@@ -5,6 +6,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { FirebaseClientProvider } from '@/firebase';
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from '@/context/ThemeContext';
+import { LanguageProvider } from '@/context/LanguageContext';
 
 export const metadata: Metadata = {
   title: 'GetMeDZ - P2P Marketplace for Travelers & Buyers',
@@ -20,7 +22,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -30,10 +32,12 @@ export default function RootLayout({
         <FirebaseClientProvider>
           <AuthProvider>
             <ThemeProvider>
-              <AppLayout>
-                {children}
-              </AppLayout>
-              <Toaster />
+              <LanguageProvider>
+                <AppLayout>
+                  {children}
+                </AppLayout>
+                <Toaster />
+              </LanguageProvider>
             </ThemeProvider>
           </AuthProvider>
         </FirebaseClientProvider>
