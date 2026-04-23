@@ -464,7 +464,7 @@ export default function ChatRoomPage() {
               onClick={() => !hasUserRated && setIsRatingOpen(true)}
               disabled={hasUserRated}
             >
-              {hasUserRated ? <CheckCircle2 size={16} /> : <Star size={16} />}
+              <CheckCircle2 size={16} />
               <span className="hidden sm:inline">{hasUserRated ? "Rated" : "Complete Deal"}</span>
             </Button>
           )}
