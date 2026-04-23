@@ -35,6 +35,7 @@ export const translations: Translations = {
   travelers: { en: "Travelers", ar: "المسافرون", fr: "Voyageurs" },
   buyer: { en: "Buyer", ar: "مشتري", fr: "Acheteur" },
   buyers: { en: "Buyers", ar: "المشترون", fr: "Acheteurs" },
+  no_results: { en: "No results found", ar: "لا توجد نتائج", fr: "Aucun résultat trouvé" },
   
   // Listing Card
   connect: { en: "Connect", ar: "تواصل", fr: "Connecter" },
@@ -67,9 +68,11 @@ export const translations: Translations = {
   complete_deal: { en: "Complete Deal", ar: "إتمام الصفقة", fr: "Finaliser" },
   report: { en: "Report", ar: "إبلاغ", fr: "Signaler" },
   
-  // Filters
-  search: { en: "Search...", ar: "بحث...", fr: "Rechercher..." },
-  city: { en: "City", ar: "المدينة", fr: "Ville" },
+  // Filters & Placeholders
+  search_placeholder: { en: "Search by title or description...", ar: "بحث عن طريق العنوان أو الوصف...", fr: "Recherche par titre ou description..." },
+  filter_city: { en: "Filter by city", ar: "تصفية حسب المدينة", fr: "Filtrer par ville" },
+  filter_weight: { en: "Min weight (kg)", ar: "أقل وزن (كجم)", fr: "Poids min (kg)" },
+  filter_budget: { en: "Max budget (DA)", ar: "أقصى ميزانية (د.ج)", fr: "Budget max (DA)" },
   clear_filters: { en: "Clear All Filters", ar: "مسح الفلاتر", fr: "Effacer les filtres" },
   
   // Profile

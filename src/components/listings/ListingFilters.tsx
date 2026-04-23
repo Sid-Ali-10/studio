@@ -5,6 +5,7 @@ import React from "react";
 import { Input } from "@/components/ui/input";
 import { Search, MapPin, Calendar, Weight, Banknote, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface FilterState {
   search: string;
@@ -23,6 +24,8 @@ interface ListingFiltersProps {
 }
 
 export function ListingFilters({ filters, onFilterChange, showPrice = true, showWeight = true }: ListingFiltersProps) {
+  const { t } = useLanguage();
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     onFilterChange({ ...filters, [name]: value });
@@ -47,8 +50,8 @@ export function ListingFilters({ filters, onFilterChange, showPrice = true, show
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
         <Input
           name="search"
-          placeholder="Search by title or description..."
-          className="pl-10 h-11 rounded-xl bg-muted/50 border-none"
+          placeholder={t('search_placeholder')}
+          className="pl-10 h-11 rounded-xl bg-muted/50 border-none text-start"
           value={filters.search}
           onChange={handleChange}
         />
@@ -59,8 +62,8 @@ export function ListingFilters({ filters, onFilterChange, showPrice = true, show
           <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
           <Input
             name="city"
-            placeholder="Filter by city"
-            className="pl-10 h-10 rounded-xl bg-muted/50 border-none text-sm"
+            placeholder={t('filter_city')}
+            className="pl-10 h-10 rounded-xl bg-muted/50 border-none text-sm text-start"
             value={filters.city}
             onChange={handleChange}
           />
@@ -71,7 +74,7 @@ export function ListingFilters({ filters, onFilterChange, showPrice = true, show
           <Input
             name="date"
             type="date"
-            className="pl-10 h-10 rounded-xl bg-muted/50 border-none text-sm"
+            className="pl-10 h-10 rounded-xl bg-muted/50 border-none text-sm text-start"
             value={filters.date}
             onChange={handleChange}
           />
@@ -83,8 +86,8 @@ export function ListingFilters({ filters, onFilterChange, showPrice = true, show
             <Input
               name="minWeight"
               type="number"
-              placeholder="Min weight (kg)"
-              className="pl-10 h-10 rounded-xl bg-muted/50 border-none text-sm"
+              placeholder={t('filter_weight')}
+              className="pl-10 h-10 rounded-xl bg-muted/50 border-none text-sm text-start"
               value={filters.minWeight}
               onChange={handleChange}
             />
@@ -97,8 +100,8 @@ export function ListingFilters({ filters, onFilterChange, showPrice = true, show
             <Input
               name="maxPrice"
               type="number"
-              placeholder="Max budget (DA)"
-              className="pl-10 h-10 rounded-xl bg-muted/50 border-none text-sm"
+              placeholder={t('filter_budget')}
+              className="pl-10 h-10 rounded-xl bg-muted/50 border-none text-sm text-start"
               value={filters.maxPrice}
               onChange={handleChange}
             />
@@ -114,7 +117,7 @@ export function ListingFilters({ filters, onFilterChange, showPrice = true, show
             onClick={clearFilters}
             className="text-xs text-muted-foreground hover:text-foreground h-8 gap-1"
           >
-            <X size={14} /> Clear All Filters
+            <X size={14} /> {t('clear_filters')}
           </Button>
         </div>
       )}
