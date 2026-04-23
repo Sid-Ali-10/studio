@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ShieldCheck, Lock, ArrowRight, AlertCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { auth, db } from "@/lib/firebase";
-import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 // The secret key for admin access
 const ADMIN_SECRET = "GetMeDZ_Admin_2025";
@@ -33,10 +33,11 @@ export default function AdminLoginPage() {
         // so the Security Rules allow them to fetch all data.
         if (currentUser) {
           const profileRef = doc(db, "userProfiles", currentUser.uid);
-          await updateDoc(profileRef, {
+          // Using setDoc with merge is safer than updateDoc as it creates the doc if missing
+          await setDoc(profileRef, {
             isAdmin: true,
             updatedAt: serverTimestamp()
-          });
+          }, { merge: true });
         } else {
           toast({ 
             variant: "destructive", 

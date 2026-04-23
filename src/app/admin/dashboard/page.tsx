@@ -3,11 +3,12 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { db } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase";
 import { 
   collection, 
   getDocs, 
   doc, 
+  getDoc
 } from "firebase/firestore";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -22,7 +23,8 @@ import {
   Loader2, 
   ShieldAlert,
   Search,
-  CheckCircle2
+  CheckCircle2,
+  AlertTriangle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -40,6 +42,7 @@ interface AdminStats {
 
 export default function AdminDashboard() {
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [isAdminInDb, setIsAdminInDb] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<AdminStats>({ totalUsers: 0, totalListings: 0, totalConvos: 0 });
   const [users, setUsers] = useState<any[]>([]);
@@ -51,13 +54,39 @@ export default function AdminDashboard() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const token = sessionStorage.getItem("admin_token");
-    if (token !== "authorized_dz_admin") {
-      router.push("/admin/login");
-    } else {
+    const checkAccess = async () => {
+      const token = sessionStorage.getItem("admin_token");
+      if (token !== "authorized_dz_admin") {
+        router.push("/admin/login");
+        return;
+      }
+
       setIsAuthorized(true);
-      fetchData();
-    }
+
+      // Pre-flight check: is the current user actually an Admin in Firestore?
+      try {
+        const user = auth.currentUser;
+        if (!user) {
+          router.push("/login");
+          return;
+        }
+
+        const profileSnap = await getDoc(doc(db, "userProfiles", user.uid));
+        if (profileSnap.exists() && profileSnap.data().isAdmin === true) {
+          setIsAdminInDb(true);
+          fetchData();
+        } else {
+          setIsAdminInDb(false);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error("Access verification failed", err);
+        setIsAdminInDb(false);
+        setLoading(false);
+      }
+    };
+
+    checkAccess();
   }, [router]);
 
   const fetchData = async () => {
@@ -139,11 +168,31 @@ export default function AdminDashboard() {
     router.push("/admin/login");
   };
 
-  if (!isAuthorized || loading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4">
         <Loader2 className="animate-spin text-primary" size={48} />
         <p className="text-muted-foreground font-medium animate-pulse">Initializing Control Center...</p>
+      </div>
+    );
+  }
+
+  if (isAdminInDb === false) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center gap-6">
+        <div className="w-20 h-20 bg-destructive/10 rounded-full flex items-center justify-center">
+          <AlertTriangle className="text-destructive" size={40} />
+        </div>
+        <div className="space-y-2 max-w-md">
+          <h1 className="text-2xl font-bold">Permissions Desynchronized</h1>
+          <p className="text-muted-foreground">
+            You have the session token, but your Firestore profile is not marked as an Administrator. 
+            Please return to the login page to synchronize your account.
+          </p>
+        </div>
+        <Button onClick={() => router.push("/admin/login")} className="rounded-xl px-8 h-12 font-bold">
+          Go to Admin Login
+        </Button>
       </div>
     );
   }
