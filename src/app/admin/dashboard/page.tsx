@@ -583,7 +583,7 @@ export default function AdminDashboard() {
                         </p>
                       </div>
                     </div>
-                    <div className="font-black text-accent text-right sm:shrink-0 text-lg">
+                    <div className="font-black text-accent text-left sm:text-right shrink-0 text-lg">
                       +{t.amount.toLocaleString()} DA
                     </div>
                   </Card>

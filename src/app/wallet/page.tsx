@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -144,7 +143,7 @@ export default function WalletPage() {
           <div className="space-y-3">
             {transactions.map((tx) => (
               <Card key={tx.id} className="border-none shadow-sm rounded-2xl overflow-hidden hover:bg-muted/50 transition-colors">
-                <CardContent className="p-4 flex items-center justify-between">
+                <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
                     <div className={cn(
                       "w-12 h-12 rounded-xl flex items-center justify-center shrink-0",
@@ -157,7 +156,7 @@ export default function WalletPage() {
                       <p className="text-[10px] text-muted-foreground uppercase">{tx.type} • {tx.createdAt ? format(tx.createdAt.toDate(), "PPpp") : "Processing..."}</p>
                     </div>
                   </div>
-                  <div className={cn("text-lg font-black", tx.amount > 0 ? "text-accent" : "text-primary")}>
+                  <div className={cn("text-lg font-black shrink-0 text-left sm:text-right", tx.amount > 0 ? "text-accent" : "text-primary")}>
                     {tx.amount > 0 ? "+" : ""}{tx.amount.toLocaleString()} DA
                   </div>
                 </CardContent>
