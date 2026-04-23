@@ -5,9 +5,8 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { db, auth } from '@/lib/firebase';
 import { collection, getDocs, doc, getDoc, setDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
-import { sendPasswordResetEmail } from 'firebase/auth';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/tabs';
 import { Button } from '@/components/ui/button';
 import {
   Users,
@@ -25,12 +24,15 @@ import {
   Settings,
   RefreshCw,
   Save,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { Label } from '@/components/ui/label';
+import { Tabs as ShadcnTabs, TabsContent as ShadcnTabsContent, TabsList as ShadcnTabsList, TabsTrigger as ShadcnTabsTrigger } from '@/components/ui/tabs';
 
 interface AdminStats {
   totalUsers: number;
@@ -49,6 +51,7 @@ export default function AdminDashboard() {
   const [convos, setConvos] = useState<any[]>([]);
   const [allTransactions, setAllTransactions] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Platform Settings
   const [platformCommission, setPlatformCommission] = useState(1000);
@@ -124,19 +127,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleResetPassword = async (email: string) => {
-    if (!confirm(`Send password reset email to ${email}?`)) return;
-    setProcessingAction(`reset-${email}`);
-    try {
-      await sendPasswordResetEmail(auth, email);
-      toast({ title: 'Email Sent', description: `A password assistance link has been sent to ${email}.` });
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Action Failed', description: err.message });
-    } finally {
-      setProcessingAction(null);
-    }
-  };
-
   const fetchData = async (adminUid: string) => {
     setLoading(true);
 
@@ -185,7 +175,6 @@ export default function AdminDashboard() {
     try {
       await deleteDoc(doc(db, coll, id));
       
-      if (coll === 'userProfiles') setUsers((prev) => prev.filter((u) => u.id !== id));
       if (coll === 'listings') setListings((prev) => prev.filter((l) => l.id !== id));
       if (coll === 'conversations') setConvos((prev) => prev.filter((c) => c.id !== id));
 
@@ -195,6 +184,16 @@ export default function AdminDashboard() {
     } finally {
       setProcessingAction(null);
     }
+  };
+
+  const handleCopyEmail = (email: string, id: string) => {
+    navigator.clipboard.writeText(email);
+    setCopiedId(id);
+    toast({
+      title: 'Email Copied',
+      description: `${email} has been copied to your clipboard.`,
+    });
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   const handleLogout = () => {
@@ -281,39 +280,39 @@ export default function AdminDashboard() {
           </Card>
         </div>
 
-        <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="rounded-2xl h-14 w-full md:w-auto overflow-x-auto bg-card p-1 shadow-sm">
-            <TabsTrigger
+        <ShadcnTabs defaultValue="users" className="space-y-6">
+          <ShadcnTabsList className="rounded-2xl h-14 w-full md:w-auto overflow-x-auto bg-card p-1 shadow-sm">
+            <ShadcnTabsTrigger
               value="users"
               className="rounded-xl px-8 transition-all duration-200 data-[state=active]:shadow-md"
             >
               Users
-            </TabsTrigger>
-            <TabsTrigger
+            </ShadcnTabsTrigger>
+            <ShadcnTabsTrigger
               value="listings"
               className="rounded-xl px-8 transition-all duration-200 data-[state=active]:shadow-md"
             >
               Listings
-            </TabsTrigger>
-            <TabsTrigger
+            </ShadcnTabsTrigger>
+            <ShadcnTabsTrigger
               value="convos"
               className="rounded-xl px-8 transition-all duration-200 data-[state=active]:shadow-md"
             >
               Chats
-            </TabsTrigger>
-            <TabsTrigger
+            </ShadcnTabsTrigger>
+            <ShadcnTabsTrigger
               value="revenue"
               className="rounded-xl px-8 transition-all duration-200 data-[state=active]:shadow-md"
             >
               Revenue Log
-            </TabsTrigger>
-            <TabsTrigger
+            </ShadcnTabsTrigger>
+            <ShadcnTabsTrigger
               value="settings"
               className="rounded-xl px-8 transition-all duration-200 data-[state=active]:shadow-md"
             >
               Settings
-            </TabsTrigger>
-          </TabsList>
+            </ShadcnTabsTrigger>
+          </ShadcnTabsList>
 
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
@@ -325,7 +324,7 @@ export default function AdminDashboard() {
             />
           </div>
 
-          <TabsContent value="users">
+          <ShadcnTabsContent value="users">
             <div className="grid gap-3">
               {users
                 .filter((u) => u.username?.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -338,11 +337,13 @@ export default function AdminDashboard() {
                       <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center font-bold text-primary">
                         {u.username?.charAt(0)}
                       </div>
-                      <div>
+                      <div className="flex flex-col">
                         <div className="font-bold flex items-center gap-2">
                           {u.username} {u.isVerified && <CheckCircle2 size={12} className="text-accent" />}
                         </div>
-                        <p className="text-xs text-muted-foreground">{u.email}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs text-muted-foreground">{u.email}</p>
+                        </div>
                       </div>
                     </div>
                     <div className="flex gap-2">
@@ -350,29 +351,18 @@ export default function AdminDashboard() {
                         variant="ghost"
                         size="icon"
                         className="rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all duration-200 active:scale-90"
-                        onClick={() => handleResetPassword(u.email)}
-                        disabled={processingAction === `reset-${u.email}`}
-                        title="Send Password Reset Email"
+                        onClick={() => handleCopyEmail(u.email, u.id)}
+                        title="Copy Email Address"
                       >
-                        {processingAction === `reset-${u.email}` ? <Loader2 className="animate-spin w-4 h-4" /> : <RefreshCw size={18} />}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="rounded-full text-destructive hover:text-white hover:bg-destructive transition-all duration-200 active:scale-90"
-                        onClick={() => handleDelete('userProfiles', u.id)}
-                        disabled={processingAction === `delete-${u.id}`}
-                        title="Delete User"
-                      >
-                        {processingAction === `delete-${u.id}` ? <Loader2 className="animate-spin w-4 h-4" /> : <Trash2 size={18} />}
+                        {copiedId === u.id ? <Check size={18} className="text-accent" /> : <Copy size={18} />}
                       </Button>
                     </div>
                   </Card>
                 ))}
             </div>
-          </TabsContent>
+          </ShadcnTabsContent>
 
-          <TabsContent value="listings">
+          <ShadcnTabsContent value="listings">
             <div className="grid gap-3">
               {listings
                 .filter((l) => l.title?.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -399,9 +389,9 @@ export default function AdminDashboard() {
                   </Card>
                 ))}
             </div>
-          </TabsContent>
+          </ShadcnTabsContent>
 
-          <TabsContent value="convos">
+          <ShadcnTabsContent value="convos">
             <div className="grid gap-3">
               {convos.map((c) => (
                 <Card
@@ -435,9 +425,9 @@ export default function AdminDashboard() {
                 </Card>
               ))}
             </div>
-          </TabsContent>
+          </ShadcnTabsContent>
 
-          <TabsContent value="revenue">
+          <ShadcnTabsContent value="revenue">
             <div className="grid gap-3">
               {allTransactions
                 .filter((t) => t.type === 'commission')
@@ -461,9 +451,9 @@ export default function AdminDashboard() {
                   </Card>
                 ))}
             </div>
-          </TabsContent>
+          </ShadcnTabsContent>
 
-          <TabsContent value="settings">
+          <ShadcnTabsContent value="settings">
             <Card className="rounded-3xl border-none shadow-sm overflow-hidden">
               <CardHeader className="bg-muted/30">
                 <CardTitle className="flex items-center gap-2">
@@ -506,8 +496,8 @@ export default function AdminDashboard() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+          </ShadcnTabsContent>
+        </ShadcnTabs>
       </div>
     </div>
   );
