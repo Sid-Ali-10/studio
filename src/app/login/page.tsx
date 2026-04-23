@@ -42,16 +42,44 @@ export default function AuthPage() {
   const router = useRouter();
   const { toast } = useToast();
 
+  const getFriendlyErrorMessage = (errorCode: string) => {
+    switch (errorCode) {
+      case "auth/invalid-email":
+        return "The email address is badly formatted.";
+      case "auth/user-not-found":
+        return "No account found with this email. Please sign up instead.";
+      case "auth/wrong-password":
+        return "Incorrect password. Please check your entry and try again.";
+      case "auth/email-already-in-use":
+        return "This email is already registered. Try logging in.";
+      case "auth/weak-password":
+        return "Password is too weak. Please use at least 6 characters.";
+      case "auth/too-many-requests":
+        return "Too many failed attempts. Access is temporarily disabled. Please try again later.";
+      case "auth/network-request-failed":
+        return "Network error. Please check your internet connection.";
+      default:
+        return "An unexpected error occurred. Please try again.";
+    }
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    
+    // Trim inputs to avoid whitespace issues
+    const cleanEmail = email.trim();
+    const cleanPassword = password.trim();
+    const cleanUsername = username.trim();
+
     try {
       if (isLogin) {
-        await signInWithEmailAndPassword(auth, email, password);
+        await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
         toast({ title: "Welcome back!", description: "Successfully logged in." });
+        // Immediate redirect
         router.push("/");
       } else {
-        const { user } = await createUserWithEmailAndPassword(auth, email, password);
+        const { user } = await createUserWithEmailAndPassword(auth, cleanEmail, cleanPassword);
         
         // Send verification email
         await sendEmailVerification(user);
@@ -59,8 +87,8 @@ export default function AuthPage() {
         const profileRef = doc(db, "userProfiles", user.uid);
         const profileData = {
           id: user.uid,
-          username: username || email.split("@")[0],
-          email,
+          username: cleanUsername || cleanEmail.split("@")[0],
+          email: cleanEmail,
           averageRating: 5.0,
           successfulDealsCount: 0,
           walletBalance: 0,
@@ -78,7 +106,12 @@ export default function AuthPage() {
         setIsLogin(true);
       }
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Error", description: error.message });
+      const friendlyMessage = getFriendlyErrorMessage(error.code);
+      toast({ 
+        variant: "destructive", 
+        title: isLogin ? "Login Failed" : "Sign Up Failed", 
+        description: friendlyMessage 
+      });
     } finally {
       setLoading(false);
     }
@@ -89,14 +122,15 @@ export default function AuthPage() {
     if (!resetEmail) return;
     setResetLoading(true);
     try {
-      await sendPasswordResetEmail(auth, resetEmail);
+      await sendPasswordResetEmail(auth, resetEmail.trim());
       toast({ 
         title: "Reset link sent", 
         description: "Check your email for instructions to reset your password." 
       });
       setIsResetOpen(false);
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Error", description: error.message });
+      const friendlyMessage = getFriendlyErrorMessage(error.code);
+      toast({ variant: "destructive", title: "Reset Error", description: friendlyMessage });
     } finally {
       setResetLoading(false);
     }
@@ -182,7 +216,7 @@ export default function AuthPage() {
                 className="w-full h-12 rounded-xl font-semibold bg-primary hover:bg-primary/90 transition-all shadow-lg"
                 disabled={loading}
               >
-                {loading ? "Loading..." : isLogin ? (
+                {loading ? "Processing..." : isLogin ? (
                   <span className="flex items-center gap-2"><LogIn size={20} /> Login</span>
                 ) : (
                   <span className="flex items-center gap-2"><UserPlus size={20} /> Sign Up</span>
