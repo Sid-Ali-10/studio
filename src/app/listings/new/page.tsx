@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from "react";
@@ -14,9 +15,11 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Plane, ShoppingBag, Send } from "lucide-react";
 import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function NewListingPage() {
   const { user, profile } = useAuth();
+  const { t } = useLanguage();
   const [type, setType] = useState<"traveler" | "buyer">("traveler");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -53,10 +56,10 @@ export default function NewListingPage() {
 
       addDocumentNonBlocking(listingsRef, listingData);
       
-      toast({ title: "Listing created!", description: "Your post is now live." });
+      toast({ title: t('Listing created!'), description: t('Your post is now live.') });
       router.push("/");
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Error", description: error.message });
+      toast({ variant: "destructive", title: t('Error'), description: error.message });
     } finally {
       setLoading(false);
     }
@@ -69,37 +72,37 @@ export default function NewListingPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-in slide-in-from-bottom duration-500">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight">Create Listing</h1>
-        <p className="text-muted-foreground">Reach out to our community.</p>
+      <div className="space-y-1 text-start">
+        <h1 className="text-2xl font-bold tracking-tight">{t('create_listing_title')}</h1>
+        <p className="text-muted-foreground">{t('create_listing_desc')}</p>
       </div>
 
       <Tabs defaultValue="traveler" onValueChange={(v) => setType(v as any)}>
         <TabsList className="bg-card grid grid-cols-2 h-14 p-1 rounded-2xl w-full mb-6">
           <TabsTrigger value="traveler" className="rounded-xl flex gap-2">
-            <Plane size={18} /> Traveler
+            <Plane size={18} /> {t('tab_traveler')}
           </TabsTrigger>
           <TabsTrigger value="buyer" className="rounded-xl flex gap-2">
-            <ShoppingBag size={18} /> Buyer
+            <ShoppingBag size={18} /> {t('tab_buyer')}
           </TabsTrigger>
         </TabsList>
 
-        <Card className="border-none shadow-xl rounded-2xl overflow-hidden">
+        <Card className="border-none shadow-xl rounded-2xl overflow-hidden text-start">
           <CardHeader>
-            <CardTitle>{type === "traveler" ? "Traveler Offer" : "Buyer Request"}</CardTitle>
+            <CardTitle>{type === "traveler" ? t('traveler_offer_title') : t('buyer_request_title')}</CardTitle>
             <CardDescription>
-              {type === "traveler" ? "Share your trip details and available luggage space." : "Let travelers know what you need and from where."}
+              {type === "traveler" ? t('traveler_offer_desc') : t('buyer_request_desc')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="title">Title</Label>
+                <Label htmlFor="title">{t('label_title')}</Label>
                 <Input
                   id="title"
                   name="title"
-                  placeholder={type === "traveler" ? "e.g. Arriving from Paris on July 10" : "e.g. Need iPhone 15 Pro from UAE"}
-                  className="rounded-xl h-12"
+                  placeholder={type === "traveler" ? t('placeholder_traveler_title') : t('placeholder_buyer_title')}
+                  className="rounded-xl h-12 text-start"
                   value={formData.title}
                   onChange={handleInputChange}
                   required
@@ -107,12 +110,12 @@ export default function NewListingPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description">{t('label_description')}</Label>
                 <Textarea
                   id="description"
                   name="description"
-                  placeholder="Details about items you can carry, delivery preferences, or product specifics."
-                  className="rounded-xl min-h-[120px] resize-none"
+                  placeholder={t('placeholder_description')}
+                  className="rounded-xl min-h-[120px] resize-none text-start"
                   value={formData.description}
                   onChange={handleInputChange}
                   required
@@ -122,13 +125,13 @@ export default function NewListingPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="city">
-                    {type === "traveler" ? "Departure City" : "Purchase Source (Country/City)"}
+                    {type === "traveler" ? t('label_departure_city') : t('label_purchase_source')}
                   </Label>
                   <Input
                     id="city"
                     name="city"
-                    placeholder={type === "traveler" ? "e.g. Paris, France" : "e.g. Dubai, UAE"}
-                    className="rounded-xl h-12"
+                    placeholder={type === "traveler" ? t('placeholder_departure_city') : t('placeholder_purchase_source')}
+                    className="rounded-xl h-12 text-start"
                     value={formData.city}
                     onChange={handleInputChange}
                     required
@@ -136,13 +139,13 @@ export default function NewListingPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="destination">
-                    {type === "traveler" ? "Final Delivery Location" : "Your City in Algeria"}
+                    {type === "traveler" ? t('label_final_delivery') : t('label_buyer_city')}
                   </Label>
                   <Input
                     id="destination"
                     name="destination"
-                    placeholder="e.g. Oran"
-                    className="rounded-xl h-12"
+                    placeholder={t('placeholder_delivery_location')}
+                    className="rounded-xl h-12 text-start"
                     value={formData.destination}
                     onChange={handleInputChange}
                     required
@@ -153,13 +156,13 @@ export default function NewListingPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="date">
-                    {type === "traveler" ? "Arrival Date" : "Desired By Date"}
+                    {type === "traveler" ? t('label_arrival_date') : t('label_desired_date')}
                   </Label>
                   <Input
                     id="date"
                     name="date"
                     type="date"
-                    className="rounded-xl h-12"
+                    className="rounded-xl h-12 text-start"
                     value={formData.date}
                     onChange={handleInputChange}
                     required
@@ -167,13 +170,13 @@ export default function NewListingPage() {
                 </div>
                 {type === "traveler" ? (
                   <div className="space-y-2">
-                    <Label htmlFor="weight">Available Weight (kg)</Label>
+                    <Label htmlFor="weight">{t('label_available_weight')}</Label>
                     <Input
                       id="weight"
                       name="weight"
                       type="number"
-                      placeholder="e.g. 5"
-                      className="rounded-xl h-12"
+                      placeholder={t('placeholder_weight')}
+                      className="rounded-xl h-12 text-start"
                       value={formData.weight}
                       onChange={handleInputChange}
                       required
@@ -181,13 +184,13 @@ export default function NewListingPage() {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <Label htmlFor="price">Max Budget (DA)</Label>
+                    <Label htmlFor="price">{t('label_max_budget')}</Label>
                     <Input
                       id="price"
                       name="price"
                       type="number"
-                      placeholder="e.g. 20000"
-                      className="rounded-xl h-12"
+                      placeholder={t('placeholder_budget')}
+                      className="rounded-xl h-12 text-start"
                       value={formData.price}
                       onChange={handleInputChange}
                       required
@@ -202,7 +205,7 @@ export default function NewListingPage() {
                 disabled={loading}
               >
                 <Send size={20} />
-                {loading ? "Posting..." : "Create Post"}
+                {loading ? t('btn_posting') : t('btn_create_post')}
               </Button>
             </form>
           </CardContent>
