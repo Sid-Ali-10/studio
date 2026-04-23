@@ -288,32 +288,21 @@
         "createdAt"
       ]
     },
-    "Favorite": {
+    "PlatformConfig": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Favorite",
+      "title": "PlatformConfig",
       "type": "object",
-      "description": "Represents a user's action of marking a listing as a favorite.",
+      "description": "Global settings for the GetMeDZ platform.",
       "properties": {
-        "id": {
-          "type": "string"
+        "defaultCommission": {
+          "type": "number",
+          "description": "The default commission amount in DA deducted from travelers."
         },
-        "userId": {
-          "type": "string"
-        },
-        "listingId": {
-          "type": "string"
-        },
-        "createdAt": {
+        "updatedAt": {
           "type": "string",
           "format": "date-time"
         }
-      },
-      "required": [
-        "id",
-        "userId",
-        "listingId",
-        "createdAt"
-      ]
+      }
     }
   },
   "auth": {
@@ -338,6 +327,16 @@
               "description": "The unique ID of the user."
             }
           ]
+        }
+      },
+      {
+        "path": "/settings/config",
+        "definition": {
+          "entityName": "PlatformConfig",
+          "schema": {
+            "$ref": "#/backend/entities/PlatformConfig"
+          },
+          "description": "Global platform settings."
         }
       },
       {

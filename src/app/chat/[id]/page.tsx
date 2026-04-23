@@ -121,6 +121,9 @@ export default function ChatRoomPage() {
   const [listing, setListing] = useState<Listing | null>(null);
   const [convData, setConvData] = useState<ConversationData | null>(null);
   
+  // Platform Commission
+  const [currentCommission, setCurrentCommission] = useState(1000);
+  
   const [isRatingOpen, setIsRatingOpen] = useState(false);
   const [ratingStars, setRatingStars] = useState(5);
   const [ratingLoading, setRatingLoading] = useState(false);
@@ -158,6 +161,12 @@ export default function ChatRoomPage() {
         const conversationId = id as string;
         const convRef = doc(db, "conversations", conversationId);
         
+        // Fetch platform commission
+        const settingsSnap = await getDoc(doc(db, "settings", "config"));
+        if (settingsSnap.exists()) {
+          setCurrentCommission(settingsSnap.data().defaultCommission || 1000);
+        }
+
         unsubscribeConv = onSnapshot(convRef, (snap) => {
           if (snap.exists()) {
             const data = snap.data() as ConversationData;
@@ -237,7 +246,7 @@ export default function ChatRoomPage() {
 
     try {
       const batch = writeBatch(db);
-      const commission = 1000;
+      const commission = currentCommission;
       const agreedPrice = data.agreedPrice;
 
       const travelerId = listing?.listerId || "";
@@ -486,6 +495,7 @@ export default function ChatRoomPage() {
     }
 
     const agreedPrice = convData.agreedPrice;
+    const commission = currentCommission;
     
     // VALIDATIONS:
     if (!isLister) {
@@ -499,14 +509,13 @@ export default function ChatRoomPage() {
         return;
       }
     } else {
-      // Traveler receives agreedPrice and then pays 1000 commission.
-      // Rule: Traveler must have at least 1000 DZD after receiving.
+      // Traveler receives agreedPrice and then pays commission.
       const travelerFutureBalance = (profile?.walletBalance || 0) + agreedPrice;
-      if (travelerFutureBalance < 1000) {
+      if (travelerFutureBalance < commission) {
         toast({
           variant: "destructive",
           title: "Transaction Blocked",
-          description: `The traveler must have at least 1000 DA after receiving funds to pay the platform fee.`,
+          description: `The traveler must have at least ${commission} DA after receiving funds to pay the platform fee.`,
         });
         return;
       }
@@ -766,7 +775,7 @@ export default function ChatRoomPage() {
             <DialogTitle>Finalize & Settle</DialogTitle>
             <DialogDescription>
               Completing this will process the payment of {convData?.agreedPrice} DA.
-              {isLister && <p className="mt-2 text-primary font-bold">A 1000 DA platform fee will be deducted from your payout.</p>}
+              {isLister && <p className="mt-2 text-primary font-bold">A {currentCommission} DA platform fee will be deducted from your payout.</p>}
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-center gap-2 py-8">

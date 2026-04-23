@@ -10,18 +10,19 @@ import {
   doc, 
   getDoc,
   query,
-  where
+  where,
+  setDoc,
+  serverTimestamp
 } from "firebase/firestore";
-import { Card, CardContent } from "@/components/ui/card";
+import { sendPasswordResetEmail } from "firebase/auth";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { 
   Users, 
   Package, 
   MessageSquare, 
-  TrendingUp, 
   Trash2, 
-  LogOut, 
   Loader2, 
   ShieldAlert,
   Search,
@@ -29,17 +30,18 @@ import {
   AlertTriangle,
   Eye,
   Banknote,
-  History
+  History,
+  Settings,
+  Mail,
+  RefreshCw,
+  Save
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import Link from "next/link";
 import { format } from "date-fns";
+import { Label } from "@/components/ui/label";
 
 interface AdminStats {
   totalUsers: number;
@@ -58,6 +60,10 @@ export default function AdminDashboard() {
   const [convos, setConvos] = useState<any[]>([]);
   const [allTransactions, setAllTransactions] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  
+  // Platform Settings
+  const [platformCommission, setPlatformCommission] = useState(1000);
+  const [savingSettings, setSavingSettings] = useState(false);
   
   const router = useRouter();
   const { toast } = useToast();
@@ -83,6 +89,7 @@ export default function AdminDashboard() {
         if (profileSnap.exists() && profileSnap.data().isAdmin === true) {
           setIsAdminInDb(true);
           fetchData(user.uid);
+          fetchSettings();
         } else {
           setIsAdminInDb(false);
           setLoading(false);
@@ -96,6 +103,42 @@ export default function AdminDashboard() {
 
     checkAccess();
   }, [router]);
+
+  const fetchSettings = async () => {
+    try {
+      const settingsSnap = await getDoc(doc(db, "settings", "config"));
+      if (settingsSnap.exists()) {
+        setPlatformCommission(settingsSnap.data().defaultCommission || 1000);
+      }
+    } catch (err) {
+      console.error("Failed to fetch settings", err);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    setSavingSettings(true);
+    try {
+      await setDoc(doc(db, "settings", "config"), {
+        defaultCommission: Number(platformCommission),
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      toast({ title: "Settings Saved", description: "Global commission updated." });
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: "Could not save settings." });
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  const handleResetPassword = async (email: string) => {
+    if (!confirm(`Send password reset email to ${email}?`)) return;
+    try {
+      await sendPasswordResetEmail(auth, email);
+      toast({ title: "Email Sent", description: "Password assistance link has been dispatched." });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Action Failed", description: err.message });
+    }
+  };
 
   const fetchData = async (adminUid: string) => {
     setLoading(true);
@@ -191,7 +234,7 @@ export default function AdminDashboard() {
             <h1 className="text-3xl font-bold flex items-center gap-2">
               <ShieldAlert className="text-primary" /> Admin Command Center
             </h1>
-            <p className="text-muted-foreground">Monitor revenue and platform activity.</p>
+            <p className="text-muted-foreground">Monitor platform activity and manage global settings.</p>
           </div>
           <Button variant="outline" className="rounded-xl" onClick={handleLogout}>Logout</Button>
         </div>
@@ -229,6 +272,7 @@ export default function AdminDashboard() {
             <TabsTrigger value="listings" className="rounded-xl px-8">Listings</TabsTrigger>
             <TabsTrigger value="convos" className="rounded-xl px-8">Chats</TabsTrigger>
             <TabsTrigger value="revenue" className="rounded-xl px-8">Revenue Log</TabsTrigger>
+            <TabsTrigger value="settings" className="rounded-xl px-8">Settings</TabsTrigger>
           </TabsList>
 
           <div className="relative max-w-md">
@@ -249,7 +293,10 @@ export default function AdminDashboard() {
                     <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center font-bold text-primary">{u.username?.charAt(0)}</div>
                     <div><div className="font-bold flex items-center gap-2">{u.username} {u.isVerified && <CheckCircle2 size={12} className="text-accent" />}</div><p className="text-xs text-muted-foreground">{u.email}</p></div>
                   </div>
-                  <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete("userProfiles", u.id)}><Trash2 size={18} /></Button>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" onClick={() => handleResetPassword(u.email)} title="Reset Password"><RefreshCw size={18} /></Button>
+                    <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete("userProfiles", u.id)} title="Delete User"><Trash2 size={18} /></Button>
+                  </div>
                 </Card>
               ))}
             </div>
@@ -292,6 +339,37 @@ export default function AdminDashboard() {
                 </Card>
               ))}
             </div>
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <Card className="rounded-3xl border-none shadow-sm overflow-hidden">
+              <CardHeader className="bg-muted/30">
+                <CardTitle className="flex items-center gap-2"><Settings size={20} /> Platform Configuration</CardTitle>
+                <CardDescription>Adjust global parameters that affect all users.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-8 space-y-6">
+                <div className="max-w-md space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="commission">Default Traveler Commission (DA)</Label>
+                    <div className="relative">
+                      <Banknote className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+                      <Input 
+                        id="commission"
+                        type="number"
+                        className="pl-10 h-12 rounded-xl"
+                        value={platformCommission}
+                        onChange={(e) => setPlatformCommission(Number(e.target.value))}
+                      />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">This amount is deducted from travelers for every completed deal.</p>
+                  </div>
+
+                  <Button className="w-full h-12 rounded-xl font-bold gap-2" onClick={handleSaveSettings} disabled={savingSettings}>
+                    {savingSettings ? <Loader2 className="animate-spin" /> : <><Save size={18} /> Save Global Settings</>}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

@@ -29,6 +29,11 @@ service cloud.firestore {
 
     // --- Collection Rules ---
 
+    match /settings/config {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     match /userProfiles/{userId} {
       allow get: if true;
       allow list: if isAdmin();
