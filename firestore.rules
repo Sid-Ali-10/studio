@@ -22,10 +22,9 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      // Check if the user document has the isAdmin flag set
+      // Robust check for administrative privileges
       return isSignedIn() && 
-             exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isAdmin == true;
+             get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.get('isAdmin', false) == true;
     }
 
     // --- Collection Rules ---
@@ -65,6 +64,7 @@ service cloud.firestore {
     }
 
     match /conversations/{conversationId} {
+      // Allow global listing for admins
       allow list: if isAdmin() || (isSignedIn() && request.query.limit <= 50);
       allow get: if isParticipant(resource.data.participantIds) || isAdmin();
       allow create: if isSignedIn() && isParticipant(request.resource.data.participantIds);
@@ -72,8 +72,8 @@ service cloud.firestore {
       allow delete: if isParticipant(resource.data.participantIds) || isAdmin();
 
       match /messages/{messageId} {
-        // Tightened: Only participants or Admins can read messages
-        allow get, list: if isParticipant(get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds) || isAdmin();
+        // Only participants or Admins can read messages
+        allow get, list: if isAdmin() || isParticipant(get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds);
         // Only participants can create messages
         allow create: if isParticipant(get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds);
         allow update, delete: if isAdmin();

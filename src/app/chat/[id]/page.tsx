@@ -196,8 +196,8 @@ export default function ChatRoomPage() {
           const messagesRef = collection(db, "conversations", conversationId, "messages");
           let messagesQuery;
 
-          if (profile?.isAdmin && !data.participantIds.includes(user.uid)) {
-            // Admin Super View: No participant filter
+          // If current user is an admin, always use the simplified query to see all messages and avoid index requirements
+          if (profile?.isAdmin) {
             messagesQuery = query(messagesRef, orderBy("timestamp", "asc"));
           } else {
             // Standard User View
@@ -532,7 +532,7 @@ export default function ChatRoomPage() {
                   {msg.reactions && Object.keys(msg.reactions).length > 0 && (
                     <div className={cn("absolute -bottom-3 flex flex-wrap gap-1", isOwn ? "right-0" : "left-0")}>
                       {Object.entries(msg.reactions).map(([emoji, uids]) => (
-                        <button key={emoji} onClick={() => handleReaction(msg.id, emoji)} className="bg-white border rounded-full px-1.5 py-0.5 text-[10px] flex items-center gap-1 shadow-sm hover:scale-110 transition-transform">
+                        <button key={emoji} className="bg-white border rounded-full px-1.5 py-0.5 text-[10px] flex items-center gap-1 shadow-sm hover:scale-110 transition-transform" onClick={() => handleReaction(msg.id, emoji)}>
                           <span>{emoji}</span><span>{uids.length}</span>
                         </button>
                       ))}
@@ -576,8 +576,8 @@ export default function ChatRoomPage() {
             <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => setReplyingTo(null)}><X size={14} /></Button>
           </div>
         )}
-        <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-          <input type="file" id="image-upload" className="hidden" accept="image/*" onChange={handleImageUpload} disabled={uploading || isAdminView} />
+        <form className="flex items-center gap-2" onSubmit={handleSendMessage}>
+          <input type="file" id="image-upload" className="hidden" accept="image/*" disabled={uploading || isAdminView} onChange={handleImageUpload} />
           <label htmlFor="image-upload" className={cn(
             "flex items-center justify-center w-11 h-11 rounded-full bg-muted cursor-pointer shrink-0 hover:bg-primary/10 hover:text-primary transition-colors",
             isAdminView && "cursor-not-allowed"
@@ -605,13 +605,13 @@ export default function ChatRoomPage() {
           </DialogHeader>
           <div className="flex justify-center gap-2 py-8">
             {[1, 2, 3, 4, 5].map((s) => (
-              <button key={s} onClick={() => setRatingStars(s)} className={cn("transition-transform hover:scale-125", ratingStars >= s ? "text-yellow-400" : "text-muted")}>
+              <button key={s} className={cn("transition-transform hover:scale-125", ratingStars >= s ? "text-yellow-400" : "text-muted")} onClick={() => setRatingStars(s)}>
                 <Star size={40} fill={ratingStars >= s ? "currentColor" : "none"} />
               </button>
             ))}
           </div>
           <DialogFooter>
-            <Button className="w-full h-12 rounded-xl font-bold" onClick={handleRateDeal} disabled={ratingLoading}>
+            <Button className="w-full h-12 rounded-xl font-bold" disabled={ratingLoading} onClick={handleRateDeal}>
               {ratingLoading ? <Loader2 className="animate-spin" /> : "Confirm & Rate"}
             </Button>
           </DialogFooter>
