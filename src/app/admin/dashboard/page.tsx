@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -273,27 +272,27 @@ export default function AdminDashboard() {
       <div className="max-w-7xl mx-auto space-y-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              <ShieldAlert className="text-primary" /> Admin Command Center
+            <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
+              <ShieldAlert className="text-primary" /> Admin Center
             </h1>
-            <p className="text-muted-foreground">Monitor platform activity and manage global settings.</p>
+            <p className="text-sm text-muted-foreground">Monitor platform activity and manage global settings.</p>
           </div>
           <Button
             variant="outline"
-            className="rounded-xl transition-all duration-200 hover:bg-destructive hover:text-white active:scale-95"
+            className="rounded-xl w-full md:w-auto transition-all duration-200 hover:bg-destructive hover:text-white active:scale-95"
             onClick={handleLogout}
           >
             Logout
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6">
           <Card className="rounded-3xl border-none shadow-sm">
             <CardContent className="p-6 flex items-center gap-4">
               <Users className="text-blue-500" />
               <div>
-                <p className="text-xs text-muted-foreground uppercase">Users</p>
-                <p className="text-xl font-bold">{stats.totalUsers}</p>
+                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Users</p>
+                <p className="text-xl font-black">{stats.totalUsers}</p>
               </div>
             </CardContent>
           </Card>
@@ -301,8 +300,8 @@ export default function AdminDashboard() {
             <CardContent className="p-6 flex items-center gap-4">
               <Package className="text-green-500" />
               <div>
-                <p className="text-xs text-muted-foreground uppercase">Listings</p>
-                <p className="text-xl font-bold">{stats.totalListings}</p>
+                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Listings</p>
+                <p className="text-xl font-black">{stats.totalListings}</p>
               </div>
             </CardContent>
           </Card>
@@ -310,8 +309,8 @@ export default function AdminDashboard() {
             <CardContent className="p-6 flex items-center gap-4">
               <MessageSquare className="text-purple-500" />
               <div>
-                <p className="text-xs text-muted-foreground uppercase">Chats</p>
-                <p className="text-xl font-bold">{stats.totalConvos}</p>
+                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Chats</p>
+                <p className="text-xl font-black">{stats.totalConvos}</p>
               </div>
             </CardContent>
           </Card>
@@ -319,67 +318,39 @@ export default function AdminDashboard() {
             <CardContent className="p-6 flex items-center gap-4">
               <Flag className="text-destructive" />
               <div>
-                <p className="text-xs text-muted-foreground uppercase">Reports</p>
-                <p className="text-xl font-bold">{stats.totalReports}</p>
+                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Reports</p>
+                <p className="text-xl font-black">{stats.totalReports}</p>
               </div>
             </CardContent>
           </Card>
-          <Card className="rounded-3xl border-none shadow-sm bg-primary text-primary-foreground">
+          <Card className="rounded-3xl border-none shadow-sm bg-primary text-primary-foreground sm:col-span-2 lg:col-span-1">
             <CardContent className="p-6 flex items-center gap-4">
               <Banknote />
               <div>
-                <p className="text-xs opacity-70 uppercase">Commissions</p>
-                <p className="text-xl font-bold">{stats.totalCommission} DA</p>
+                <p className="text-[10px] opacity-70 uppercase font-bold tracking-wider">Commissions</p>
+                <p className="text-xl font-black">{stats.totalCommission.toLocaleString()} DA</p>
               </div>
             </CardContent>
           </Card>
         </div>
 
         <Tabs defaultValue="reports" className="space-y-6">
-          <TabsList className="rounded-2xl h-14 w-full md:w-auto overflow-x-auto bg-card p-1 shadow-sm">
-            <TabsTrigger
-              value="reports"
-              className="rounded-xl px-8 transition-all duration-200 data-[state=active]:shadow-md"
-            >
-              Reports
-            </TabsTrigger>
-            <TabsTrigger
-              value="users"
-              className="rounded-xl px-8 transition-all duration-200 data-[state=active]:shadow-md"
-            >
-              Users
-            </TabsTrigger>
-            <TabsTrigger
-              value="listings"
-              className="rounded-xl px-8 transition-all duration-200 data-[state=active]:shadow-md"
-            >
-              Listings
-            </TabsTrigger>
-            <TabsTrigger
-              value="convos"
-              className="rounded-xl px-8 transition-all duration-200 data-[state=active]:shadow-md"
-            >
-              Chats
-            </TabsTrigger>
-            <TabsTrigger
-              value="revenue"
-              className="rounded-xl px-8 transition-all duration-200 data-[state=active]:shadow-md"
-            >
-              Revenue Log
-            </TabsTrigger>
-            <TabsTrigger
-              value="settings"
-              className="rounded-xl px-8 transition-all duration-200 data-[state=active]:shadow-md"
-            >
-              Settings
-            </TabsTrigger>
-          </TabsList>
+          <div className="w-full overflow-x-auto pb-2 scrollbar-hide">
+            <TabsList className="inline-flex h-14 bg-card p-1 shadow-sm rounded-2xl whitespace-nowrap min-w-full md:min-w-0">
+              <TabsTrigger value="reports" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Reports</TabsTrigger>
+              <TabsTrigger value="users" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Users</TabsTrigger>
+              <TabsTrigger value="listings" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Listings</TabsTrigger>
+              <TabsTrigger value="convos" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Chats</TabsTrigger>
+              <TabsTrigger value="revenue" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Revenue Log</TabsTrigger>
+              <TabsTrigger value="settings" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Settings</TabsTrigger>
+            </TabsList>
+          </div>
 
-          <div className="relative max-w-md">
+          <div className="relative max-w-md w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
             <Input
-              placeholder="Filter list..."
-              className="pl-10 h-12 rounded-xl transition-all duration-200 focus:ring-primary/20"
+              placeholder="Filter current view..."
+              className="pl-10 h-12 rounded-xl transition-all duration-200 focus:ring-primary/20 border-none shadow-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -390,22 +361,22 @@ export default function AdminDashboard() {
               {reports.length === 0 ? (
                 <div className="text-center py-12 bg-card rounded-3xl">
                   <Flag className="mx-auto text-muted-foreground mb-4 opacity-20" size={48} />
-                  <p className="text-muted-foreground">No reports currently pending review.</p>
+                  <p className="text-muted-foreground font-medium">No reports currently pending review.</p>
                 </div>
               ) : (
                 reports.map((r) => (
                   <Card key={r.id} className="rounded-2xl border-none shadow-sm overflow-hidden animate-in fade-in">
-                    <div className="p-4 sm:p-6 space-y-4">
-                      <div className="flex items-center justify-between">
+                    <div className="p-4 md:p-6 space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="flex items-center gap-2">
-                          <Badge variant={r.status === 'pending' ? 'destructive' : 'secondary'} className="rounded-lg">
+                          <Badge variant={r.status === 'pending' ? 'destructive' : 'secondary'} className="rounded-lg px-3 py-1">
                             {r.status.toUpperCase()}
                           </Badge>
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-[10px] text-muted-foreground font-medium">
                             {r.createdAt ? format(r.createdAt.toDate(), 'PPpp') : 'Recent'}
                           </span>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 w-full sm:w-auto">
                           <Button 
                             variant="ghost" 
                             size="icon" 
@@ -418,7 +389,7 @@ export default function AdminDashboard() {
                           <Button 
                             variant="secondary" 
                             size="sm" 
-                            className="rounded-xl h-8 gap-1"
+                            className="flex-1 sm:flex-none rounded-xl h-9 gap-2 font-bold"
                             onClick={() => handleReportAction(r.id, 'resolved')}
                           >
                             <CheckCircle2 size={14} /> Resolve
@@ -427,26 +398,26 @@ export default function AdminDashboard() {
                       </div>
                       
                       <div className="space-y-2">
-                        <p className="font-bold text-lg flex items-center gap-2">
-                          {r.type === 'scam' ? '🚨' : '⚠️'} {r.type.toUpperCase()} Report
+                        <p className="font-black text-lg flex items-center gap-2">
+                          {r.type === 'scam' ? '🚨' : '⚠️'} {r.type.toUpperCase()}
                         </p>
-                        <p className="text-sm bg-muted/50 p-3 rounded-xl italic">"{r.reason}"</p>
+                        <p className="text-sm bg-muted/50 p-4 rounded-xl italic leading-relaxed">"{r.reason}"</p>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                         <div className="space-y-1">
-                          <p className="text-muted-foreground font-bold uppercase">Reporter</p>
+                          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Reporter</p>
                           <p className="font-medium truncate">{users.find(u => u.id === r.reporterId)?.username || 'Unknown User'}</p>
                         </div>
                         {r.targetUserId && (
                           <div className="space-y-1">
-                            <p className="text-muted-foreground font-bold uppercase">Targeted User</p>
+                            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Targeted User</p>
                             <div className="flex items-center gap-2">
                               <p className="font-medium truncate">{users.find(u => u.id === r.targetUserId)?.username || 'User'}</p>
                               <Button 
                                 variant="ghost" 
                                 size="sm" 
-                                className="h-6 px-2 text-[10px] rounded-lg text-destructive hover:bg-destructive/10"
+                                className="h-7 px-3 text-[10px] rounded-lg text-destructive hover:bg-destructive/10 font-bold"
                                 onClick={() => handleToggleBan(r.targetUserId, users.find(u => u.id === r.targetUserId)?.isBanned)}
                               >
                                 {users.find(u => u.id === r.targetUserId)?.isBanned ? 'Unban' : 'Ban User'}
@@ -457,8 +428,8 @@ export default function AdminDashboard() {
                         {r.conversationId && (
                           <div className="col-span-full pt-2">
                             <Link href={`/chat/${r.conversationId}`}>
-                              <Button variant="outline" className="w-full rounded-xl gap-2 h-10 border-primary/20 hover:bg-primary/10">
-                                <ExternalLink size={16} /> Review Conversation
+                              <Button variant="outline" className="w-full rounded-xl gap-2 h-11 border-primary/20 hover:bg-primary/5 font-bold transition-all active:scale-[0.98]">
+                                <ExternalLink size={16} /> Review Conversation Context
                               </Button>
                             </Link>
                           </div>
@@ -474,34 +445,32 @@ export default function AdminDashboard() {
           <TabsContent value="users">
             <div className="grid gap-3">
               {users
-                .filter((u) => u.username?.toLowerCase().includes(searchTerm.toLowerCase()))
+                .filter((u) => u.username?.toLowerCase().includes(searchTerm.toLowerCase()) || u.email?.toLowerCase().includes(searchTerm.toLowerCase()))
                 .map((u) => (
                   <Card
                     key={u.id}
                     className={cn(
-                      "rounded-2xl border-none shadow-sm p-4 flex items-center justify-between hover:bg-muted/30 transition-all duration-200",
+                      "rounded-2xl border-none shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-muted/30 transition-all duration-200",
                       u.isBanned && "opacity-60 bg-destructive/5"
                     )}
                   >
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 min-w-0">
                       <div className={cn(
-                        "w-10 h-10 rounded-full flex items-center justify-center font-bold",
+                        "w-12 h-12 rounded-2xl flex items-center justify-center font-black shrink-0 shadow-sm",
                         u.isBanned ? "bg-destructive/20 text-destructive" : "bg-primary/10 text-primary"
                       )}>
-                        {u.username?.charAt(0)}
+                        {u.username?.charAt(0).toUpperCase()}
                       </div>
-                      <div className="flex flex-col">
-                        <div className="font-bold flex items-center gap-2">
+                      <div className="flex flex-col min-w-0">
+                        <div className="font-black text-sm md:text-base flex items-center gap-2 truncate">
                           {u.username} 
-                          {u.isVerified && <CheckCircle2 size={12} className="text-accent" />}
-                          {u.isBanned && <Badge variant="destructive" className="h-4 text-[8px] px-1">BANNED</Badge>}
+                          {u.isVerified && <CheckCircle2 size={14} className="text-accent" />}
+                          {u.isBanned && <Badge variant="destructive" className="h-4 text-[8px] px-1 font-black">BANNED</Badge>}
                         </div>
-                        <div className="flex items-center gap-2">
-                          <p className="text-xs text-muted-foreground">{u.email}</p>
-                        </div>
+                        <p className="text-xs text-muted-foreground truncate font-medium">{u.email}</p>
                       </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 ml-auto sm:ml-0">
                       <Button
                         variant="ghost"
                         size="icon"
@@ -536,18 +505,18 @@ export default function AdminDashboard() {
                 .map((l) => (
                   <Card
                     key={l.id}
-                    className="rounded-2xl border-none shadow-sm p-4 flex items-center justify-between hover:bg-muted/30 transition-all duration-200"
+                    className="rounded-2xl border-none shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-muted/30 transition-all duration-200"
                   >
-                    <div>
-                      <p className="font-bold">{l.title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {l.type.toUpperCase()} • {l.city} → {l.destination}
+                    <div className="min-w-0">
+                      <p className="font-black truncate">{l.title}</p>
+                      <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
+                        {l.type} • {l.city || 'Anywhere'} → {l.destination || 'Algeria'}
                       </p>
                     </div>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="rounded-full text-destructive hover:text-white hover:bg-destructive transition-all duration-200 active:scale-90"
+                      className="rounded-full text-destructive hover:text-white hover:bg-destructive transition-all duration-200 active:scale-90 ml-auto sm:ml-0"
                       onClick={() => handleDelete('listings', l.id)}
                       disabled={processingAction === `delete-${l.id}`}
                     >
@@ -563,13 +532,13 @@ export default function AdminDashboard() {
               {convos.map((c) => (
                 <Card
                   key={c.id}
-                  className="rounded-2xl border-none shadow-sm p-4 flex items-center justify-between hover:bg-muted/30 transition-all duration-200"
+                  className="rounded-2xl border-none shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-muted/30 transition-all duration-200"
                 >
-                  <div>
-                    <p className="font-bold text-sm">{c.listingTitle || 'Private Chat'}</p>
-                    <p className="text-xs text-muted-foreground">ID: {c.id.slice(0, 10)}...</p>
+                  <div className="min-w-0">
+                    <p className="font-black text-sm truncate">{c.listingTitle || 'Private Inquiry'}</p>
+                    <p className="text-[10px] text-muted-foreground font-medium truncate">Conversation ID: {c.id.slice(0, 16)}...</p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 ml-auto sm:ml-0">
                     <Link href={`/chat/${c.id}`}>
                       <Button
                         variant="ghost"
@@ -603,18 +572,18 @@ export default function AdminDashboard() {
                     key={t.id}
                     className="rounded-2xl border-none shadow-sm p-4 flex items-center justify-between hover:bg-muted/30 transition-all duration-200"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-accent/10 rounded-xl flex items-center justify-center text-accent">
-                        <History size={20} />
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent shrink-0">
+                        <History size={24} />
                       </div>
-                      <div>
-                        <p className="font-bold text-sm">{t.description}</p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {t.createdAt ? format(t.createdAt.toDate(), 'PPPp') : 'Unknown Date'}
+                      <div className="min-w-0">
+                        <p className="font-black text-sm truncate">{t.description}</p>
+                        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
+                          {t.createdAt ? format(t.createdAt.toDate(), 'PPPp') : 'Processing'}
                         </p>
                       </div>
                     </div>
-                    <div className="font-bold text-accent">+{t.amount} DA</div>
+                    <div className="font-black text-accent text-right shrink-0">+{t.amount.toLocaleString()} DA</div>
                   </Card>
                 ))}
             </div>
@@ -622,33 +591,33 @@ export default function AdminDashboard() {
 
           <TabsContent value="settings">
             <Card className="rounded-3xl border-none shadow-sm overflow-hidden">
-              <CardHeader className="bg-muted/30">
-                <CardTitle className="flex items-center gap-2">
-                  <Settings size={20} /> Platform Configuration
+              <CardHeader className="bg-muted/30 p-6">
+                <CardTitle className="flex items-center gap-2 text-xl font-black">
+                  <Settings size={20} /> Platform Config
                 </CardTitle>
-                <CardDescription>Adjust global parameters that affect all users.</CardDescription>
+                <CardDescription>Adjust global parameters that affect transaction processing.</CardDescription>
               </CardHeader>
-              <CardContent className="p-8 space-y-6">
+              <CardContent className="p-6 md:p-8 space-y-6">
                 <div className="max-w-md space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="commission">Default Traveler Commission (DA)</Label>
+                    <Label htmlFor="commission" className="font-bold">Default Marketplace Fee (DA)</Label>
                     <div className="relative">
-                      <Banknote className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+                      <Banknote className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                       <Input
                         id="commission"
                         type="number"
-                        className="pl-10 h-12 rounded-xl transition-all duration-200 focus:ring-primary/20"
+                        className="pl-12 h-14 rounded-xl transition-all duration-200 focus:ring-primary/20 border-none shadow-sm bg-muted/30 font-black"
                         value={platformCommission}
                         onChange={(e) => setPlatformCommission(Number(e.target.value))}
                       />
                     </div>
-                    <p className="text-[10px] text-muted-foreground">
-                      This amount is deducted from travelers for every completed deal.
+                    <p className="text-[10px] text-muted-foreground italic font-medium">
+                      This fixed amount is automatically deducted from travelers for every successfully completed deal.
                     </p>
                   </div>
 
                   <Button
-                    className="w-full h-12 rounded-xl font-bold gap-2 transition-all duration-200 active:scale-[0.98]"
+                    className="w-full h-14 rounded-xl font-black text-lg gap-2 transition-all duration-200 active:scale-[0.98] shadow-lg"
                     onClick={handleSaveSettings}
                     disabled={savingSettings}
                   >
@@ -656,7 +625,7 @@ export default function AdminDashboard() {
                       <Loader2 className="animate-spin" />
                     ) : (
                       <>
-                        <Save size={18} /> Save Global Settings
+                        <Save size={20} /> Commit Changes
                       </>
                     )}
                   </Button>
