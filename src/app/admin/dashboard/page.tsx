@@ -285,11 +285,11 @@ export default function AdminDashboard() {
                         {u.username?.charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <p className="font-bold flex items-center gap-2">
+                        <div className="font-bold flex items-center gap-2">
                           {u.username} 
                           {u.isVerified && <CheckCircle2 size={14} className="text-accent" />}
                           {u.isAdmin && <Badge variant="outline" className="text-[8px] h-4">ADMIN</Badge>}
-                        </p>
+                        </div>
                         <p className="text-xs text-muted-foreground">{u.email}</p>
                       </div>
                     </div>
