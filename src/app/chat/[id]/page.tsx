@@ -521,7 +521,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
           variant="ghost" 
           size="icon" 
           onClick={() => router.back()} 
-          className="rounded-full hover:bg-primary/10 hover:text-primary transition-all duration-200 active:scale-90"
+          className="rounded-full hover:bg-muted transition-all duration-200 active:scale-90"
         >
           <ArrowLeft size={20} />
         </Button>
@@ -541,16 +541,16 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
           {!isAdminView && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full transition-all duration-200 active:scale-90">
+                <Button variant="ghost" size="icon" className="rounded-full transition-all duration-200 active:scale-90 hover:bg-muted">
                   <MoreHorizontal size={20} />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="rounded-xl p-2 w-48 shadow-xl border-none">
-                <DropdownMenuItem className="gap-2 rounded-lg text-destructive transition-colors focus:bg-destructive/10" onClick={() => setIsReportOpen(true)}>
+                <DropdownMenuItem className="gap-2 rounded-lg text-destructive transition-colors hover:bg-destructive/5 focus:bg-destructive/10" onClick={() => setIsReportOpen(true)}>
                   <Flag size={14} /> Report Problem
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="gap-2 rounded-lg text-destructive transition-colors focus:bg-destructive/10" onClick={handleDeleteConversation}>
+                <DropdownMenuItem className="gap-2 rounded-lg text-destructive transition-colors hover:bg-destructive/5 focus:bg-destructive/10" onClick={handleDeleteConversation}>
                   <Trash2 size={14} /> Delete Chat
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -648,7 +648,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                 {!isAdminView && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 active:scale-90">
+                      <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 active:scale-90 hover:bg-muted">
                         <MoreHorizontal size={14} />
                       </Button>
                     </DropdownMenuTrigger>
@@ -657,7 +657,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                         {["👍", "❤️", "😂", "😮", "😢", "🔥", "😡"].map(emoji => (
                           <button 
                             key={emoji} 
-                            className="text-lg hover:scale-125 transition-all p-1 active:scale-90" 
+                            className="text-lg hover:scale-125 transition-all p-1 active:scale-90 rounded-lg hover:bg-muted" 
                             onClick={() => handleReaction(msg.id, emoji)}
                           >
                             {emoji}
@@ -665,11 +665,11 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                         ))}
                       </div>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem className="gap-2 rounded-lg transition-colors focus:bg-accent" onClick={() => setReplyingTo(msg)}><Reply size={14} /> Reply</DropdownMenuItem>
+                      <DropdownMenuItem className="gap-2 rounded-lg transition-colors focus:bg-muted hover:bg-muted" onClick={() => setReplyingTo(msg)}><Reply size={14} /> Reply</DropdownMenuItem>
                       {(editAllowed || profile?.isAdmin) && (
                         <>
-                          {editAllowed && <DropdownMenuItem className="gap-2 rounded-lg transition-colors focus:bg-accent" onClick={() => handleEditInit(msg)}><Pencil size={14} /> Edit</DropdownMenuItem>}
-                          <DropdownMenuItem className="gap-2 text-destructive rounded-lg transition-colors focus:bg-destructive/10" onClick={() => handleDeleteMessage(msg.id)}><Trash2 size={14} /> Delete</DropdownMenuItem>
+                          {editAllowed && <DropdownMenuItem className="gap-2 rounded-lg transition-colors focus:bg-muted hover:bg-muted" onClick={() => handleEditInit(msg)}><Pencil size={14} /> Edit</DropdownMenuItem>}
+                          <DropdownMenuItem className="gap-2 text-destructive rounded-lg transition-colors focus:bg-destructive/10 hover:bg-destructive/5" onClick={() => handleDeleteMessage(msg.id)}><Trash2 size={14} /> Delete</DropdownMenuItem>
                         </>
                       )}
                     </DropdownMenuContent>
@@ -689,13 +689,13 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
               <span className="font-bold text-primary">Replying to {replyingTo.senderId === user?.uid ? "yourself" : (otherUser?.username || "User")}</span>
               <span className="truncate italic">"{replyingTo.messageText || "Image"}"</span>
             </div>
-            <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full transition-all duration-200 active:scale-90" onClick={() => setReplyingTo(null)}><X size={14} /></Button>
+            <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full transition-all duration-200 active:scale-90 hover:bg-muted" onClick={() => setReplyingTo(null)}><X size={14} /></Button>
           </div>
         )}
         <form className="flex items-center gap-2" onSubmit={handleSendMessage}>
           <input type="file" id="image-upload" className="hidden" accept="image/*" disabled={uploading || isAdminView} onChange={handleImageUpload} />
           <label htmlFor="image-upload" className={cn(
-            "flex items-center justify-center w-11 h-11 rounded-full bg-muted cursor-pointer shrink-0 hover:bg-primary/10 hover:text-primary transition-all duration-200 active:scale-90",
+            "flex items-center justify-center w-11 h-11 rounded-full bg-muted cursor-pointer shrink-0 hover:bg-muted/80 transition-all duration-200 active:scale-90",
             isAdminView && "cursor-not-allowed"
           )}>
             {uploading ? <Loader2 size={20} className="animate-spin" /> : <ImageIcon size={20} />}
@@ -729,7 +729,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
             <div className="space-y-2">
               <Label>Type of Issue</Label>
               <Select value={reportType} onValueChange={setReportType}>
-                <SelectTrigger className="rounded-xl h-12 transition-all hover:border-primary/50">
+                <SelectTrigger className="rounded-xl h-12 transition-all hover:bg-muted/30">
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-none shadow-xl">
@@ -744,7 +744,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
               <Label>Details</Label>
               <Textarea 
                 placeholder="Please provide as much detail as possible..."
-                className="rounded-xl min-h-[100px] resize-none transition-all hover:border-primary/50"
+                className="rounded-xl min-h-[100px] resize-none transition-all hover:bg-muted/30"
                 value={reportReason}
                 onChange={(e) => setReportReason(e.target.value)}
               />
@@ -774,7 +774,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
               <Input
                 type="number"
                 placeholder="Enter price (DA)"
-                className="pl-10 h-12 rounded-xl transition-all hover:border-primary/50"
+                className="pl-10 h-12 rounded-xl transition-all hover:bg-muted/30"
                 value={offerPrice}
                 onChange={(e) => setOfferPrice(e.target.value)}
               />

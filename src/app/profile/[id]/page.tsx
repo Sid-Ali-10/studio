@@ -274,12 +274,12 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
               </div>
               
               <div className="flex flex-wrap justify-center md:justify-start gap-4">
-                <div className="bg-card px-4 py-2 rounded-2xl shadow-sm flex items-center gap-2 transition-all duration-300 hover:shadow-md">
+                <div className="bg-card px-4 py-2 rounded-2xl shadow-sm flex items-center gap-2 transition-all duration-300 hover:shadow-md hover:bg-muted/10">
                   <Star className="text-yellow-400 fill-yellow-400" size={20} />
                   <span className="font-bold">{avgRating.toFixed(1)}</span>
                   <span className="text-xs text-muted-foreground font-normal">({totalRatings})</span>
                 </div>
-                <div className="bg-card px-4 py-2 rounded-2xl shadow-sm flex items-center gap-2 transition-all duration-300 hover:shadow-md">
+                <div className="bg-card px-4 py-2 rounded-2xl shadow-sm flex items-center gap-2 transition-all duration-300 hover:shadow-md hover:bg-muted/10">
                   <Package className="text-primary" size={20} />
                   <span className="font-bold">{profileToShow?.successfulDealsCount || 0} Deals</span>
                 </div>
@@ -300,7 +300,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                           key={star}
                           onClick={() => handleRating(star)}
                           className={cn(
-                            "p-1 rounded-full transition-all duration-200 hover:scale-125 active:scale-90",
+                            "p-1 rounded-full transition-all duration-200 hover:scale-125 active:scale-90 hover:bg-muted",
                             (userRating || 0) >= star ? "text-yellow-400" : "text-muted-foreground/30"
                           )}
                         >
@@ -404,7 +404,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
             <Textarea 
               id="reason"
               placeholder="e.g., Fake listing, attempted off-platform payment, suspicious behavior..."
-              className="rounded-xl min-h-[120px] resize-none mt-2 transition-all hover:border-primary/50"
+              className="rounded-xl min-h-[120px] resize-none mt-2 transition-all hover:bg-muted/30"
               value={reportReason}
               onChange={(e) => setReportReason(e.target.value)}
             />
