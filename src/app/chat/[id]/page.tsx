@@ -1,8 +1,8 @@
 
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
+import React, { useState, useEffect, useRef, use } from "react";
+import { useRouter } from "next/navigation";
 import { db, storage } from "@/lib/firebase";
 import { 
   doc, 
@@ -103,8 +103,10 @@ interface ConversationData {
   offerSenderId?: string;
 }
 
-export default function ChatRoomPage() {
-  const { id } = useParams();
+export default function ChatRoomPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
+  const id = resolvedParams.id;
+  
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
@@ -121,7 +123,6 @@ export default function ChatRoomPage() {
   const [listing, setListing] = useState<Listing | null>(null);
   const [convData, setConvData] = useState<ConversationData | null>(null);
   
-  // Platform Commission
   const [currentCommission, setCurrentCommission] = useState(1000);
   
   const [isRatingOpen, setIsRatingOpen] = useState(false);
@@ -158,10 +159,9 @@ export default function ChatRoomPage() {
       setError(null);
       
       try {
-        const conversationId = id as string;
+        const conversationId = id;
         const convRef = doc(db, "conversations", conversationId);
         
-        // Fetch platform commission
         const settingsSnap = await getDoc(doc(db, "settings", "config"));
         if (settingsSnap.exists()) {
           setCurrentCommission(settingsSnap.data().defaultCommission || 1000);
@@ -252,12 +252,10 @@ export default function ChatRoomPage() {
       const travelerId = listing?.listerId || "";
       const buyerId = data.participantIds.find(p => p !== travelerId) || "";
 
-      // 1. Find an Admin to receive commission
       const adminsSnap = await getDocs(query(collection(db, "userProfiles"), where("isAdmin", "==", true), limit(1)));
       const adminId = adminsSnap.docs[0]?.id;
 
       if (user.uid === buyerId) {
-        // Buyer pays exactly the agreed price
         batch.update(doc(db, "userProfiles", buyerId), {
           walletBalance: increment(-agreedPrice),
           successfulDealsCount: increment(1),
@@ -270,7 +268,6 @@ export default function ChatRoomPage() {
           createdAt: serverTimestamp()
         });
       } else if (user.uid === travelerId) {
-        // Traveler receives agreedPrice and pays commission
         const netTravelerAmount = agreedPrice - commission;
         batch.update(doc(db, "userProfiles", travelerId), {
           walletBalance: increment(netTravelerAmount),
@@ -291,7 +288,6 @@ export default function ChatRoomPage() {
         });
       }
 
-      // Add to Admin wallet
       if (adminId) {
         batch.update(doc(db, "userProfiles", adminId), {
           walletBalance: increment(commission),
@@ -497,9 +493,7 @@ export default function ChatRoomPage() {
     const agreedPrice = convData.agreedPrice;
     const commission = currentCommission;
     
-    // VALIDATIONS:
     if (!isLister) {
-      // Buyer needs enough for exactly the agreed price
       if ((profile?.walletBalance || 0) < agreedPrice) {
         toast({
           variant: "destructive",
@@ -509,7 +503,6 @@ export default function ChatRoomPage() {
         return;
       }
     } else {
-      // Traveler receives agreedPrice and then pays commission.
       const travelerFutureBalance = (profile?.walletBalance || 0) + agreedPrice;
       if (travelerFutureBalance < commission) {
         toast({

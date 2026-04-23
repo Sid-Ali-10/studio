@@ -1,8 +1,8 @@
 
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
-import { useParams, useRouter } from "next/navigation";
+import React, { useState, useEffect, useMemo, use } from "react";
+import { useRouter } from "next/navigation";
 import { db, auth } from "@/lib/firebase";
 import { doc, getDoc, collection, query, where, getDocs, deleteDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { Card, CardContent } from "@/components/ui/card";
@@ -26,8 +26,10 @@ declare global {
   }
 }
 
-export default function ProfilePage() {
-  const { id } = useParams();
+export default function ProfilePage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
+  const id = resolvedParams.id;
+  
   const { user: currentUser, profile: myProfile } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { toast } = useToast();
@@ -52,7 +54,6 @@ export default function ProfilePage() {
 
   const isOwnProfile = currentUser?.uid === id;
 
-  // Re-initialize Google Translate on mount or navigation
   useEffect(() => {
     if (isOwnProfile && typeof window !== 'undefined') {
       const initTranslate = () => {
