@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef, use } from "react";
@@ -9,7 +8,6 @@ import {
   getDoc, 
   collection, 
   query, 
-  where, 
   onSnapshot, 
   addDoc, 
   serverTimestamp, 
@@ -17,11 +15,9 @@ import {
   getDocs,
   writeBatch,
   deleteDoc,
-  increment,
   arrayUnion,
   arrayRemove,
-  orderBy,
-  limit
+  orderBy
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useAuth } from "@/context/AuthContext";
@@ -136,7 +132,6 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isOfferDialogOpen, setIsOfferDialogOpen] = useState(false);
 
-  // Reporting state
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState("");
   const [reportType, setReportType] = useState("other");
@@ -413,7 +408,6 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
     }
 
     const agreedPrice = convData.agreedPrice;
-    const commission = currentCommission;
     
     if (!isLister) {
       if ((profile?.walletBalance || 0) < agreedPrice) {
@@ -421,16 +415,6 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
           variant: "destructive",
           title: "Insufficient Balance",
           description: `You need at least ${agreedPrice} DA to pay for this deal.`,
-        });
-        return;
-      }
-    } else {
-      const travelerFutureBalance = (profile?.walletBalance || 0) + agreedPrice;
-      if (travelerFutureBalance < commission) {
-        toast({
-          variant: "destructive",
-          title: "Transaction Blocked",
-          description: `The traveler must have at least ${commission} DA after receiving funds to pay the platform fee.`,
         });
         return;
       }
@@ -533,13 +517,23 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       )}
 
       <div className="flex items-center gap-3 pb-4 border-b">
-        <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full hover:bg-primary/10 hover:text-primary"><ArrowLeft size={20} /></Button>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => router.back()} 
+          className="rounded-full hover:bg-primary/10 hover:text-primary transition-all duration-200 active:scale-90"
+        >
+          <ArrowLeft size={20} />
+        </Button>
         <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center font-bold text-primary border border-primary/20">
           {otherUser?.username?.charAt(0).toUpperCase() || "U"}
         </div>
         <div className="flex-1 min-w-0">
           <h2 className="font-bold truncate text-sm sm:text-base">{otherUser?.username || "Private User"}</h2>
-          <button onClick={() => setIsDetailsOpen(true)} className="text-[10px] sm:text-xs text-muted-foreground truncate italic hover:text-primary flex items-center gap-1 transition-colors">
+          <button 
+            onClick={() => setIsDetailsOpen(true)} 
+            className="text-[10px] sm:text-xs text-muted-foreground truncate italic hover:text-primary flex items-center gap-1 transition-all duration-200 active:opacity-70"
+          >
             {listing?.title || "Marketplace Listing"} <Info size={10} />
           </button>
         </div>
@@ -547,16 +541,16 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
           {!isAdminView && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full">
+                <Button variant="ghost" size="icon" className="rounded-full transition-all duration-200 active:scale-90">
                   <MoreHorizontal size={20} />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="rounded-xl p-2 w-48">
-                <DropdownMenuItem className="gap-2 rounded-lg text-destructive" onClick={() => setIsReportOpen(true)}>
+              <DropdownMenuContent align="end" className="rounded-xl p-2 w-48 shadow-xl border-none">
+                <DropdownMenuItem className="gap-2 rounded-lg text-destructive transition-colors focus:bg-destructive/10" onClick={() => setIsReportOpen(true)}>
                   <Flag size={14} /> Report Problem
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="gap-2 rounded-lg text-destructive" onClick={handleDeleteConversation}>
+                <DropdownMenuItem className="gap-2 rounded-lg text-destructive transition-colors focus:bg-destructive/10" onClick={handleDeleteConversation}>
                   <Trash2 size={14} /> Delete Chat
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -568,7 +562,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                 <Button 
                   variant={hasUserRated ? "outline" : "default"}
                   size="sm" 
-                  className="rounded-full gap-2 font-bold transition-all shadow-sm active:scale-95"
+                  className="rounded-full gap-2 font-bold shadow-sm"
                   onClick={() => !hasUserRated && setIsRatingOpen(true)}
                   disabled={hasUserRated}
                 >
@@ -599,7 +593,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                 <Button size="sm" className="h-8 rounded-lg gap-1" onClick={() => handleRespondToOffer(true)}>
                   <Check size={14} /> Accept
                 </Button>
-                <Button size="sm" variant="ghost" className="h-8 rounded-lg gap-1 text-destructive" onClick={() => handleRespondToOffer(false)}>
+                <Button size="sm" variant="ghost" className="h-8 rounded-lg gap-1 text-destructive hover:bg-destructive/10" onClick={() => handleRespondToOffer(false)}>
                   <Ban size={14} /> Reject
                 </Button>
               </div>
@@ -609,7 +603,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       )}
 
       {convData?.agreedPrice && (
-        <div className="mt-2 px-4 py-2 bg-accent/10 border border-accent/20 rounded-xl flex items-center justify-between">
+        <div className="mt-2 px-4 py-2 bg-accent/10 border border-accent/20 rounded-xl flex items-center justify-between animate-in fade-in duration-300">
           <span className="text-xs font-bold text-accent uppercase tracking-wider">Agreed Price</span>
           <span className="font-black text-accent">{convData.agreedPrice} DA</span>
         </div>
@@ -640,7 +634,11 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                   {msg.reactions && Object.keys(msg.reactions).length > 0 && (
                     <div className={cn("absolute -bottom-3 flex flex-wrap gap-1", isOwn ? "right-0" : "left-0")}>
                       {Object.entries(msg.reactions).map(([emoji, uids]) => (
-                        <button key={emoji} className="bg-white border rounded-full px-1.5 py-0.5 text-[10px] flex items-center gap-1 shadow-sm" onClick={() => handleReaction(msg.id, emoji)}>
+                        <button 
+                          key={emoji} 
+                          className="bg-white border rounded-full px-1.5 py-0.5 text-[10px] flex items-center gap-1 shadow-sm transition-all duration-200 hover:scale-110 active:scale-90" 
+                          onClick={() => handleReaction(msg.id, emoji)}
+                        >
                           <span>{emoji}</span><span>{uids.length}</span>
                         </button>
                       ))}
@@ -650,20 +648,28 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                 {!isAdminView && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><MoreHorizontal size={14} /></Button>
+                      <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 active:scale-90">
+                        <MoreHorizontal size={14} />
+                      </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="rounded-xl p-2 w-48 shadow-xl border-none">
                       <div className="grid grid-cols-4 gap-1 mb-2">
                         {["👍", "❤️", "😂", "😮", "😢", "🔥", "😡"].map(emoji => (
-                          <button key={emoji} className="text-lg hover:scale-125 transition-all p-1" onClick={() => handleReaction(msg.id, emoji)}>{emoji}</button>
+                          <button 
+                            key={emoji} 
+                            className="text-lg hover:scale-125 transition-all p-1 active:scale-90" 
+                            onClick={() => handleReaction(msg.id, emoji)}
+                          >
+                            {emoji}
+                          </button>
                         ))}
                       </div>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem className="gap-2 rounded-lg" onClick={() => setReplyingTo(msg)}><Reply size={14} /> Reply</DropdownMenuItem>
+                      <DropdownMenuItem className="gap-2 rounded-lg transition-colors focus:bg-accent" onClick={() => setReplyingTo(msg)}><Reply size={14} /> Reply</DropdownMenuItem>
                       {(editAllowed || profile?.isAdmin) && (
                         <>
-                          {editAllowed && <DropdownMenuItem className="gap-2 rounded-lg" onClick={() => handleEditInit(msg)}><Pencil size={14} /> Edit</DropdownMenuItem>}
-                          <DropdownMenuItem className="gap-2 text-destructive rounded-lg" onClick={() => handleDeleteMessage(msg.id)}><Trash2 size={14} /> Delete</DropdownMenuItem>
+                          {editAllowed && <DropdownMenuItem className="gap-2 rounded-lg transition-colors focus:bg-accent" onClick={() => handleEditInit(msg)}><Pencil size={14} /> Edit</DropdownMenuItem>}
+                          <DropdownMenuItem className="gap-2 text-destructive rounded-lg transition-colors focus:bg-destructive/10" onClick={() => handleDeleteMessage(msg.id)}><Trash2 size={14} /> Delete</DropdownMenuItem>
                         </>
                       )}
                     </DropdownMenuContent>
@@ -678,30 +684,35 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
 
       <div className={cn("pt-4 border-t space-y-2", isAdminView && "opacity-50 pointer-events-none")}>
         {replyingTo && (
-          <div className="flex items-center justify-between bg-muted/50 p-2 rounded-xl text-xs border-l-4 border-primary">
+          <div className="flex items-center justify-between bg-muted/50 p-2 rounded-xl text-xs border-l-4 border-primary animate-in slide-in-from-bottom-2">
             <div className="flex flex-col min-w-0">
               <span className="font-bold text-primary">Replying to {replyingTo.senderId === user?.uid ? "yourself" : (otherUser?.username || "User")}</span>
               <span className="truncate italic">"{replyingTo.messageText || "Image"}"</span>
             </div>
-            <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => setReplyingTo(null)}><X size={14} /></Button>
+            <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full transition-all duration-200 active:scale-90" onClick={() => setReplyingTo(null)}><X size={14} /></Button>
           </div>
         )}
         <form className="flex items-center gap-2" onSubmit={handleSendMessage}>
           <input type="file" id="image-upload" className="hidden" accept="image/*" disabled={uploading || isAdminView} onChange={handleImageUpload} />
           <label htmlFor="image-upload" className={cn(
-            "flex items-center justify-center w-11 h-11 rounded-full bg-muted cursor-pointer shrink-0 hover:bg-primary/10 hover:text-primary transition-colors",
+            "flex items-center justify-center w-11 h-11 rounded-full bg-muted cursor-pointer shrink-0 hover:bg-primary/10 hover:text-primary transition-all duration-200 active:scale-90",
             isAdminView && "cursor-not-allowed"
           )}>
             {uploading ? <Loader2 size={20} className="animate-spin" /> : <ImageIcon size={20} />}
           </label>
           <Input 
             placeholder={isAdminView ? "Admin: Read-Only" : (editingMessage ? "Update message..." : "Type message...")} 
-            className="flex-1 h-11 rounded-full px-5 bg-muted border-none" 
+            className="flex-1 h-11 rounded-full px-5 bg-muted border-none focus-visible:ring-primary/20 transition-all" 
             value={newMessage} 
             onChange={(e) => setNewMessage(e.target.value)}
             disabled={isAdminView}
           />
-          <Button type="submit" size="icon" className="w-11 h-11 rounded-full shadow-md" disabled={(!newMessage.trim() && !uploading) || isAdminView}>
+          <Button 
+            type="submit" 
+            size="icon" 
+            className="w-11 h-11 rounded-full shadow-md transition-all duration-200 active:scale-90" 
+            disabled={(!newMessage.trim() && !uploading) || isAdminView}
+          >
             {editingMessage ? <CheckCircle2 size={20} /> : <Send size={20} />}
           </Button>
         </form>
@@ -709,7 +720,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
 
       {/* Report Dialog */}
       <Dialog open={isReportOpen} onOpenChange={setIsReportOpen}>
-        <DialogContent className="max-w-md rounded-2xl">
+        <DialogContent className="max-w-md rounded-2xl shadow-2xl border-none">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><Flag className="text-destructive" /> Report Problem</DialogTitle>
             <DialogDescription>Describe the issue you're facing in this chat. Our team will review the conversation history.</DialogDescription>
@@ -718,10 +729,10 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
             <div className="space-y-2">
               <Label>Type of Issue</Label>
               <Select value={reportType} onValueChange={setReportType}>
-                <SelectTrigger className="rounded-xl h-12">
+                <SelectTrigger className="rounded-xl h-12 transition-all hover:border-primary/50">
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-xl border-none shadow-xl">
                   <SelectItem value="fraud">Potential Fraud</SelectItem>
                   <SelectItem value="harassment">Harassment / Bullying</SelectItem>
                   <SelectItem value="scam">Scam / Fake Post</SelectItem>
@@ -733,7 +744,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
               <Label>Details</Label>
               <Textarea 
                 placeholder="Please provide as much detail as possible..."
-                className="rounded-xl min-h-[100px] resize-none"
+                className="rounded-xl min-h-[100px] resize-none transition-all hover:border-primary/50"
                 value={reportReason}
                 onChange={(e) => setReportReason(e.target.value)}
               />
@@ -741,7 +752,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
           </div>
           <DialogFooter>
             <Button 
-              className="w-full h-12 rounded-xl font-bold bg-destructive hover:bg-destructive/90" 
+              className="w-full h-12 rounded-xl font-bold bg-destructive hover:bg-destructive/90 shadow-lg" 
               onClick={handleReportIssue}
               disabled={isReporting || !reportReason.trim()}
             >
@@ -752,7 +763,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       </Dialog>
 
       <Dialog open={isOfferDialogOpen} onOpenChange={setIsOfferDialogOpen}>
-        <DialogContent className="max-w-md rounded-2xl">
+        <DialogContent className="max-w-md rounded-2xl shadow-2xl border-none">
           <DialogHeader>
             <DialogTitle>Make a Price Offer</DialogTitle>
             <DialogDescription>Propose a specific price for this deal. The other party must accept before you can finalize.</DialogDescription>
@@ -763,36 +774,39 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
               <Input
                 type="number"
                 placeholder="Enter price (DA)"
-                className="pl-10 h-12 rounded-xl"
+                className="pl-10 h-12 rounded-xl transition-all hover:border-primary/50"
                 value={offerPrice}
                 onChange={(e) => setOfferPrice(e.target.value)}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button className="w-full h-12 rounded-xl font-bold" onClick={handleMakeOffer}>Send Offer</Button>
+            <Button className="w-full h-12 rounded-xl font-bold shadow-lg" onClick={handleMakeOffer}>Send Offer</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={isRatingOpen} onOpenChange={setIsRatingOpen}>
-        <DialogContent className="max-w-md rounded-2xl">
+        <DialogContent className="max-w-md rounded-2xl shadow-2xl border-none">
           <DialogHeader>
             <DialogTitle>Finalize & Settle</DialogTitle>
             <DialogDescription>
-              Completing this will process the payment of {convData?.agreedPrice} DA.
-              {isLister && <p className="mt-2 text-primary font-bold">A {currentCommission} DA platform fee will be deducted from your payout.</p>}
+              Completing this will confirm that the deal took place.
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-center gap-2 py-8">
             {[1, 2, 3, 4, 5].map((s) => (
-              <button key={s} className={cn("transition-transform", ratingStars >= s ? "text-yellow-400" : "text-muted")} onClick={() => setRatingStars(s)}>
+              <button 
+                key={s} 
+                className={cn("transition-all duration-200 hover:scale-110 active:scale-90", ratingStars >= s ? "text-yellow-400" : "text-muted")} 
+                onClick={() => setRatingStars(s)}
+              >
                 <Star size={40} fill={ratingStars >= s ? "currentColor" : "none"} />
               </button>
             ))}
           </div>
           <DialogFooter>
-            <Button className="w-full h-12 rounded-xl font-bold" disabled={ratingLoading} onClick={handleRateDeal}>
+            <Button className="w-full h-12 rounded-xl font-bold shadow-lg" disabled={ratingLoading} onClick={handleRateDeal}>
               {ratingLoading ? <Loader2 className="animate-spin" /> : "Rate & Complete Deal"}
             </Button>
           </DialogFooter>
@@ -800,7 +814,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       </Dialog>
 
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-        <DialogContent className="max-w-2xl rounded-2xl p-0 overflow-hidden">
+        <DialogContent className="max-w-2xl rounded-2xl p-0 overflow-hidden shadow-2xl border-none">
           <DialogHeader className="p-6 pb-2">
             <DialogTitle className="text-2xl font-bold">Listing Details</DialogTitle>
           </DialogHeader>

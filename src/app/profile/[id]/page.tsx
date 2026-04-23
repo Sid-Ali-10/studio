@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo, use } from "react";
@@ -9,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Star, CheckCircle, Package, LogOut, Loader2, Trash2, Wallet, Moon, Sun, Flag, AlertTriangle } from "lucide-react";
+import { Star, CheckCircle, Package, LogOut, Loader2, Trash2, Wallet, Moon, Sun, Flag, AlertTriangle, Ban } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { useAuth } from "@/context/AuthContext";
 import { ListingCard, type Listing } from "@/components/listings/ListingCard";
@@ -253,7 +252,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
       <Card className="border-none shadow-2xl bg-gradient-to-br from-primary/5 to-accent/5 rounded-3xl overflow-hidden">
         <CardContent className="p-8 md:p-12 relative">
           <div className="flex flex-col md:flex-row items-center gap-8">
-            <div className="w-32 h-32 md:w-40 md:h-40 bg-white dark:bg-card rounded-3xl shadow-xl flex items-center justify-center text-4xl font-bold text-primary border-4 border-primary/10">
+            <div className="w-32 h-32 md:w-40 md:h-40 bg-white dark:bg-card rounded-3xl shadow-xl flex items-center justify-center text-4xl font-bold text-primary border-4 border-primary/10 transition-transform duration-300 hover:scale-105">
               {profileToShow?.username?.substring(0, 2).toUpperCase()}
             </div>
             <div className="flex-1 text-center md:text-left space-y-4">
@@ -275,17 +274,17 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
               </div>
               
               <div className="flex flex-wrap justify-center md:justify-start gap-4">
-                <div className="bg-card px-4 py-2 rounded-2xl shadow-sm flex items-center gap-2">
+                <div className="bg-card px-4 py-2 rounded-2xl shadow-sm flex items-center gap-2 transition-all duration-300 hover:shadow-md">
                   <Star className="text-yellow-400 fill-yellow-400" size={20} />
                   <span className="font-bold">{avgRating.toFixed(1)}</span>
                   <span className="text-xs text-muted-foreground font-normal">({totalRatings})</span>
                 </div>
-                <div className="bg-card px-4 py-2 rounded-2xl shadow-sm flex items-center gap-2">
+                <div className="bg-card px-4 py-2 rounded-2xl shadow-sm flex items-center gap-2 transition-all duration-300 hover:shadow-md">
                   <Package className="text-primary" size={20} />
                   <span className="font-bold">{profileToShow?.successfulDealsCount || 0} Deals</span>
                 </div>
                 {isOwnProfile && (
-                  <Link href="/wallet" className="bg-card px-4 py-2 rounded-2xl shadow-sm flex items-center gap-2 hover:bg-muted/20 transition-colors">
+                  <Link href="/wallet" className="bg-card px-4 py-2 rounded-2xl shadow-sm flex items-center gap-2 hover:bg-muted/30 transition-all duration-200 active:scale-95">
                     <Wallet className="text-accent" size={20} />
                     <span className="font-bold">{profileToShow?.walletBalance?.toLocaleString() || 0} DA</span>
                   </Link>
@@ -295,13 +294,13 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
                 {!isOwnProfile && currentUser && (
                   <>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 bg-card/50 p-2 rounded-2xl">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button
                           key={star}
                           onClick={() => handleRating(star)}
                           className={cn(
-                            "p-1 rounded-full transition-all hover:bg-muted",
+                            "p-1 rounded-full transition-all duration-200 hover:scale-125 active:scale-90",
                             (userRating || 0) >= star ? "text-yellow-400" : "text-muted-foreground/30"
                           )}
                         >
@@ -313,7 +312,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                           variant="ghost" 
                           size="icon" 
                           onClick={deleteRating}
-                          className="rounded-full hover:bg-muted text-destructive"
+                          className="rounded-full hover:bg-destructive/10 text-destructive transition-all duration-200 active:scale-90 ml-2"
                         >
                           <Trash2 size={16} />
                         </Button>
@@ -321,7 +320,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                     </div>
                     <Button 
                       variant="outline" 
-                      className="rounded-xl border-destructive/20 text-destructive hover:bg-destructive/10 h-10 px-6 gap-2"
+                      className="rounded-xl border-destructive/20 text-destructive hover:bg-destructive/10 h-10 px-6 gap-2 transition-all duration-200 active:scale-95"
                       onClick={() => setIsReportOpen(true)}
                     >
                       <Flag size={18} /> Report Scammer
@@ -333,20 +332,20 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
               {isOwnProfile && (
                 <div className="flex flex-col gap-4 pt-2 items-center md:items-start">
                   <div className="flex flex-wrap items-center gap-3">
-                    <Button variant="destructive" className="rounded-xl px-6" onClick={handleLogout}>
+                    <Button variant="destructive" className="rounded-xl px-6 transition-all duration-200 active:scale-95 shadow-lg" onClick={handleLogout}>
                       <LogOut size={18} className="mr-2" /> Logout
                     </Button>
                     <Button 
                       variant="ghost" 
                       size="icon" 
                       onClick={toggleTheme} 
-                      className="rounded-full text-muted-foreground hover:bg-muted transition-colors"
+                      className="rounded-full text-muted-foreground hover:bg-muted transition-all duration-200 active:scale-90"
                       title={theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
                     >
                       {theme === "light" ? <Moon size={22} /> : <Sun size={22} />}
                     </Button>
                   </div>
-                  <div className="translate-widget-container">
+                  <div className="translate-widget-container transition-all hover:opacity-100 opacity-90">
                     <div id="google_translate_element"></div>
                   </div>
                 </div>
@@ -360,10 +359,10 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <h2 className="text-2xl font-bold">Postings</h2>
           <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full md:w-auto">
-            <TabsList className="bg-card grid grid-cols-3 h-10 p-1 rounded-xl w-full md:w-64">
-              <TabsTrigger value="all" className="rounded-lg">All</TabsTrigger>
-              <TabsTrigger value="traveler" className="rounded-lg">Travelers</TabsTrigger>
-              <TabsTrigger value="buyer" className="rounded-lg">Buyers</TabsTrigger>
+            <TabsList className="bg-card grid grid-cols-3 h-10 p-1 rounded-xl w-full md:w-64 shadow-sm">
+              <TabsTrigger value="all" className="rounded-lg transition-all duration-200 active:scale-95">All</TabsTrigger>
+              <TabsTrigger value="traveler" className="rounded-lg transition-all duration-200 active:scale-95">Travelers</TabsTrigger>
+              <TabsTrigger value="buyer" className="rounded-lg transition-all duration-200 active:scale-95">Buyers</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -384,7 +383,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
             />
           ))}
           {filteredListings.length === 0 && (
-            <div className="col-span-full py-20 text-center bg-card rounded-3xl text-muted-foreground italic">
+            <div className="col-span-full py-20 text-center bg-card rounded-3xl text-muted-foreground italic shadow-inner">
               No listings found.
             </div>
           )}
@@ -393,26 +392,26 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
 
       {/* Report Dialog */}
       <Dialog open={isReportOpen} onOpenChange={setIsReportOpen}>
-        <DialogContent className="max-w-md rounded-2xl">
+        <DialogContent className="max-w-md rounded-2xl shadow-2xl border-none">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><AlertTriangle className="text-destructive" /> Report Scammer</DialogTitle>
             <DialogDescription>
               Provide details about why you believe this user is a scammer. The admin will review their profile and activity.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
+          <div className="py-4 space-y-2">
             <Label htmlFor="reason">Reason for reporting</Label>
             <Textarea 
               id="reason"
               placeholder="e.g., Fake listing, attempted off-platform payment, suspicious behavior..."
-              className="rounded-xl min-h-[120px] resize-none mt-2"
+              className="rounded-xl min-h-[120px] resize-none mt-2 transition-all hover:border-primary/50"
               value={reportReason}
               onChange={(e) => setReportReason(e.target.value)}
             />
           </div>
           <DialogFooter>
             <Button 
-              className="w-full h-12 rounded-xl font-bold bg-destructive hover:bg-destructive/90" 
+              className="w-full h-12 rounded-xl font-bold bg-destructive hover:bg-destructive/90 shadow-lg transition-all duration-200 active:scale-[0.98]" 
               onClick={handleReportUser}
               disabled={isReporting || !reportReason.trim()}
             >
