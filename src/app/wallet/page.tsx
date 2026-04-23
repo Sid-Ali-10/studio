@@ -17,8 +17,7 @@ import {
 } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Wallet, ArrowUpCircle, ArrowDownCircle, Clock, Loader2, Plus, Banknote } from "lucide-react";
+import { Wallet, ArrowUpCircle, Banknote, History, Plus, Loader2, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -26,7 +25,7 @@ import { cn } from "@/lib/utils";
 interface Transaction {
   id: string;
   amount: number;
-  type: "recharge" | "payment" | "payout";
+  type: "recharge" | "payment" | "payout" | "commission";
   description: string;
   createdAt: any;
 }
@@ -54,7 +53,6 @@ export default function WalletPage() {
       setTransactions(txs);
       setLoading(false);
     }, (error) => {
-       // Quietly ignore permission errors during auth transitions
       if (error.code !== 'permission-denied') {
         console.error("Wallet listener error:", error);
       }
@@ -72,7 +70,6 @@ export default function WalletPage() {
       const userRef = doc(db, "userProfiles", user.uid);
       const txRef = collection(db, "userProfiles", user.uid, "transactions");
 
-      // 1. Add transaction record
       await addDoc(txRef, {
         amount: amount,
         type: "recharge",
@@ -80,23 +77,14 @@ export default function WalletPage() {
         createdAt: serverTimestamp()
       });
 
-      // 2. Update wallet balance
       await updateDoc(userRef, {
         walletBalance: increment(amount),
         updatedAt: serverTimestamp()
       });
 
-      toast({
-        title: "Recharge Successful",
-        description: `Successfully added ${amount} DA to your wallet.`,
-      });
+      toast({ title: "Success", description: `${amount} DA added to wallet.` });
     } catch (err) {
-      console.error(err);
-      toast({
-        variant: "destructive",
-        title: "Recharge Failed",
-        description: "Something went wrong while processing your recharge.",
-      });
+      toast({ variant: "destructive", title: "Failed", description: "Recharge failed." });
     } finally {
       setRechargeLoading(null);
     }
@@ -108,12 +96,11 @@ export default function WalletPage() {
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
       <div className="space-y-1">
         <h1 className="text-3xl font-bold tracking-tight">Wallet</h1>
-        <p className="text-muted-foreground">Manage your funds and view transaction history.</p>
+        <p className="text-muted-foreground">Manage your marketplace funds and commissions.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="md:col-span-1 border-none shadow-xl bg-primary text-primary-foreground overflow-hidden relative">
-          <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-3xl" />
+        <Card className="md:col-span-1 border-none shadow-xl bg-primary text-primary-foreground overflow-hidden">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Wallet size={24} /> Balance
@@ -123,32 +110,25 @@ export default function WalletPage() {
             <div className="text-4xl font-black">
               {profile?.walletBalance?.toLocaleString() || "0"} <span className="text-xl font-medium">DA</span>
             </div>
-            <p className="text-primary-foreground/70 text-sm">Available for marketplace deals</p>
+            <p className="text-primary-foreground/70 text-sm">Funds for deals and fees</p>
           </CardContent>
         </Card>
 
         <Card className="md:col-span-2 border-none shadow-md bg-card">
           <CardHeader>
-            <CardTitle>Quick Recharge</CardTitle>
-            <CardDescription>Select an amount to simulate a wallet recharge.</CardDescription>
+            <CardTitle>Recharge Funds</CardTitle>
+            <CardDescription>Add money to your account for upcoming deals.</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-4">
             {rechargeAmounts.map((amount) => (
               <Button
                 key={amount}
                 variant="outline"
-                className="flex-1 min-w-[120px] h-16 rounded-2xl flex flex-col gap-1 hover:border-primary hover:bg-primary/5 transition-all"
+                className="flex-1 min-w-[120px] h-16 rounded-2xl flex flex-col gap-1 hover:border-primary transition-all"
                 onClick={() => handleRecharge(amount)}
                 disabled={rechargeLoading !== null}
               >
-                {rechargeLoading === amount ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  <>
-                    <span className="font-bold text-lg">{amount} DA</span>
-                    <span className="text-[10px] text-muted-foreground">+ Add Funds</span>
-                  </>
-                )}
+                {rechargeLoading === amount ? <Loader2 className="animate-spin" /> : <><span className="font-bold">{amount} DA</span><span className="text-[10px] text-muted-foreground">+ Add</span></>}
               </Button>
             ))}
           </CardContent>
@@ -156,18 +136,10 @@ export default function WalletPage() {
       </div>
 
       <div className="space-y-4">
-        <h2 className="text-xl font-bold flex items-center gap-2">
-          <Clock size={20} /> Transaction History
-        </h2>
+        <h2 className="text-xl font-bold flex items-center gap-2"><Clock size={20} /> Transaction History</h2>
         
         {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="animate-spin text-primary" size={32} />
-          </div>
-        ) : transactions.length === 0 ? (
-          <div className="text-center py-16 bg-card rounded-3xl border border-dashed">
-            <p className="text-muted-foreground">No transactions recorded yet.</p>
-          </div>
+          <div className="flex justify-center py-12"><Loader2 className="animate-spin text-primary" size={32} /></div>
         ) : (
           <div className="space-y-3">
             {transactions.map((tx) => (
@@ -176,22 +148,17 @@ export default function WalletPage() {
                   <div className="flex items-center gap-4">
                     <div className={cn(
                       "w-12 h-12 rounded-xl flex items-center justify-center shrink-0",
-                      tx.type === "recharge" ? "bg-accent/10 text-accent" : "bg-primary/10 text-primary"
+                      tx.amount > 0 ? "bg-accent/10 text-accent" : "bg-primary/10 text-primary"
                     )}>
-                      {tx.type === "recharge" ? <Plus size={24} /> : <Banknote size={24} />}
+                      {tx.amount > 0 ? <Plus size={24} /> : <Banknote size={24} />}
                     </div>
-                    <div className="min-w-0">
+                    <div>
                       <p className="font-bold truncate">{tx.description}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {tx.createdAt ? format(tx.createdAt.toDate(), "PPpp") : "Processing..."}
-                      </p>
+                      <p className="text-[10px] text-muted-foreground uppercase">{tx.type} • {tx.createdAt ? format(tx.createdAt.toDate(), "PPpp") : "Processing..."}</p>
                     </div>
                   </div>
-                  <div className={cn(
-                    "text-lg font-black shrink-0",
-                    tx.type === "recharge" ? "text-accent" : "text-primary"
-                  )}>
-                    {tx.type === "recharge" ? "+" : "-"}{Math.abs(tx.amount).toLocaleString()} DA
+                  <div className={cn("text-lg font-black", tx.amount > 0 ? "text-accent" : "text-primary")}>
+                    {tx.amount > 0 ? "+" : ""}{tx.amount.toLocaleString()} DA
                   </div>
                 </CardContent>
               </Card>

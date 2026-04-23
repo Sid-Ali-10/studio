@@ -20,7 +20,8 @@ import {
   increment,
   arrayUnion,
   arrayRemove,
-  orderBy
+  orderBy,
+  limit
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useAuth } from "@/context/AuthContext";
@@ -40,7 +41,10 @@ import {
   Trash2, 
   X,
   Info,
-  ShieldAlert
+  ShieldAlert,
+  Banknote,
+  Check,
+  Ban
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -94,6 +98,9 @@ interface ConversationData {
   unreadBy?: string[];
   finalizedUsers?: string[];
   deletedBy?: string[];
+  agreedPrice?: number;
+  offeredPrice?: number;
+  offerSenderId?: string;
 }
 
 export default function ChatRoomPage() {
@@ -104,6 +111,7 @@ export default function ChatRoomPage() {
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
+  const [offerPrice, setOfferPrice] = useState("");
   const [otherUser, setOtherUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -117,6 +125,7 @@ export default function ChatRoomPage() {
   const [ratingStars, setRatingStars] = useState(5);
   const [ratingLoading, setRatingLoading] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isOfferDialogOpen, setIsOfferDialogOpen] = useState(false);
 
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
@@ -155,14 +164,12 @@ export default function ChatRoomPage() {
             setConvData(data);
             setParticipants(data.participantIds);
             
-            // Mark as read ONLY if participant
             if (data.unreadBy?.includes(user.uid) && data.participantIds.includes(user.uid)) {
               updateDoc(convRef, {
                 unreadBy: arrayRemove(user.uid)
               });
             }
 
-            // Automatically finalize deal for this user if both rated (participant only)
             if (data.buyerRated && data.travelerRated && data.participantIds.includes(user.uid)) {
               handleFinalizeDeal(data);
             }
@@ -180,7 +187,6 @@ export default function ChatRoomPage() {
           const data = convSnap.data() as ConversationData;
           setActiveConvId(conversationId);
           
-          // Determine "other user" for UI context
           const otherUserId = data.participantIds.find(p => p !== user.uid) || data.participantIds[0];
           if (otherUserId) {
             const otherUserDoc = await getDoc(doc(db, "userProfiles", otherUserId));
@@ -192,15 +198,12 @@ export default function ChatRoomPage() {
             setListing({ id: lDoc.id, ...lDoc.data() } as Listing);
           }
 
-          // Fetch messages: Admins can see all, participants see their filtered stream
           const messagesRef = collection(db, "conversations", conversationId, "messages");
           let messagesQuery;
 
-          // If current user is an admin, always use the simplified query to see all messages and avoid index requirements
           if (profile?.isAdmin) {
             messagesQuery = query(messagesRef, orderBy("timestamp", "asc"));
           } else {
-            // Standard User View
             messagesQuery = query(
               messagesRef,
               where("participantIds", "array-contains", user.uid),
@@ -237,25 +240,73 @@ export default function ChatRoomPage() {
 
   const handleFinalizeDeal = async (data: ConversationData) => {
     if (!user || data.finalizedUsers?.includes(user.uid)) return;
+    if (!data.agreedPrice) {
+      toast({ variant: "destructive", title: "No Price Agreed", description: "You must agree on a price before finishing the deal." });
+      return;
+    }
 
     try {
       const batch = writeBatch(db);
-      const fee = 1000;
+      const commission = 1000;
+      const agreedPrice = data.agreedPrice;
 
-      const uRef = doc(db, "userProfiles", user.uid);
-      batch.update(uRef, {
-        successfulDealsCount: increment(1),
-        walletBalance: increment(-fee),
-        updatedAt: serverTimestamp()
-      });
+      const travelerId = listing?.listerId || "";
+      const buyerId = data.participantIds.find(p => p !== travelerId) || "";
 
-      const txRef = doc(collection(db, "userProfiles", user.uid, "transactions"));
-      batch.set(txRef, {
-        amount: -fee,
-        type: "payment",
-        description: `Marketplace fee: ${data.listingTitle}`,
-        createdAt: serverTimestamp()
-      });
+      // 1. Find an Admin to receive commissions
+      const adminsSnap = await getDocs(query(collection(db, "userProfiles"), where("isAdmin", "==", true), limit(1)));
+      const adminId = adminsSnap.docs[0]?.id;
+
+      if (!adminId) {
+        console.error("No platform admin found for commission.");
+      }
+
+      // Calculations for records
+      // Buyer: - (Price + 1000)
+      // Traveler: + (Price - 1000)
+      // Admin: + 2000
+
+      if (user.uid === buyerId) {
+        const amount = agreedPrice + commission;
+        batch.update(doc(db, "userProfiles", buyerId), {
+          walletBalance: increment(-amount),
+          successfulDealsCount: increment(1),
+          updatedAt: serverTimestamp()
+        });
+        batch.set(doc(collection(db, "userProfiles", buyerId, "transactions")), {
+          amount: -amount,
+          type: "payment",
+          description: `Marketplace Payment + Fee: ${data.listingTitle}`,
+          createdAt: serverTimestamp()
+        });
+      } else if (user.uid === travelerId) {
+        const amount = agreedPrice - commission;
+        batch.update(doc(db, "userProfiles", travelerId), {
+          walletBalance: increment(amount),
+          successfulDealsCount: increment(1),
+          updatedAt: serverTimestamp()
+        });
+        batch.set(doc(collection(db, "userProfiles", travelerId, "transactions")), {
+          amount: amount,
+          type: "payout",
+          description: `Marketplace Earnings - Fee: ${data.listingTitle}`,
+          createdAt: serverTimestamp()
+        });
+      }
+
+      // Add to Admin wallet if found
+      if (adminId) {
+        batch.update(doc(db, "userProfiles", adminId), {
+          walletBalance: increment(commission),
+          updatedAt: serverTimestamp()
+        });
+        batch.set(doc(collection(db, "userProfiles", adminId, "transactions")), {
+          amount: commission,
+          type: "commission",
+          description: `Platform Fee from deal: ${data.listingTitle}`,
+          createdAt: serverTimestamp()
+        });
+      }
 
       const finalizedList = [...(data.finalizedUsers || []), user.uid];
       const convRef = doc(db, "conversations", data.id);
@@ -272,14 +323,51 @@ export default function ChatRoomPage() {
       }
 
       await batch.commit();
-      toast({ title: "Deal Finalized!", description: "Stats updated and fee processed." });
+      toast({ title: "Deal Finalized!", description: "Funds transferred and fees processed." });
     } catch (err) {
       console.error("Finalization failed:", err);
     }
   };
 
+  const handleMakeOffer = async () => {
+    if (!offerPrice || isNaN(Number(offerPrice)) || !activeConvId) return;
+    try {
+      await updateDoc(doc(db, "conversations", activeConvId), {
+        offeredPrice: Number(offerPrice),
+        offerSenderId: user?.uid,
+        updatedAt: serverTimestamp()
+      });
+      setIsOfferDialogOpen(false);
+      setOfferPrice("");
+      toast({ title: "Offer sent", description: "Waiting for the other party to respond." });
+    } catch (err) {
+      toast({ variant: "destructive", title: "Failed to send offer" });
+    }
+  };
+
+  const handleRespondToOffer = async (accepted: boolean) => {
+    if (!activeConvId || !convData) return;
+    try {
+      const updates: any = {
+        offeredPrice: null,
+        offerSenderId: null,
+        updatedAt: serverTimestamp()
+      };
+      if (accepted) {
+        updates.agreedPrice = convData.offeredPrice;
+      }
+      await updateDoc(doc(db, "conversations", activeConvId), updates);
+      toast({ 
+        title: accepted ? "Offer Accepted!" : "Offer Rejected", 
+        description: accepted ? `Price locked at ${convData.offeredPrice} DA.` : "Offer dismissed." 
+      });
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error responding to offer" });
+    }
+  };
+
   const handleSendMessage = async (e?: React.FormEvent, imageUrl?: string) => {
-    if (isAdminView) return; // Prevent admin interference
+    if (isAdminView) return;
     if (e) e.preventDefault();
     if (editingMessage) { handleSaveEdit(); return; }
     if ((!newMessage.trim() && !imageUrl) || !user || !activeConvId) return;
@@ -404,11 +492,17 @@ export default function ChatRoomPage() {
   const handleRateDeal = async () => {
     if (isAdminView || !activeConvId || !user || !convData) return;
     
-    if ((profile?.walletBalance || 0) < 1000) {
+    if (!convData.agreedPrice) {
+      toast({ variant: "destructive", title: "Incomplete Deal", description: "Please agree on a price before rating." });
+      return;
+    }
+
+    const totalCost = (listing?.listerId === user.uid) ? 1000 : (convData.agreedPrice + 1000);
+    if ((profile?.walletBalance || 0) < totalCost) {
       toast({
         variant: "destructive",
         title: "Insufficient Balance",
-        description: "You need at least 1000 DA to complete a deal.",
+        description: `You need at least ${totalCost} DA to complete this deal.`,
       });
       return;
     }
@@ -472,7 +566,7 @@ export default function ChatRoomPage() {
           <ShieldAlert className="h-4 w-4" />
           <AlertTitle className="font-bold">Administrative View Only</AlertTitle>
           <AlertDescription className="text-xs">
-            You are monitoring this conversation for quality and safety purposes. Privacy policy strictly prohibits disclosing this content.
+            You are monitoring this conversation for quality and safety purposes.
           </AlertDescription>
         </Alert>
       )}
@@ -483,29 +577,69 @@ export default function ChatRoomPage() {
           {otherUser?.username?.charAt(0).toUpperCase() || "U"}
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="font-bold truncate text-sm sm:text-base hover:text-primary cursor-default">{otherUser?.username || "Private User"}</h2>
+          <h2 className="font-bold truncate text-sm sm:text-base">{otherUser?.username || "Private User"}</h2>
           <button onClick={() => setIsDetailsOpen(true)} className="text-[10px] sm:text-xs text-muted-foreground truncate italic hover:text-primary flex items-center gap-1 transition-colors">
             {listing?.title || "Marketplace Listing"} <Info size={10} />
           </button>
         </div>
         <div className="flex items-center gap-2">
           {!convData?.isFinalized && !isAdminView && (
-            <Button 
-              variant={hasUserRated ? "outline" : "default"}
-              size="sm" 
-              className="rounded-full gap-2 font-bold transition-all shadow-sm active:scale-95"
-              onClick={() => !hasUserRated && setIsRatingOpen(true)}
-              disabled={hasUserRated}
-            >
-              <CheckCircle2 size={16} />
-              <span className="hidden sm:inline">{hasUserRated ? "Rated" : "Complete Deal"}</span>
-            </Button>
+            <div className="flex gap-1">
+              {convData?.agreedPrice ? (
+                <Button 
+                  variant={hasUserRated ? "outline" : "default"}
+                  size="sm" 
+                  className="rounded-full gap-2 font-bold transition-all shadow-sm active:scale-95"
+                  onClick={() => !hasUserRated && setIsRatingOpen(true)}
+                  disabled={hasUserRated}
+                >
+                  <CheckCircle2 size={16} />
+                  <span className="hidden sm:inline">{hasUserRated ? "Rated" : "Rate & Settle"}</span>
+                </Button>
+              ) : (
+                <Button variant="outline" size="sm" className="rounded-full gap-2 font-bold" onClick={() => setIsOfferDialogOpen(true)}>
+                  <Banknote size={16} /> <span className="hidden sm:inline">Price Offer</span>
+                </Button>
+              )}
+            </div>
           )}
           <Button variant="ghost" size="icon" className="rounded-full text-destructive hover:bg-destructive/10 transition-colors" onClick={handleDeleteConversation}>
             <Trash2 size={18} />
           </Button>
         </div>
       </div>
+
+      {/* Offer Banner */}
+      {convData?.offeredPrice && (
+        <Alert className="mt-4 rounded-2xl bg-primary/5 border-primary/20 animate-in slide-in-from-top duration-300">
+          <Banknote className="h-4 w-4 text-primary" />
+          <AlertTitle className="font-bold text-primary flex items-center justify-between">
+            New Price Offer
+            <span className="text-lg">{convData.offeredPrice} DA</span>
+          </AlertTitle>
+          <AlertDescription className="mt-2 flex items-center justify-between">
+            <span className="text-xs">{convData.offerSenderId === user?.uid ? "You sent this offer." : `${otherUser?.username} proposed this price.`}</span>
+            {convData.offerSenderId !== user?.uid && !isAdminView && (
+              <div className="flex gap-2">
+                <Button size="sm" className="h-8 rounded-lg gap-1" onClick={() => handleRespondToOffer(true)}>
+                  <Check size={14} /> Accept
+                </Button>
+                <Button size="sm" variant="ghost" className="h-8 rounded-lg gap-1 text-destructive" onClick={() => handleRespondToOffer(false)}>
+                  <Ban size={14} /> Reject
+                </Button>
+              </div>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Agreed Price Indicator */}
+      {convData?.agreedPrice && (
+        <div className="mt-2 px-4 py-2 bg-accent/10 border border-accent/20 rounded-xl flex items-center justify-between">
+          <span className="text-xs font-bold text-accent uppercase tracking-wider">Agreed Price</span>
+          <span className="font-black text-accent">{convData.agreedPrice} DA</span>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto py-4 space-y-4 px-1">
         {messages.map((msg) => {
@@ -524,7 +658,7 @@ export default function ChatRoomPage() {
                   "max-w-[85%] sm:max-w-[75%] p-3 rounded-2xl relative break-words whitespace-pre-wrap transition-all duration-200 shadow-sm",
                   isOwn ? "bg-primary text-white rounded-tr-none hover:bg-primary/90" : "bg-card text-foreground rounded-tl-none border hover:bg-muted/30"
                 )}>
-                  {msg.imageUrl && <img src={msg.imageUrl} alt="Chat" className="rounded-lg mb-2 max-w-full h-auto cursor-pointer transition-transform hover:scale-[1.02]" />}
+                  {msg.imageUrl && <img src={msg.imageUrl} alt="Chat" className="rounded-lg mb-2 max-w-full h-auto" />}
                   {msg.messageText && <p className="text-sm">{msg.messageText}{msg.isEdited && <span className="text-[9px] opacity-70 ml-2">(edited)</span>}</p>}
                   <span className={cn("text-[9px] mt-1 block opacity-60", isOwn ? "text-right" : "text-left")}>
                     {msg.timestamp ? format(msg.timestamp.toDate(), "HH:mm") : ""}
@@ -532,33 +666,35 @@ export default function ChatRoomPage() {
                   {msg.reactions && Object.keys(msg.reactions).length > 0 && (
                     <div className={cn("absolute -bottom-3 flex flex-wrap gap-1", isOwn ? "right-0" : "left-0")}>
                       {Object.entries(msg.reactions).map(([emoji, uids]) => (
-                        <button key={emoji} className="bg-white border rounded-full px-1.5 py-0.5 text-[10px] flex items-center gap-1 shadow-sm hover:scale-110 transition-transform" onClick={() => handleReaction(msg.id, emoji)}>
+                        <button key={emoji} className="bg-white border rounded-full px-1.5 py-0.5 text-[10px] flex items-center gap-1 shadow-sm" onClick={() => handleReaction(msg.id, emoji)}>
                           <span>{emoji}</span><span>{uids.length}</span>
                         </button>
                       ))}
                     </div>
                   )}
                 </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary/10 hover:text-primary"><MoreHorizontal size={14} /></Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="rounded-xl p-2 w-48 shadow-xl border-none">
-                    <div className="grid grid-cols-4 gap-1 mb-2">
-                      {["👍", "❤️", "😂", "😮", "😢", "🔥", "😡"].map(emoji => (
-                        <button key={emoji} className="text-lg hover:scale-125 transition-all p-1" onClick={() => handleReaction(msg.id, emoji)}>{emoji}</button>
-                      ))}
-                    </div>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem className="gap-2 rounded-lg" onClick={() => setReplyingTo(msg)}><Reply size={14} /> Reply</DropdownMenuItem>
-                    {(editAllowed || profile?.isAdmin) && (
-                      <>
-                        {editAllowed && <DropdownMenuItem className="gap-2 rounded-lg" onClick={() => handleEditInit(msg)}><Pencil size={14} /> Edit</DropdownMenuItem>}
-                        <DropdownMenuItem className="gap-2 text-destructive rounded-lg" onClick={() => handleDeleteMessage(msg.id)}><Trash2 size={14} /> Delete</DropdownMenuItem>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {!isAdminView && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><MoreHorizontal size={14} /></Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="rounded-xl p-2 w-48 shadow-xl border-none">
+                      <div className="grid grid-cols-4 gap-1 mb-2">
+                        {["👍", "❤️", "😂", "😮", "😢", "🔥", "😡"].map(emoji => (
+                          <button key={emoji} className="text-lg hover:scale-125 transition-all p-1" onClick={() => handleReaction(msg.id, emoji)}>{emoji}</button>
+                        ))}
+                      </div>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem className="gap-2 rounded-lg" onClick={() => setReplyingTo(msg)}><Reply size={14} /> Reply</DropdownMenuItem>
+                      {(editAllowed || profile?.isAdmin) && (
+                        <>
+                          {editAllowed && <DropdownMenuItem className="gap-2 rounded-lg" onClick={() => handleEditInit(msg)}><Pencil size={14} /> Edit</DropdownMenuItem>}
+                          <DropdownMenuItem className="gap-2 text-destructive rounded-lg" onClick={() => handleDeleteMessage(msg.id)}><Trash2 size={14} /> Delete</DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
             </div>
           );
@@ -568,7 +704,7 @@ export default function ChatRoomPage() {
 
       <div className={cn("pt-4 border-t space-y-2", isAdminView && "opacity-50 pointer-events-none")}>
         {replyingTo && (
-          <div className="flex items-center justify-between bg-muted/50 p-2 rounded-xl text-xs border-l-4 border-primary animate-in slide-in-from-left duration-200">
+          <div className="flex items-center justify-between bg-muted/50 p-2 rounded-xl text-xs border-l-4 border-primary">
             <div className="flex flex-col min-w-0">
               <span className="font-bold text-primary">Replying to {replyingTo.senderId === user?.uid ? "yourself" : (otherUser?.username || "User")}</span>
               <span className="truncate italic">"{replyingTo.messageText || "Image"}"</span>
@@ -585,41 +721,69 @@ export default function ChatRoomPage() {
             {uploading ? <Loader2 size={20} className="animate-spin" /> : <ImageIcon size={20} />}
           </label>
           <Input 
-            placeholder={isAdminView ? "Admin: Read-Only View" : (editingMessage ? "Update message..." : "Type message...")} 
-            className="flex-1 h-11 rounded-full px-5 bg-muted border-none focus-visible:ring-2 focus-visible:ring-primary/20" 
+            placeholder={isAdminView ? "Admin: Read-Only" : (editingMessage ? "Update message..." : "Type message...")} 
+            className="flex-1 h-11 rounded-full px-5 bg-muted border-none" 
             value={newMessage} 
             onChange={(e) => setNewMessage(e.target.value)}
             disabled={isAdminView}
           />
-          <Button type="submit" size="icon" className="w-11 h-11 rounded-full shadow-md active:scale-95 transition-transform" disabled={(!newMessage.trim() && !uploading) || isAdminView}>
+          <Button type="submit" size="icon" className="w-11 h-11 rounded-full shadow-md" disabled={(!newMessage.trim() && !uploading) || isAdminView}>
             {editingMessage ? <CheckCircle2 size={20} /> : <Send size={20} />}
           </Button>
         </form>
       </div>
 
-      <Dialog open={isRatingOpen} onOpenChange={setIsRatingOpen}>
-        <DialogContent className="max-w-md rounded-2xl shadow-2xl border-none">
+      {/* Offer Dialog */}
+      <Dialog open={isOfferDialogOpen} onOpenChange={setIsOfferDialogOpen}>
+        <DialogContent className="max-w-md rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Finalize Deal & Rate</DialogTitle>
-            <DialogDescription>Completing this deal will deduct 1000 DA from your wallet.</DialogDescription>
+            <DialogTitle>Make a Price Offer</DialogTitle>
+            <DialogDescription>Propose a specific price for this deal. The other party must accept before you can finalize.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="relative">
+              <Banknote className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+              <Input
+                type="number"
+                placeholder="Enter price (DA)"
+                className="pl-10 h-12 rounded-xl"
+                value={offerPrice}
+                onChange={(e) => setOfferPrice(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button className="w-full h-12 rounded-xl font-bold" onClick={handleMakeOffer}>Send Offer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isRatingOpen} onOpenChange={setIsRatingOpen}>
+        <DialogContent className="max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Finalize & Settle</DialogTitle>
+            <DialogDescription>
+              Completing this will process the payment of {convData?.agreedPrice} DA.
+              <br />A 1000 DA platform fee will be deducted from your wallet.
+            </DialogDescription>
           </DialogHeader>
           <div className="flex justify-center gap-2 py-8">
             {[1, 2, 3, 4, 5].map((s) => (
-              <button key={s} className={cn("transition-transform hover:scale-125", ratingStars >= s ? "text-yellow-400" : "text-muted")} onClick={() => setRatingStars(s)}>
+              <button key={s} className={cn("transition-transform", ratingStars >= s ? "text-yellow-400" : "text-muted")} onClick={() => setRatingStars(s)}>
                 <Star size={40} fill={ratingStars >= s ? "currentColor" : "none"} />
               </button>
             ))}
           </div>
           <DialogFooter>
             <Button className="w-full h-12 rounded-xl font-bold" disabled={ratingLoading} onClick={handleRateDeal}>
-              {ratingLoading ? <Loader2 className="animate-spin" /> : "Confirm & Rate"}
+              {ratingLoading ? <Loader2 className="animate-spin" /> : "Rate & Complete Deal"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-        <DialogContent className="max-w-2xl rounded-2xl p-0 overflow-hidden border-none shadow-2xl">
+        <DialogContent className="max-w-2xl rounded-2xl p-0 overflow-hidden">
           <DialogHeader className="p-6 pb-2">
             <DialogTitle className="text-2xl font-bold">Listing Details</DialogTitle>
           </DialogHeader>

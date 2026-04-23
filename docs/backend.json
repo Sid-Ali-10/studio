@@ -76,7 +76,7 @@
         },
         "type": {
           "type": "string",
-          "enum": ["recharge", "payment", "payout"]
+          "enum": ["recharge", "payment", "payout", "commission"]
         },
         "description": {
           "type": "string"
@@ -194,6 +194,15 @@
         "updatedAt": {
           "type": "string",
           "format": "date-time"
+        },
+        "agreedPrice": {
+          "type": "number"
+        },
+        "offeredPrice": {
+          "type": "number"
+        },
+        "offerSenderId": {
+          "type": "string"
         }
       },
       "required": [
