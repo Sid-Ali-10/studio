@@ -199,9 +199,6 @@ export default function ChatRoomPage() {
           }
 
           const messagesRef = collection(db, "conversations", conversationId, "messages");
-          
-          // No where filter needed here as Security Rules and the conversation listener 
-          // already verify access. Removing it fixes the composite index requirement.
           const messagesQuery = query(messagesRef, orderBy("timestamp", "asc"));
 
           unsubscribeMessages = onSnapshot(messagesQuery, (snapshot) => {
@@ -246,43 +243,46 @@ export default function ChatRoomPage() {
       const travelerId = listing?.listerId || "";
       const buyerId = data.participantIds.find(p => p !== travelerId) || "";
 
-      // 1. Find an Admin to receive commissions
+      // 1. Find an Admin to receive commission
       const adminsSnap = await getDocs(query(collection(db, "userProfiles"), where("isAdmin", "==", true), limit(1)));
       const adminId = adminsSnap.docs[0]?.id;
 
-      if (!adminId) {
-        console.error("No platform admin found for commission.");
-      }
-
       if (user.uid === buyerId) {
-        const amount = agreedPrice + commission;
+        // Buyer pays exactly the agreed price
         batch.update(doc(db, "userProfiles", buyerId), {
-          walletBalance: increment(-amount),
+          walletBalance: increment(-agreedPrice),
           successfulDealsCount: increment(1),
           updatedAt: serverTimestamp()
         });
         batch.set(doc(collection(db, "userProfiles", buyerId, "transactions")), {
-          amount: -amount,
+          amount: -agreedPrice,
           type: "payment",
-          description: `Marketplace Payment + Fee: ${data.listingTitle}`,
+          description: `Marketplace Payment: ${data.listingTitle}`,
           createdAt: serverTimestamp()
         });
       } else if (user.uid === travelerId) {
-        const amount = agreedPrice - commission;
+        // Traveler receives agreedPrice and pays commission
+        const netTravelerAmount = agreedPrice - commission;
         batch.update(doc(db, "userProfiles", travelerId), {
-          walletBalance: increment(amount),
+          walletBalance: increment(netTravelerAmount),
           successfulDealsCount: increment(1),
           updatedAt: serverTimestamp()
         });
         batch.set(doc(collection(db, "userProfiles", travelerId, "transactions")), {
-          amount: amount,
+          amount: agreedPrice,
           type: "payout",
-          description: `Marketplace Earnings - Fee: ${data.listingTitle}`,
+          description: `Marketplace Earnings: ${data.listingTitle}`,
+          createdAt: serverTimestamp()
+        });
+        batch.set(doc(collection(db, "userProfiles", travelerId, "transactions")), {
+          amount: -commission,
+          type: "commission",
+          description: `Platform Fee: ${data.listingTitle}`,
           createdAt: serverTimestamp()
         });
       }
 
-      // Add to Admin wallet if found
+      // Add to Admin wallet
       if (adminId) {
         batch.update(doc(db, "userProfiles", adminId), {
           walletBalance: increment(commission),
@@ -291,7 +291,7 @@ export default function ChatRoomPage() {
         batch.set(doc(collection(db, "userProfiles", adminId, "transactions")), {
           amount: commission,
           type: "commission",
-          description: `Platform Fee from deal: ${data.listingTitle}`,
+          description: `Commission from traveler: ${data.listingTitle}`,
           createdAt: serverTimestamp()
         });
       }
@@ -485,14 +485,31 @@ export default function ChatRoomPage() {
       return;
     }
 
-    const totalCost = (listing?.listerId === user.uid) ? 1000 : (convData.agreedPrice + 1000);
-    if ((profile?.walletBalance || 0) < totalCost) {
-      toast({
-        variant: "destructive",
-        title: "Insufficient Balance",
-        description: `You need at least ${totalCost} DA to complete this deal.`,
-      });
-      return;
+    const agreedPrice = convData.agreedPrice;
+    
+    // VALIDATIONS:
+    if (!isLister) {
+      // Buyer needs enough for exactly the agreed price
+      if ((profile?.walletBalance || 0) < agreedPrice) {
+        toast({
+          variant: "destructive",
+          title: "Insufficient Balance",
+          description: `You need at least ${agreedPrice} DA to pay for this deal.`,
+        });
+        return;
+      }
+    } else {
+      // Traveler receives agreedPrice and then pays 1000 commission.
+      // Rule: Traveler must have at least 1000 DZD after receiving.
+      const travelerFutureBalance = (profile?.walletBalance || 0) + agreedPrice;
+      if (travelerFutureBalance < 1000) {
+        toast({
+          variant: "destructive",
+          title: "Transaction Blocked",
+          description: `The traveler must have at least 1000 DA after receiving funds to pay the platform fee.`,
+        });
+        return;
+      }
     }
 
     setRatingLoading(true);
@@ -749,7 +766,7 @@ export default function ChatRoomPage() {
             <DialogTitle>Finalize & Settle</DialogTitle>
             <DialogDescription>
               Completing this will process the payment of {convData?.agreedPrice} DA.
-              <br />A 1000 DA platform fee will be deducted from your wallet.
+              {isLister && <p className="mt-2 text-primary font-bold">A 1000 DA platform fee will be deducted from your payout.</p>}
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-center gap-2 py-8">
