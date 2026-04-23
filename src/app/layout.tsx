@@ -5,7 +5,6 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { FirebaseClientProvider } from '@/firebase';
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from '@/context/ThemeContext';
-import Script from 'next/script';
 
 export const metadata: Metadata = {
   title: 'GetMeDZ - P2P Marketplace for Travelers & Buyers',
@@ -38,10 +37,6 @@ export default function RootLayout({
             </ThemeProvider>
           </AuthProvider>
         </FirebaseClientProvider>
-        <Script 
-          src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" 
-          strategy="lazyOnload" 
-        />
       </body>
     </html>
   );

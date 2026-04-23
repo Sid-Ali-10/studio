@@ -28,13 +28,6 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 
-declare global {
-  interface Window {
-    google: any;
-    googleTranslateElementInit: () => void;
-  }
-}
-
 export default function ProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const id = resolvedParams.id;
@@ -66,29 +59,6 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
   });
 
   const isOwnProfile = currentUser?.uid === id;
-
-  useEffect(() => {
-    if (isOwnProfile && typeof window !== 'undefined') {
-      const initTranslate = () => {
-        if (window.google && window.google.translate) {
-          new window.google.translate.TranslateElement(
-            { 
-              pageLanguage: 'en', 
-              layout: window.google.translate.TranslateElement.InlineLayout.SIMPLE,
-              autoDisplay: false
-            },
-            'google_translate_element'
-          );
-        }
-      };
-
-      window.googleTranslateElementInit = initTranslate;
-      
-      if (window.google && window.google.translate) {
-        initTranslate();
-      }
-    }
-  }, [isOwnProfile, id]);
 
   const fetchProfileData = async () => {
     setLoading(true);
@@ -344,9 +314,6 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                     >
                       {theme === "light" ? <Moon size={22} /> : <Sun size={22} />}
                     </Button>
-                  </div>
-                  <div className="translate-widget-container transition-all hover:opacity-100 opacity-90">
-                    <div id="google_translate_element"></div>
                   </div>
                 </div>
               )}
