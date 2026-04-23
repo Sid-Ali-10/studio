@@ -1,21 +1,20 @@
+'use client';
 
-"use client";
-
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { ShieldCheck, Lock, ArrowRight, AlertCircle, Loader2, Eye, EyeOff } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { auth, db } from "@/lib/firebase";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { ShieldCheck, Lock, ArrowRight, AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { auth, db } from '@/lib/firebase';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 // The secret key for admin access
-const ADMIN_SECRET = "GetMeDZ_Admin";
+const ADMIN_SECRET = 'GetMeDZ_Admin';
 
 export default function AdminLoginPage() {
-  const [key, setKey] = useState("");
+  const [key, setKey] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -25,39 +24,43 @@ export default function AdminLoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
+
     if (key === ADMIN_SECRET) {
       try {
         const currentUser = auth.currentUser;
-        
+
         // If a user is logged in, promote them to Admin in Firestore
         // so the Security Rules allow them to fetch all data.
         if (currentUser) {
-          const profileRef = doc(db, "userProfiles", currentUser.uid);
+          const profileRef = doc(db, 'userProfiles', currentUser.uid);
           // Using setDoc with merge is safer than updateDoc as it creates the doc if missing
-          await setDoc(profileRef, {
-            isAdmin: true,
-            updatedAt: serverTimestamp()
-          }, { merge: true });
+          await setDoc(
+            profileRef,
+            {
+              isAdmin: true,
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+          );
         } else {
-          toast({ 
-            variant: "destructive", 
-            title: "Authentication Required", 
-            description: "You must be logged into your account before unlocking the admin panel." 
+          toast({
+            variant: 'destructive',
+            title: 'Authentication Required',
+            description: 'You must be logged into your account before unlocking the admin panel.',
           });
           setLoading(false);
           return;
         }
 
-        sessionStorage.setItem("admin_token", "authorized_dz_admin");
-        toast({ title: "Access Granted", description: "Admin privileges synchronized with your account." });
-        router.push("/admin/dashboard");
+        sessionStorage.setItem('admin_token', 'authorized_dz_admin');
+        toast({ title: 'Access Granted', description: 'Admin privileges synchronized with your account.' });
+        router.push('/admin/dashboard');
       } catch (err: any) {
-        console.error("Admin promotion failed:", err);
-        toast({ 
-          variant: "destructive", 
-          title: "Sync Error", 
-          description: "Could not verify admin status in the database. Please try again." 
+        console.error('Admin promotion failed:', err);
+        toast({
+          variant: 'destructive',
+          title: 'Sync Error',
+          description: 'Could not verify admin status in the database. Please try again.',
         });
       } finally {
         setLoading(false);
@@ -65,10 +68,10 @@ export default function AdminLoginPage() {
     } else {
       setError(true);
       setLoading(false);
-      toast({ 
-        variant: "destructive", 
-        title: "Access Denied", 
-        description: "Invalid secret key. Access is restricted to authorized personnel." 
+      toast({
+        variant: 'destructive',
+        title: 'Access Denied',
+        description: 'Invalid secret key. Access is restricted to authorized personnel.',
       });
     }
   };
@@ -90,9 +93,11 @@ export default function AdminLoginPage() {
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                 <Input
-                  type={showPassword ? "text" : "password"}
+                  type={showPassword ? 'text' : 'password'}
                   placeholder="Enter Secret Key"
-                  className={`pl-10 pr-10 h-14 rounded-2xl border-2 transition-all ${error ? 'border-destructive' : 'focus:border-primary'}`}
+                  className={`pl-10 pr-10 h-14 rounded-2xl border-2 transition-all duration-200 ${
+                    error ? 'border-destructive' : 'focus:border-primary'
+                  }`}
                   value={key}
                   onChange={(e) => {
                     setKey(e.target.value);
@@ -103,8 +108,8 @@ export default function AdminLoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors focus:outline-none"
-                  title={showPassword ? "Hide secret key" : "Show secret key"}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-muted-foreground hover:text-primary hover:bg-muted rounded-full transition-all duration-200 active:scale-90 focus:outline-none"
+                  title={showPassword ? 'Hide secret key' : 'Show secret key'}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -116,11 +121,15 @@ export default function AdminLoginPage() {
               )}
             </div>
 
-            <Button type="submit" className="w-full h-14 rounded-2xl font-bold text-lg gap-2 shadow-lg" disabled={loading}>
+            <Button
+              type="submit"
+              className="w-full h-14 rounded-2xl font-bold text-lg gap-2 shadow-lg transition-all duration-200 active:scale-[0.98]"
+              disabled={loading}
+            >
               {loading ? <Loader2 className="animate-spin" /> : <>Unlock Panel <ArrowRight size={20} /></>}
             </Button>
           </form>
-          
+
           <p className="text-center text-[10px] text-muted-foreground mt-8 uppercase tracking-widest font-bold">
             Authorized Personnel Only
           </p>
