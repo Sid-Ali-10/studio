@@ -570,20 +570,22 @@ export default function AdminDashboard() {
                 .map((t) => (
                   <Card
                     key={t.id}
-                    className="rounded-2xl border-none shadow-sm p-4 flex items-center justify-between hover:bg-muted/30 transition-all duration-200"
+                    className="rounded-2xl border-none shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-muted/30 transition-all duration-200"
                   >
                     <div className="flex items-center gap-4 min-w-0">
                       <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent shrink-0">
                         <History size={24} />
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p className="font-black text-sm truncate">{t.description}</p>
                         <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
                           {t.createdAt ? format(t.createdAt.toDate(), 'PPPp') : 'Processing'}
                         </p>
                       </div>
                     </div>
-                    <div className="font-black text-accent text-right shrink-0">+{t.amount.toLocaleString()} DA</div>
+                    <div className="font-black text-accent text-right sm:shrink-0 text-lg">
+                      +{t.amount.toLocaleString()} DA
+                    </div>
                   </Card>
                 ))}
             </div>
