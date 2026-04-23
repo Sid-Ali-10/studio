@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -605,13 +606,13 @@ export default function AdminDashboard() {
                         <History size={24} />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="font-black text-sm truncate">{t.description}</p>
-                        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
+                        <p className="font-black text-sm truncate text-start">{t.description}</p>
+                        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider text-start">
                           {t.createdAt ? format(t.createdAt.toDate(), 'PPPp') : 'Processing'}
                         </p>
                       </div>
                     </div>
-                    <div className="font-black text-accent text-left sm:text-right shrink-0 text-lg">
+                    <div className="font-black text-accent text-start sm:text-end shrink-0 text-lg">
                       +{t.amount.toLocaleString()} DA
                     </div>
                   </Card>
@@ -620,7 +621,7 @@ export default function AdminDashboard() {
           </TabsContent>
 
           <TabsContent value="settings">
-            <Card className="rounded-3xl border-none shadow-sm overflow-hidden">
+            <Card className="rounded-3xl border-none shadow-sm overflow-hidden text-start">
               <CardHeader className="bg-muted/30 p-6">
                 <CardTitle className="flex items-center gap-2 text-xl font-black">
                   <Settings size={20} /> Platform Config
@@ -636,7 +637,7 @@ export default function AdminDashboard() {
                       <Input
                         id="commission"
                         type="number"
-                        className="pl-12 h-14 rounded-xl transition-all duration-200 focus:ring-primary/20 border-none shadow-sm bg-muted/30 font-black"
+                        className="pl-12 h-14 rounded-xl transition-all duration-200 focus:ring-primary/20 border-none shadow-sm bg-muted/30 font-black text-start"
                         value={platformCommission}
                         onChange={(e) => setPlatformCommission(Number(e.target.value))}
                       />

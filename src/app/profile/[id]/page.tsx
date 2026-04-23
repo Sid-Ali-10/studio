@@ -170,9 +170,9 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
             <div className="w-32 h-32 md:w-40 md:h-40 bg-white dark:bg-card rounded-3xl shadow-xl flex items-center justify-center text-4xl font-bold text-primary border-4 border-primary/10 transition-transform duration-300 hover:scale-105">
               {profileToShow?.username?.substring(0, 2).toUpperCase()}
             </div>
-            <div className="flex-1 text-center md:text-left space-y-4">
+            <div className="flex-1 text-center md:text-start space-y-4">
               <div className="space-y-1">
-                <div className="flex flex-col md:flex-row md:items-center gap-2">
+                <div className="flex flex-col md:flex-row md:items-center gap-2 justify-center md:justify-start">
                   <h1 className="text-3xl font-bold">{profileToShow?.username}</h1>
                   {profileToShow?.isVerified && (
                     <Badge className="bg-primary/10 text-primary border-none rounded-full px-3 gap-1">
@@ -180,7 +180,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                     </Badge>
                   )}
                 </div>
-                <p className="text-muted-foreground">{profileToShow?.email}</p>
+                <p className="text-muted-foreground break-all">{profileToShow?.email}</p>
               </div>
               
               <div className="flex flex-wrap justify-center md:justify-start gap-4">
@@ -203,7 +203,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
 
               {isOwnProfile && (
                 <div className="flex flex-col gap-4 pt-2 items-center md:items-start">
-                  <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3 justify-center md:justify-start">
                     <Select value={language} onValueChange={(val) => setLanguage(val as Language)}>
                       <SelectTrigger className="w-[140px] rounded-xl bg-card border-none shadow-sm h-10">
                         <Languages className="mr-2 h-4 w-4" />
