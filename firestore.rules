@@ -24,6 +24,7 @@ service cloud.firestore {
     function isAdmin() {
       // Robust check for administrative privileges
       return isSignedIn() && 
+             exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
              get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.get('isAdmin', false) == true;
     }
 
@@ -44,7 +45,7 @@ service cloud.firestore {
                        isAdmin() || 
                        (isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isAdmin', 'updatedAt']));
       
-      allow delete: if isExistingOwner(userId) || isAdmin();
+      allow delete: if isAdmin() || isExistingOwner(userId);
 
       match /favorites/{favoriteId} {
         allow get, list: if isOwner(userId) || isAdmin();

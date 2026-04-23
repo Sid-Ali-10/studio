@@ -1,9 +1,10 @@
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { db, auth } from '@/lib/firebase';
-import { collection, getDocs, doc, getDoc, query, where, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, setDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -22,13 +23,11 @@ import {
   Banknote,
   History,
   Settings,
-  Mail,
   RefreshCw,
   Save,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
-import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { Label } from '@/components/ui/label';
@@ -54,6 +53,7 @@ export default function AdminDashboard() {
   // Platform Settings
   const [platformCommission, setPlatformCommission] = useState(1000);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [processingAction, setProcessingAction] = useState<string | null>(null);
 
   const router = useRouter();
   const { toast } = useToast();
@@ -126,83 +126,75 @@ export default function AdminDashboard() {
 
   const handleResetPassword = async (email: string) => {
     if (!confirm(`Send password reset email to ${email}?`)) return;
+    setProcessingAction(`reset-${email}`);
     try {
       await sendPasswordResetEmail(auth, email);
-      toast({ title: 'Email Sent', description: 'Password assistance link has been dispatched.' });
+      toast({ title: 'Email Sent', description: `A password assistance link has been sent to ${email}.` });
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Action Failed', description: err.message });
+    } finally {
+      setProcessingAction(null);
     }
   };
 
   const fetchData = async (adminUid: string) => {
     setLoading(true);
 
-    // Fetch users
-    const usersPromise = getDocs(collection(db, 'userProfiles'))
-      .then((snap) => {
-        const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        setUsers(data);
-        return snap.size;
-      })
-      .catch(() => 0);
-
-    // Fetch listings
-    const listingsPromise = getDocs(collection(db, 'listings'))
-      .then((snap) => {
-        const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        setListings(data);
-        return snap.size;
-      })
-      .catch(() => 0);
-
-    // Fetch conversations
-    const convosPromise = getDocs(collection(db, 'conversations'))
-      .then((snap) => {
-        const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        setConvos(data);
-        return snap.size;
-      })
-      .catch(() => 0);
-
-    // Fetch transactions for commissions (this admin's wallet acts as platform wallet)
-    const commissionsPromise = getDocs(collection(db, 'userProfiles', adminUid, 'transactions'))
-      .then((snap) => {
-        const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        setAllTransactions(data);
-        const total = data.filter((t) => t.type === 'commission').reduce((sum, t) => sum + t.amount, 0);
-        return total;
-      })
-      .catch(() => 0);
-
     try {
-      const [uCount, lCount, cCount, commSum] = await Promise.all([
-        usersPromise,
-        listingsPromise,
-        convosPromise,
-        commissionsPromise,
-      ]);
+      // Fetch users
+      const usersSnap = await getDocs(collection(db, 'userProfiles'));
+      const usersData = usersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setUsers(usersData);
+
+      // Fetch listings
+      const listingsSnap = await getDocs(collection(db, 'listings'));
+      const listingsData = listingsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setListings(listingsData);
+
+      // Fetch conversations
+      const convosSnap = await getDocs(collection(db, 'conversations'));
+      const convosData = convosSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setConvos(convosData);
+
+      // Fetch transactions for commissions (this admin's wallet acts as platform wallet)
+      const transSnap = await getDocs(collection(db, 'userProfiles', adminUid, 'transactions'));
+      const transData = transSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setAllTransactions(transData);
+
+      const commSum = transData
+        .filter((t) => t.type === 'commission')
+        .reduce((sum, t) => sum + t.amount, 0);
+
       setStats({
-        totalUsers: uCount,
-        totalListings: lCount,
-        totalConvos: cCount,
+        totalUsers: usersSnap.size,
+        totalListings: listingsSnap.size,
+        totalConvos: convosSnap.size,
         totalCommission: commSum,
       });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Data Load Error', description: 'Could not retrieve platform statistics.' });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = (coll: string, id: string) => {
-    if (!confirm(`Are you sure you want to delete this ${coll.slice(0, -1)}?`)) return;
+  const handleDelete = async (coll: string, id: string) => {
+    if (!confirm(`Are you sure you want to permanently delete this ${coll.slice(0, -1)}?`)) return;
+    setProcessingAction(`delete-${id}`);
 
-    const docRef = doc(db, coll, id);
-    deleteDocumentNonBlocking(docRef);
+    try {
+      await deleteDoc(doc(db, coll, id));
+      
+      if (coll === 'userProfiles') setUsers((prev) => prev.filter((u) => u.id !== id));
+      if (coll === 'listings') setListings((prev) => prev.filter((l) => l.id !== id));
+      if (coll === 'conversations') setConvos((prev) => prev.filter((c) => c.id !== id));
 
-    if (coll === 'userProfiles') setUsers((prev) => prev.filter((u) => u.id !== id));
-    if (coll === 'listings') setListings((prev) => prev.filter((l) => l.id !== id));
-    if (coll === 'conversations') setConvos((prev) => prev.filter((c) => c.id !== id));
-
-    toast({ title: 'Deleted', description: 'Resource removed successfully.' });
+      toast({ title: 'Success', description: 'Resource removed successfully.' });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Deletion Failed', description: err.message });
+    } finally {
+      setProcessingAction(null);
+    }
   };
 
   const handleLogout = () => {
@@ -359,18 +351,20 @@ export default function AdminDashboard() {
                         size="icon"
                         className="rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all duration-200 active:scale-90"
                         onClick={() => handleResetPassword(u.email)}
-                        title="Reset Password"
+                        disabled={processingAction === `reset-${u.email}`}
+                        title="Send Password Reset Email"
                       >
-                        <RefreshCw size={18} />
+                        {processingAction === `reset-${u.email}` ? <Loader2 className="animate-spin w-4 h-4" /> : <RefreshCw size={18} />}
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
                         className="rounded-full text-destructive hover:text-white hover:bg-destructive transition-all duration-200 active:scale-90"
                         onClick={() => handleDelete('userProfiles', u.id)}
+                        disabled={processingAction === `delete-${u.id}`}
                         title="Delete User"
                       >
-                        <Trash2 size={18} />
+                        {processingAction === `delete-${u.id}` ? <Loader2 className="animate-spin w-4 h-4" /> : <Trash2 size={18} />}
                       </Button>
                     </div>
                   </Card>
@@ -398,8 +392,9 @@ export default function AdminDashboard() {
                       size="icon"
                       className="rounded-full text-destructive hover:text-white hover:bg-destructive transition-all duration-200 active:scale-90"
                       onClick={() => handleDelete('listings', l.id)}
+                      disabled={processingAction === `delete-${l.id}`}
                     >
-                      <Trash2 size={18} />
+                      {processingAction === `delete-${l.id}` ? <Loader2 className="animate-spin w-4 h-4" /> : <Trash2 size={18} />}
                     </Button>
                   </Card>
                 ))}
@@ -432,8 +427,9 @@ export default function AdminDashboard() {
                       size="icon"
                       className="rounded-full text-destructive hover:text-white hover:bg-destructive transition-all duration-200 active:scale-90"
                       onClick={() => handleDelete('conversations', c.id)}
+                      disabled={processingAction === `delete-${c.id}`}
                     >
-                      <Trash2 size={18} />
+                      {processingAction === `delete-${c.id}` ? <Loader2 className="animate-spin w-4 h-4" /> : <Trash2 size={18} />}
                     </Button>
                   </div>
                 </Card>
