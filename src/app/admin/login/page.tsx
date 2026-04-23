@@ -12,7 +12,7 @@ import { auth, db } from "@/lib/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 // The secret key for admin access
-const ADMIN_SECRET = "GetMeDZ_Admin_2025";
+const ADMIN_SECRET = "GetMeDZ_Admin";
 
 export default function AdminLoginPage() {
   const [key, setKey] = useState("");
