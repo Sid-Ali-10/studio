@@ -56,10 +56,10 @@ export default function NewListingPage() {
 
       addDocumentNonBlocking(listingsRef, listingData);
       
-      toast({ title: t('Listing created!'), description: t('Your post is now live.') });
+      toast({ title: t('listing_created'), description: t('listing_live') });
       router.push("/");
     } catch (error: any) {
-      toast({ variant: "destructive", title: t('Error'), description: error.message });
+      toast({ variant: "destructive", title: t('error'), description: error.message });
     } finally {
       setLoading(false);
     }

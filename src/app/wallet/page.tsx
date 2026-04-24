@@ -84,9 +84,9 @@ export default function WalletPage() {
         updatedAt: serverTimestamp()
       });
 
-      toast({ title: "Success", description: `${amount} DA added to wallet.` });
+      toast({ title: t('success'), description: `${amount} ${t('recharge_success')}` });
     } catch (err) {
-      toast({ variant: "destructive", title: "Failed", description: "Recharge failed." });
+      toast({ variant: "destructive", title: t('failed'), description: t('recharge_failed') });
     } finally {
       setRechargeLoading(null);
     }

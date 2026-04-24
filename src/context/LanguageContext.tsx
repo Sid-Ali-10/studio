@@ -43,6 +43,8 @@ export const translations: Translations = {
   budget: { en: "Budget", ar: "الميزانية", fr: "Budget" },
   connect: { en: "Connect", ar: "تواصل", fr: "Connecter" },
   connected: { en: "Connected", ar: "متصل", fr: "Connecté" },
+  listing_deleted: { en: "Listing deleted", ar: "تم حذف الإعلان", fr: "Annonce supprimée" },
+  confirm_delete: { en: "Are you sure?", ar: "هل أنت متأكد؟", fr: "Êtes-vous sûr ?" },
 
   // Saved Listings Page
   saved_title: { en: "Saved Listings", ar: "الإعلانات المحفوظة", fr: "Annonces enregistrées" },
@@ -50,6 +52,7 @@ export const translations: Translations = {
   no_saved: { en: "Nothing saved", ar: "لا يوجد شيء محفوظ", fr: "Rien d'enregistré" },
   no_saved_desc: { en: "Go to the main board and heart some posts!", ar: "اذهب إلى اللوحة الرئيسية وأضف بعض المنشورات للمفضلة!", fr: "Allez sur le tableau principal et mettez des cœurs sur des publications !" },
   browse_board: { en: "Browse Board", ar: "تصفح اللوحة", fr: "Parcourir le tableau" },
+  removed_favorite: { en: "Removed from favorites", ar: "تمت الإزالة من المحفوظات", fr: "Supprimé des favoris" },
 
   // Create Listing Page
   create_listing_title: { en: "Create Listing", ar: "إنشاء إعلان", fr: "Créer une annonce" },
@@ -80,6 +83,9 @@ export const translations: Translations = {
   placeholder_budget: { en: "e.g. 20000", ar: "مثلاً: 20000", fr: "ex: 20000" },
   btn_create_post: { en: "Create Post", ar: "إنشاء منشور", fr: "Créer une publication" },
   btn_posting: { en: "Posting...", ar: "جاري النشر...", fr: "Publication en cours..." },
+  listing_created: { en: "Listing created!", ar: "تم إنشاء الإعلان!", fr: "Annonce créée !" },
+  listing_live: { en: "Your post is now live.", ar: "منشورك متاح الآن.", fr: "Votre publication est maintenant en ligne." },
+  error: { en: "Error", ar: "خطأ", fr: "Erreur" },
 
   // Wallet
   wallet_title: { en: "Wallet", ar: "المحفظة", fr: "Portefeuille" },
@@ -98,6 +104,10 @@ export const translations: Translations = {
   recharge_desc: { en: "Wallet Recharge", ar: "شحن المحفظة", fr: "Recharge du portefeuille" },
   marketplace_fee: { en: "Marketplace fee", ar: "رسوم السوق", fr: "Frais de marché" },
   platform_fee_deal: { en: "Platform Fee from deal", ar: "رسوم المنصة من الصفقة", fr: "Frais de plateforme de la transaction" },
+  recharge_success: { en: "added to wallet.", ar: "تمت إضافتها إلى المحفظة.", fr: "ajouté au portefeuille." },
+  recharge_failed: { en: "Recharge failed.", ar: "فشل الشحن.", fr: "Échec de la recharge." },
+  success: { en: "Success", ar: "تم بنجاح", fr: "Succès" },
+  failed: { en: "Failed", ar: "فشل", fr: "Échec" },
   
   // Chat & Messages
   messages_subtitle: { en: "Manage your deals and connections.", ar: "إدارة صفقاتك واتصالاتك.", fr: "Gérez vos transactions et vos relations." },
@@ -132,6 +142,20 @@ export const translations: Translations = {
   finalize_desc: { en: "Completing this confirms the deal took place.", ar: "إكمال هذا يؤكد إتمام الصفقة.", fr: "Confirme que la transaction a eu lieu." },
   rate_complete: { en: "Rate & Complete Deal", ar: "تقييم وإتمام الصفقة", fr: "Évaluer et terminer" },
   listing_details: { en: "Listing Details", ar: "تفاصيل الإعلان", fr: "Détails de l'annonce" },
+  offer_sent: { en: "Offer sent", ar: "تم إرسال العرض", fr: "Offre envoyée" },
+  offer_failed: { en: "Failed to send offer", ar: "فشل إرسال العرض", fr: "Échec de l'envoi de l'offre" },
+  offer_accepted: { en: "Offer Accepted!", ar: "تم قبول العرض!", fr: "Offre acceptée !" },
+  offer_rejected: { en: "Offer Rejected", ar: "تم رفض العرض", fr: "Offre rejetée" },
+  msg_updated: { en: "Message updated", ar: "تم تحديث الرسالة", fr: "Message mis à jour" },
+  msg_deleted: { en: "Message deleted", ar: "تم حذف الرسالة", fr: "Message supprimé" },
+  conv_removed: { en: "Conversation removed", ar: "تمت إزالة المحادثة", fr: "Discussion supprimée" },
+  rating_saved: { en: "Rating saved!", ar: "تم حفظ التقييم!", fr: "Évaluation enregistrée !" },
+  report_sent: { en: "Report Sent", ar: "تم إرسال البلاغ", fr: "Signalement envoyé" },
+  deal_finalized: { en: "Deal Finalized!", ar: "تم إتمام الصفقة!", fr: "Transaction finalisée !" },
+  incomplete_deal: { en: "Incomplete Deal", ar: "صفقة غير مكتملة", fr: "Transaction incomplète" },
+  insufficient_balance: { en: "Insufficient Balance", ar: "رصيد غير كافٍ", fr: "Solde insuffisant" },
+  auth_required: { en: "Auth required", ar: "التوثيق مطلوب", fr: "Authentification requise" },
+  login_connect: { en: "Log in to connect.", ar: "سجل الدخول للتواصل.", fr: "Connectez-vous pour continuer." },
   
   // Filters
   search_placeholder: { en: "Search by title or description...", ar: "بحث عن طريق العنوان أو الوصف...", fr: "Recherche par titre ou description..." },

@@ -105,7 +105,7 @@ export default function ChatListPage() {
       }
 
       await batch.commit();
-      toast({ title: "Deal Finalized!" });
+      toast({ title: t('deal_finalized') });
     } catch (err) {
       console.error("Auto-finalization failed:", err);
     }
@@ -156,7 +156,7 @@ export default function ChatListPage() {
     e.stopPropagation();
     
     if (!user) return;
-    if (!confirm("Hide this conversation from your list?")) return;
+    if (!confirm(t('confirm_delete'))) return;
 
     try {
       const chatRef = doc(db, "conversations", chatId);
@@ -178,11 +178,11 @@ export default function ChatListPage() {
           });
         }
         
-        toast({ title: "Conversation removed" });
+        toast({ title: t('conv_removed') });
       }
     } catch (err) {
       console.error("Delete failed:", err);
-      toast({ variant: "destructive", title: "Action failed" });
+      toast({ variant: "destructive", title: t('failed') });
     }
   };
 

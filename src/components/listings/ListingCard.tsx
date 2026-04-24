@@ -67,7 +67,7 @@ export function ListingCard({ listing, isFavorited, onToggleFavorite, onDelete }
   const handleConnect = async (e: React.MouseEvent) => {
     e.preventDefault();
     if (!user) {
-      toast({ title: 'Auth required', description: 'Log in to connect.' });
+      toast({ title: t('auth_required'), description: t('login_connect') });
       return;
     }
 
@@ -95,7 +95,7 @@ export function ListingCard({ listing, isFavorited, onToggleFavorite, onDelete }
       setHasConnected(true);
       toast({
         title: t('connected'),
-        description: "View chat in Messages.",
+        description: t('conv_started'),
         action: <ToastAction altText="Open" onClick={() => router.push(`/chat/${convoId}`)}>Open Chat</ToastAction>,
       });
     } catch (err) {
@@ -130,21 +130,21 @@ export function ListingCard({ listing, isFavorited, onToggleFavorite, onDelete }
       <CardContent className="space-y-4 flex-1">
         <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">{listing.description}</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground text-start">
             <Globe size={16} className="text-primary shrink-0" />
             <span className="truncate"><span className="font-bold opacity-70 text-[10px] uppercase">{t('from')}:</span> {listing.city}</span>
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground text-start">
             <MapPin size={16} className="text-primary shrink-0" />
             <span className="truncate"><span className="font-bold opacity-70 text-[10px] uppercase">{t('to')}:</span> {listing.destination}</span>
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground text-start">
             <Calendar size={16} className="text-primary shrink-0" />
             <span className="truncate"><span className="font-bold opacity-70 text-[10px] uppercase">{t('arriving')}:</span> {listing.date}</span>
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground text-start">
             {listing.type === 'traveler' ? <Weight size={16} className="text-primary shrink-0" /> : <ShoppingBag size={16} className="text-accent shrink-0" />}
-            <span className="truncate"><span className="font-bold opacity-70 text-[10px] uppercase">{listing.type === 'traveler' ? t('weight') : t('budget')}:</span> {listing.type === 'traveler' ? `${listing.weight} kg` : `${listing.price} DA`}</span>
+            <span className="truncate"><span className="font-bold opacity-70 text-[10px] uppercase">{listing.type === 'traveler' ? t('weight') : t('budget')}:</span> {listing.type === 'traveler' ? `${listing.weight} kg` : `${listing.price} ${t('currency_da')}`}</span>
           </div>
         </div>
       </CardContent>
@@ -153,7 +153,7 @@ export function ListingCard({ listing, isFavorited, onToggleFavorite, onDelete }
           <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold">
             {listing.userName?.substring(0, 2).toUpperCase()}
           </div>
-          <div className="flex flex-col">
+          <div className="flex flex-col text-start">
             <span className="text-xs font-semibold">{listing.userName}</span>
             <div className="flex items-center gap-0.5"><Star size={10} className="fill-yellow-400 text-yellow-400" /><span className="text-[10px]">{listing.userRating}</span></div>
           </div>

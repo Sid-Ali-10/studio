@@ -226,12 +226,12 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
             setLoading(false);
           });
         } else {
-          setError("Conversation not found.");
+          setError(t('conv_not_found'));
           setLoading(false);
         }
       } catch (err) {
         setLoading(false);
-        setError("Access restricted.");
+        setError(t('access_restricted'));
       }
     };
 
@@ -252,9 +252,9 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       });
       setIsOfferDialogOpen(false);
       setOfferPrice("");
-      toast({ title: "Offer sent" });
+      toast({ title: t('offer_sent') });
     } catch (err) {
-      toast({ variant: "destructive", title: "Failed to send offer" });
+      toast({ variant: "destructive", title: t('offer_failed') });
     }
   };
 
@@ -271,10 +271,10 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       }
       await updateDoc(doc(db, "conversations", activeConvId), updates);
       toast({ 
-        title: accepted ? "Offer Accepted!" : "Offer Rejected"
+        title: accepted ? t('offer_accepted') : t('offer_rejected')
       });
     } catch (err) {
-      toast({ variant: "destructive", title: "Error responding to offer" });
+      toast({ variant: "destructive", title: t('error') });
     }
   };
 
@@ -316,27 +316,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
         deletedBy: [] 
       });
     } catch (err) {
-      toast({ variant: "destructive", title: "Message failed" });
-    }
-  };
-
-  const handleReaction = async (messageId: string, emoji: string) => {
-    if (!user || !activeConvId || isAdminView) return;
-    const msgRef = doc(db, "conversations", activeConvId, "messages", messageId);
-    try {
-      const msgSnap = await getDoc(msgRef);
-      if (!msgSnap.exists()) return;
-      const reactions = (msgSnap.data().reactions as Record<string, string[]>) || {};
-      const currentUsers = reactions[emoji] || [];
-      let newUsers = currentUsers.includes(user.uid) 
-        ? currentUsers.filter(uid => uid !== user.uid) 
-        : [...currentUsers, user.uid];
-      const newReactions = { ...reactions };
-      if (newUsers.length === 0) delete newReactions[emoji];
-      else newReactions[emoji] = newUsers;
-      await updateDoc(msgRef, { reactions: newReactions });
-    } catch (err) {
-      console.error("Reaction failed:", err);
+      toast({ variant: "destructive", title: t('failed') });
     }
   };
 
@@ -357,9 +337,9 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       });
       setEditingMessage(null);
       setNewMessage("");
-      toast({ title: "Message updated" });
+      toast({ title: t('msg_updated') });
     } catch (err) {
-      toast({ variant: "destructive", title: "Edit failed" });
+      toast({ variant: "destructive", title: t('failed') });
     }
   };
 
@@ -367,15 +347,15 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
     if (!activeConvId) return;
     try {
       await deleteDoc(doc(db, "conversations", activeConvId, "messages", messageId));
-      toast({ title: "Message deleted" });
+      toast({ title: t('msg_deleted') });
     } catch (err) {
-      toast({ variant: "destructive", title: "Delete failed" });
+      toast({ variant: "destructive", title: t('failed') });
     }
   };
 
   const handleDeleteConversation = async () => {
     if (!activeConvId || !user || !convData) return;
-    if (!confirm("Remove this conversation?")) return;
+    if (!confirm(t('confirm_delete'))) return;
 
     try {
       const deletedByList = [...(convData.deletedBy || []), user.uid];
@@ -394,10 +374,10 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       }
       
       router.push(profile?.isAdmin ? "/admin/dashboard" : "/chat");
-      toast({ title: "Conversation removed" });
+      toast({ title: t('conv_removed') });
     } catch (err) {
       console.error("Deletion failed:", err);
-      toast({ variant: "destructive", title: "Delete failed" });
+      toast({ variant: "destructive", title: t('failed') });
     }
   };
 
@@ -405,7 +385,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
     if (isAdminView || !activeConvId || !user || !convData) return;
     
     if (!convData.agreedPrice) {
-      toast({ variant: "destructive", title: "Incomplete Deal" });
+      toast({ variant: "destructive", title: t('incomplete_deal') });
       return;
     }
 
@@ -415,7 +395,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       if ((profile?.walletBalance || 0) < agreedPrice) {
         toast({
           variant: "destructive",
-          title: "Insufficient Balance",
+          title: t('insufficient_balance'),
         });
         return;
       }
@@ -437,10 +417,10 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
         createdAt: serverTimestamp()
       });
 
-      toast({ title: "Rating saved!" });
+      toast({ title: t('rating_saved') });
       setIsRatingOpen(false);
     } catch (err) {
-      toast({ variant: "destructive", title: "Error" });
+      toast({ variant: "destructive", title: t('error') });
     } finally {
       setRatingLoading(false);
     }
@@ -457,7 +437,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       const url = await getDownloadURL(storageRef);
       handleSendMessage(undefined, url);
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Upload failed" });
+      toast({ variant: "destructive", title: t('failed') });
     } finally {
       setUploading(false);
     }
@@ -478,26 +458,19 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
         createdAt: serverTimestamp()
       });
       toast({ 
-        title: "Report Sent"
+        title: t('report_sent')
       });
       setIsReportOpen(false);
       setReportReason("");
     } catch (err) {
-      toast({ variant: "destructive", title: "Error" });
+      toast({ variant: "destructive", title: t('error') });
     } finally {
       setIsReporting(false);
     }
   };
 
-  const canModify = (timestamp: any) => {
-    if (isAdminView) return false;
-    if (!timestamp) return true;
-    const sentAt = timestamp.toDate().getTime();
-    return (Date.now() - sentAt) < (10 * 60 * 1000);
-  };
-
   if (loading) return <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4"><Loader2 className="animate-spin text-primary" size={40} /><p className="text-muted-foreground">{t('loading_conversations') || "..."}</p></div>;
-  if (error) return <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center"><AlertCircle size={40} className="text-destructive" /><h2 className="text-xl font-bold">Error</h2><p>{error}</p><Button onClick={() => router.push("/chat")}>Back to Inbox</Button></div>;
+  if (error) return <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center"><AlertCircle size={40} className="text-destructive" /><h2 className="text-xl font-bold">{t('error')}</h2><p>{error}</p><Button onClick={() => router.push("/chat")}>{t('browse_board')}</Button></div>;
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] md:h-[calc(100vh-6rem)] max-w-4xl mx-auto">
@@ -534,7 +507,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
             onClick={() => setIsDetailsOpen(true)} 
             className="text-[10px] sm:text-xs text-muted-foreground truncate italic hover:text-primary flex items-center gap-1 transition-all duration-200 active:opacity-70"
           >
-            {listing?.title || "Marketplace Listing"} <Info size={10} />
+            {listing?.title || t('listing_details')} <Info size={10} />
           </button>
         </div>
         <div className="flex items-center gap-2">
@@ -612,7 +585,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       <div className="flex-1 overflow-y-auto py-4 space-y-4 px-1">
         {messages.map((msg) => {
           const isOwn = msg.senderId === user?.uid;
-          const editAllowed = !isAdminView && isOwn && canModify(msg.timestamp);
+          const editAllowed = !isAdminView && isOwn && (Date.now() - (msg.timestamp?.toDate().getTime() || 0)) < (10 * 60 * 1000);
           return (
             <div key={msg.id} className={cn("flex flex-col group", isOwn ? "items-end" : "items-start")}>
               {msg.replyTo && (
@@ -627,23 +600,10 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                   isOwn ? "bg-primary text-white rounded-tr-none hover:bg-primary/90" : "bg-card text-foreground rounded-tl-none border hover:bg-muted/30"
                 )}>
                   {msg.imageUrl && <img src={msg.imageUrl} alt="Chat" className="rounded-lg mb-2 max-w-full h-auto" />}
-                  {msg.messageText && <p className="text-sm">{msg.messageText}{msg.isEdited && <span className="text-[9px] opacity-70 ml-2">({t('edited') || "edited"})</span>}</p>}
+                  {msg.messageText && <p className="text-sm">{msg.messageText}{msg.isEdited && <span className="text-[9px] opacity-70 ml-2">({t('edit')})</span>}</p>}
                   <span className={cn("text-[9px] mt-1 block opacity-60", isOwn ? "text-right" : "text-left")}>
                     {msg.timestamp ? format(msg.timestamp.toDate(), "HH:mm") : ""}
                   </span>
-                  {msg.reactions && Object.keys(msg.reactions).length > 0 && (
-                    <div className={cn("absolute -bottom-3 flex flex-wrap gap-1", isOwn ? "right-0" : "left-0")}>
-                      {Object.entries(msg.reactions).map(([emoji, uids]) => (
-                        <button 
-                          key={emoji} 
-                          className="bg-white border rounded-full px-1.5 py-0.5 text-[10px] flex items-center gap-1 shadow-sm transition-all duration-200 hover:scale-110 active:scale-90" 
-                          onClick={() => handleReaction(msg.id, emoji)}
-                        >
-                          <span>{emoji}</span><span>{uids.length}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
                 </div>
                 {!isAdminView && (
                   <DropdownMenu>
@@ -653,25 +613,9 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="rounded-xl p-2 w-48 shadow-xl border-none">
-                      <div className="grid grid-cols-4 gap-1 mb-2">
-                        {["👍", "❤️", "😂", "😮", "😢", "🔥", "😡"].map(emoji => (
-                          <button 
-                            key={emoji} 
-                            className="text-lg hover:scale-125 transition-all p-1 active:scale-90 rounded-lg hover:bg-muted" 
-                            onClick={() => handleReaction(msg.id, emoji)}
-                          >
-                            {emoji}
-                          </button>
-                        ))}
-                      </div>
-                      <DropdownMenuSeparator />
                       <DropdownMenuItem className="gap-2 rounded-lg transition-colors focus:bg-muted hover:bg-muted" onClick={() => setReplyingTo(msg)}><Reply size={14} /> {t('reply')}</DropdownMenuItem>
-                      {(editAllowed || profile?.isAdmin) && (
-                        <>
-                          {editAllowed && <DropdownMenuItem className="gap-2 rounded-lg transition-colors focus:bg-muted hover:bg-muted" onClick={() => handleEditInit(msg)}><Pencil size={14} /> {t('edit')}</DropdownMenuItem>}
-                          <DropdownMenuItem className="gap-2 text-destructive rounded-lg transition-colors focus:bg-destructive/10 hover:bg-destructive/5" onClick={() => handleDeleteMessage(msg.id)}><Trash2 size={14} /> {t('delete')}</DropdownMenuItem>
-                        </>
-                      )}
+                      {editAllowed && <DropdownMenuItem className="gap-2 rounded-lg transition-colors focus:bg-muted hover:bg-muted" onClick={() => handleEditInit(msg)}><Pencil size={14} /> {t('edit')}</DropdownMenuItem>}
+                      <DropdownMenuItem className="gap-2 text-destructive rounded-lg transition-colors focus:bg-destructive/10 hover:bg-destructive/5" onClick={() => handleDeleteMessage(msg.id)}><Trash2 size={14} /> {t('delete')}</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
@@ -686,7 +630,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
         {replyingTo && (
           <div className="flex items-center justify-between bg-muted/50 p-2 rounded-xl text-xs border-l-4 border-primary animate-in slide-in-from-bottom-2">
             <div className="flex flex-col min-w-0 text-start">
-              <span className="font-bold text-primary">{t('reply')} {replyingTo.senderId === user?.uid ? (language === 'en' ? "yourself" : language === 'ar' ? "نفسك" : "vous-même") : (otherUser?.username || "User")}</span>
+              <span className="font-bold text-primary">{t('reply')} {replyingTo.senderId === user?.uid ? "You" : (otherUser?.username || "User")}</span>
               <span className="truncate italic">"{replyingTo.messageText || "Image"}"</span>
             </div>
             <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full transition-all duration-200 active:scale-90 hover:bg-muted" onClick={() => setReplyingTo(null)}><X size={14} /></Button>
