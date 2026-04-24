@@ -22,6 +22,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { MessageSquare, Loader2, Info, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
+import { enUS, arSA, fr } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -34,6 +35,7 @@ import { ListingDetailView } from "@/components/listings/ListingDetailView";
 import { type Listing } from "@/components/listings/ListingCard";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface ChatRoom {
   id: string;
@@ -54,6 +56,7 @@ interface ChatRoom {
 
 export default function ChatListPage() {
   const { user } = useAuth();
+  const { t, language } = useLanguage();
   const { toast } = useToast();
   const [chats, setChats] = useState<ChatRoom[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,7 +65,9 @@ export default function ChatListPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isFetchingListing, setIsFetchingListing] = useState(false);
 
-  // Function to finalize deal for the current user in the list view
+  // Determine date locale
+  const dateLocale = language === 'ar' ? arSA : language === 'fr' ? fr : enUS;
+
   const handleFinalizeDeal = async (chat: ChatRoom) => {
     if (!user || chat.finalizedUsers?.includes(user.uid)) return;
 
@@ -70,7 +75,6 @@ export default function ChatListPage() {
       const batch = writeBatch(db);
       const fee = 1000;
 
-      // Update current user's profile and transactions
       const uRef = doc(db, "userProfiles", user.uid);
       batch.update(uRef, {
         successfulDealsCount: increment(1),
@@ -86,16 +90,12 @@ export default function ChatListPage() {
         createdAt: serverTimestamp()
       });
 
-      // Update conversation with my finalization flag
       const finalizedList = [...(chat.finalizedUsers || []), user.uid];
       const convRef = doc(db, "conversations", chat.id);
       
-      // If both users have finalized, we can delete the conversation automatically
       if (finalizedList.length >= 2) {
-        // First delete messages
         const messagesSnap = await getDocs(collection(db, "conversations", chat.id, "messages"));
         messagesSnap.docs.forEach(doc => batch.delete(doc.ref));
-        // Then delete conversation
         batch.delete(convRef);
       } else {
         batch.update(convRef, {
@@ -105,7 +105,7 @@ export default function ChatListPage() {
       }
 
       await batch.commit();
-      toast({ title: "Deal Finalized!", description: "Stats updated and fee processed." });
+      toast({ title: "Deal Finalized!" });
     } catch (err) {
       console.error("Auto-finalization failed:", err);
     }
@@ -125,14 +125,12 @@ export default function ChatListPage() {
         ...doc.data(),
       } as ChatRoom));
       
-      // Check for deals to finalize automatically
       chatList.forEach(chat => {
         if (chat.buyerRated && chat.travelerRated && !chat.finalizedUsers?.includes(user.uid)) {
           handleFinalizeDeal(chat);
         }
       });
 
-      // Client-side filtering for 'deletedBy'
       const filteredList = chatList.filter(chat => !chat.deletedBy?.includes(user.uid));
 
       const sortedList = filteredList.sort((a, b) => {
@@ -168,7 +166,6 @@ export default function ChatListPage() {
         const data = chatSnap.data() as ChatRoom;
         const deletedByList = [...(data.deletedBy || []), user.uid];
 
-        // If everyone has deleted it, purge from DB
         if (deletedByList.length >= data.participantIds.length) {
           const batch = writeBatch(db);
           const messagesSnap = await getDocs(collection(db, "conversations", chatId, "messages"));
@@ -176,7 +173,6 @@ export default function ChatListPage() {
           batch.delete(chatRef);
           await batch.commit();
         } else {
-          // Just hide it for this user
           await updateDoc(chatRef, {
             deletedBy: arrayUnion(user.uid)
           });
@@ -224,7 +220,7 @@ export default function ChatListPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <Loader2 className="animate-spin text-primary" size={40} />
-        <p className="text-muted-foreground">Loading conversations...</p>
+        <p className="text-muted-foreground">{t('loading_conversations') || "Loading..."}</p>
       </div>
     );
   }
@@ -232,16 +228,16 @@ export default function ChatListPage() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto px-4 pb-12">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Messages</h1>
-          <p className="text-sm text-muted-foreground">Manage your deals and connections.</p>
+        <div className="space-y-1 text-start">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t('messages')}</h1>
+          <p className="text-sm text-muted-foreground">{t('messages_subtitle')}</p>
         </div>
         
         <div className="relative w-full md:w-80">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
+          <Search className="absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
           <Input
-            placeholder="Search chats..."
-            className="pr-10 h-11 rounded-2xl bg-card border-none shadow-sm"
+            placeholder={t('search_chats_placeholder')}
+            className="ps-10 h-11 rounded-2xl bg-card border-none shadow-sm text-start"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -254,9 +250,9 @@ export default function ChatListPage() {
             <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto">
               <MessageSquare className="text-muted-foreground" />
             </div>
-            <h3 className="text-lg font-bold">No chats yet</h3>
-            <p className="text-muted-foreground">Start a deal on the board!</p>
-            <Link href="/"><Button className="rounded-xl">Browse Listings</Button></Link>
+            <h3 className="text-lg font-bold">{t('no_chats')}</h3>
+            <p className="text-muted-foreground">{t('no_chats_desc')}</p>
+            <Link href="/"><Button className="rounded-xl">{t('browse_board')}</Button></Link>
           </CardContent>
         </Card>
       ) : (
@@ -279,34 +275,33 @@ export default function ChatListPage() {
                         {otherUserName.charAt(0).toUpperCase()}
                       </div>
                       {isUnread && (
-                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full border-2 border-white animate-pulse" />
+                        <div className="absolute -top-1 -start-1 w-4 h-4 bg-primary rounded-full border-2 border-white animate-pulse" />
                       )}
                     </div>
                     
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 text-start">
                       <div className="flex items-center justify-between mb-0.5">
                         <h3 className={cn("font-bold text-sm sm:text-lg truncate transition-colors", isUnread ? "text-primary" : "group-hover:text-primary")}>
                           {otherUserName}
                         </h3>
                         <span className="text-[10px] text-muted-foreground hidden sm:block">
-                          {chat.lastMessageTimestamp ? formatDistanceToNow(chat.lastMessageTimestamp.toDate(), { addSuffix: true }) : "Just now"}
+                          {chat.lastMessageTimestamp ? formatDistanceToNow(chat.lastMessageTimestamp.toDate(), { addSuffix: true, locale: dateLocale }) : "..."}
                         </span>
                       </div>
                       <p className={cn("text-xs sm:text-sm truncate", isUnread ? "font-bold text-foreground" : "font-semibold text-foreground/80")}>
                         {chat.listingTitle}
                       </p>
                       <p className={cn("text-xs sm:text-sm truncate italic", isUnread ? "font-bold text-foreground" : "text-muted-foreground")}>
-                        {chat.lastMessageText}
+                        {chat.lastMessageText === "Conversation started" ? t('conv_started') : chat.lastMessageText}
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                       <Button 
                         variant="secondary" 
                         size="icon" 
                         className="h-9 w-9 rounded-full bg-primary/5 text-primary hover:bg-primary hover:text-white" 
                         onClick={(e) => handleShowListing(chat.listingId, e)}
-                        title="View Post Details"
                       >
                         <Info size={18} />
                       </Button>
@@ -315,7 +310,6 @@ export default function ChatListPage() {
                         size="icon" 
                         className="h-9 w-9 rounded-full text-destructive hover:bg-destructive hover:text-white" 
                         onClick={(e) => handleDeleteConversation(chat.id, e)}
-                        title="Delete Conversation"
                       >
                         <Trash2 size={18} />
                       </Button>
@@ -331,7 +325,7 @@ export default function ChatListPage() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl rounded-2xl p-0 overflow-hidden border-none shadow-2xl">
           <DialogHeader className="p-6 pb-2">
-            <DialogTitle className="text-2xl font-bold">Post Details</DialogTitle>
+            <DialogTitle className="text-2xl font-bold">{t('listing_details')}</DialogTitle>
           </DialogHeader>
           <div className="px-6 pb-8 max-h-[70vh] overflow-y-auto">
             {selectedListing && <ListingDetailView listing={selectedListing} />}

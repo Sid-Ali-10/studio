@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef, use } from "react";
@@ -68,6 +69,7 @@ import { Label } from "@/components/ui/label";
 import { type Listing } from "@/components/listings/ListingCard";
 import { ListingDetailView } from "@/components/listings/ListingDetailView";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface Message {
   id: string;
@@ -109,6 +111,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
   const id = resolvedParams.id;
   
   const { user, profile } = useAuth();
+  const { t, language, isRTL } = useLanguage();
   const { toast } = useToast();
   const router = useRouter();
   
@@ -249,7 +252,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       });
       setIsOfferDialogOpen(false);
       setOfferPrice("");
-      toast({ title: "Offer sent", description: "Waiting for the other party to respond." });
+      toast({ title: "Offer sent" });
     } catch (err) {
       toast({ variant: "destructive", title: "Failed to send offer" });
     }
@@ -268,8 +271,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       }
       await updateDoc(doc(db, "conversations", activeConvId), updates);
       toast({ 
-        title: accepted ? "Offer Accepted!" : "Offer Rejected", 
-        description: accepted ? `Price locked at ${convData.offeredPrice} DA.` : "Offer dismissed." 
+        title: accepted ? "Offer Accepted!" : "Offer Rejected"
       });
     } catch (err) {
       toast({ variant: "destructive", title: "Error responding to offer" });
@@ -297,7 +299,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       msgData.replyTo = {
         id: replyingTo.id,
         text: replyingTo.messageText || "Image",
-        senderName: replyingTo.senderId === user.uid ? "You" : (otherUser?.username || "User")
+        senderName: replyingTo.senderId === user.uid ? (language === 'en' ? "You" : language === 'ar' ? "أنت" : "Vous") : (otherUser?.username || "User")
       };
     }
 
@@ -403,7 +405,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
     if (isAdminView || !activeConvId || !user || !convData) return;
     
     if (!convData.agreedPrice) {
-      toast({ variant: "destructive", title: "Incomplete Deal", description: "Please agree on a price before rating." });
+      toast({ variant: "destructive", title: "Incomplete Deal" });
       return;
     }
 
@@ -414,7 +416,6 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
         toast({
           variant: "destructive",
           title: "Insufficient Balance",
-          description: `You need at least ${agreedPrice} DA to pay for this deal.`,
         });
         return;
       }
@@ -439,7 +440,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       toast({ title: "Rating saved!" });
       setIsRatingOpen(false);
     } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: "Failed to save rating." });
+      toast({ variant: "destructive", title: "Error" });
     } finally {
       setRatingLoading(false);
     }
@@ -456,7 +457,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       const url = await getDownloadURL(storageRef);
       handleSendMessage(undefined, url);
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Upload failed", description: err.message });
+      toast({ variant: "destructive", title: "Upload failed" });
     } finally {
       setUploading(false);
     }
@@ -477,13 +478,12 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
         createdAt: serverTimestamp()
       });
       toast({ 
-        title: "Report Sent", 
-        description: "Your report has been sent. The admin will review it." 
+        title: "Report Sent"
       });
       setIsReportOpen(false);
       setReportReason("");
     } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: "Could not send report." });
+      toast({ variant: "destructive", title: "Error" });
     } finally {
       setIsReporting(false);
     }
@@ -496,7 +496,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
     return (Date.now() - sentAt) < (10 * 60 * 1000);
   };
 
-  if (loading) return <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4"><Loader2 className="animate-spin text-primary" size={40} /><p className="text-muted-foreground">Opening secure chat...</p></div>;
+  if (loading) return <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4"><Loader2 className="animate-spin text-primary" size={40} /><p className="text-muted-foreground">{t('loading_conversations') || "..."}</p></div>;
   if (error) return <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center"><AlertCircle size={40} className="text-destructive" /><h2 className="text-xl font-bold">Error</h2><p>{error}</p><Button onClick={() => router.push("/chat")}>Back to Inbox</Button></div>;
 
   return (
@@ -512,7 +512,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       ) : (
         <div className="mb-4 flex items-center gap-2 justify-center py-2 px-4 bg-muted/30 rounded-xl text-[10px] text-muted-foreground font-medium uppercase tracking-wider animate-in slide-in-from-top-2">
           <ShieldCheck size={12} className="text-primary" />
-          This conversation is monitored by GetMeDZ Administration
+          {t('admin_monitor_notice')}
         </div>
       )}
 
@@ -523,12 +523,12 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
           onClick={() => router.back()} 
           className="rounded-full hover:bg-muted transition-all duration-200 active:scale-90"
         >
-          <ArrowLeft size={20} />
+          <ArrowLeft size={20} className={cn(isRTL && "rotate-180")} />
         </Button>
         <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center font-bold text-primary border border-primary/20">
           {otherUser?.username?.charAt(0).toUpperCase() || "U"}
         </div>
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 text-start">
           <h2 className="font-bold truncate text-sm sm:text-base">{otherUser?.username || "Private User"}</h2>
           <button 
             onClick={() => setIsDetailsOpen(true)} 
@@ -547,11 +547,11 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="rounded-xl p-2 w-48 shadow-xl border-none">
                 <DropdownMenuItem className="gap-2 rounded-lg text-destructive transition-colors hover:bg-destructive/5 focus:bg-destructive/10" onClick={() => setIsReportOpen(true)}>
-                  <Flag size={14} /> Report Problem
+                  <Flag size={14} /> {t('report_problem')}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="gap-2 rounded-lg text-destructive transition-colors hover:bg-destructive/5 focus:bg-destructive/10" onClick={handleDeleteConversation}>
-                  <Trash2 size={14} /> Delete Chat
+                  <Trash2 size={14} /> {t('delete_chat')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -567,11 +567,11 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                   disabled={hasUserRated}
                 >
                   <CheckCircle2 size={16} />
-                  <span className="hidden sm:inline">{hasUserRated ? "Rated" : "Complete Deal"}</span>
+                  <span className="hidden sm:inline">{hasUserRated ? t('rated') : t('complete_deal')}</span>
                 </Button>
               ) : (
                 <Button variant="outline" size="sm" className="rounded-full gap-2 font-bold" onClick={() => setIsOfferDialogOpen(true)}>
-                  <Banknote size={16} /> <span className="hidden sm:inline">Price Offer</span>
+                  <Banknote size={16} /> <span className="hidden sm:inline">{t('price_offer')}</span>
                 </Button>
               )}
             </div>
@@ -583,18 +583,18 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
         <Alert className="mt-4 rounded-2xl bg-primary/5 border-primary/20 animate-in slide-in-from-top duration-300">
           <Banknote className="h-4 w-4 text-primary" />
           <AlertTitle className="font-bold text-primary flex items-center justify-between">
-            New Price Offer
-            <span className="text-lg">{convData.offeredPrice} DA</span>
+            {t('new_price_offer')}
+            <span className="text-lg">{convData.offeredPrice} {t('currency_da')}</span>
           </AlertTitle>
           <AlertDescription className="mt-2 flex items-center justify-between">
-            <span className="text-xs">{convData.offerSenderId === user?.uid ? "You sent this offer." : `${otherUser?.username} proposed this price.`}</span>
+            <span className="text-xs">{convData.offerSenderId === user?.uid ? t('offer_sent_notice') : `${otherUser?.username} ${t('offer_received_notice')}`}</span>
             {convData.offerSenderId !== user?.uid && !isAdminView && (
               <div className="flex gap-2">
                 <Button size="sm" className="h-8 rounded-lg gap-1" onClick={() => handleRespondToOffer(true)}>
-                  <Check size={14} /> Accept
+                  <Check size={14} /> {t('accept')}
                 </Button>
                 <Button size="sm" variant="ghost" className="h-8 rounded-lg gap-1 text-destructive hover:bg-destructive/10" onClick={() => handleRespondToOffer(false)}>
-                  <Ban size={14} /> Reject
+                  <Ban size={14} /> {t('reject')}
                 </Button>
               </div>
             )}
@@ -604,8 +604,8 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
 
       {convData?.agreedPrice && (
         <div className="mt-2 px-4 py-2 bg-accent/10 border border-accent/20 rounded-xl flex items-center justify-between animate-in fade-in duration-300">
-          <span className="text-xs font-bold text-accent uppercase tracking-wider">Agreed Price</span>
-          <span className="font-black text-accent">{convData.agreedPrice} DA</span>
+          <span className="text-xs font-bold text-accent uppercase tracking-wider">{t('agreed_price_label')}</span>
+          <span className="font-black text-accent">{convData.agreedPrice} {t('currency_da')}</span>
         </div>
       )}
 
@@ -618,7 +618,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
               {msg.replyTo && (
                 <div className={cn("text-[10px] text-muted-foreground mb-1 flex items-center gap-1 max-w-[70%]", isOwn ? "flex-row-reverse" : "flex-row")}>
                   <Reply size={10} />
-                  <span className="truncate italic">Replying to {msg.replyTo.senderName}: "{msg.replyTo.text}"</span>
+                  <span className="truncate italic">{t('reply')} {msg.replyTo.senderName}: "{msg.replyTo.text}"</span>
                 </div>
               )}
               <div className={cn("flex items-end gap-1 w-full relative", isOwn ? "flex-row-reverse" : "flex-row")}>
@@ -627,7 +627,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                   isOwn ? "bg-primary text-white rounded-tr-none hover:bg-primary/90" : "bg-card text-foreground rounded-tl-none border hover:bg-muted/30"
                 )}>
                   {msg.imageUrl && <img src={msg.imageUrl} alt="Chat" className="rounded-lg mb-2 max-w-full h-auto" />}
-                  {msg.messageText && <p className="text-sm">{msg.messageText}{msg.isEdited && <span className="text-[9px] opacity-70 ml-2">(edited)</span>}</p>}
+                  {msg.messageText && <p className="text-sm">{msg.messageText}{msg.isEdited && <span className="text-[9px] opacity-70 ml-2">({t('edited') || "edited"})</span>}</p>}
                   <span className={cn("text-[9px] mt-1 block opacity-60", isOwn ? "text-right" : "text-left")}>
                     {msg.timestamp ? format(msg.timestamp.toDate(), "HH:mm") : ""}
                   </span>
@@ -665,11 +665,11 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                         ))}
                       </div>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem className="gap-2 rounded-lg transition-colors focus:bg-muted hover:bg-muted" onClick={() => setReplyingTo(msg)}><Reply size={14} /> Reply</DropdownMenuItem>
+                      <DropdownMenuItem className="gap-2 rounded-lg transition-colors focus:bg-muted hover:bg-muted" onClick={() => setReplyingTo(msg)}><Reply size={14} /> {t('reply')}</DropdownMenuItem>
                       {(editAllowed || profile?.isAdmin) && (
                         <>
-                          {editAllowed && <DropdownMenuItem className="gap-2 rounded-lg transition-colors focus:bg-muted hover:bg-muted" onClick={() => handleEditInit(msg)}><Pencil size={14} /> Edit</DropdownMenuItem>}
-                          <DropdownMenuItem className="gap-2 text-destructive rounded-lg transition-colors focus:bg-destructive/10 hover:bg-destructive/5" onClick={() => handleDeleteMessage(msg.id)}><Trash2 size={14} /> Delete</DropdownMenuItem>
+                          {editAllowed && <DropdownMenuItem className="gap-2 rounded-lg transition-colors focus:bg-muted hover:bg-muted" onClick={() => handleEditInit(msg)}><Pencil size={14} /> {t('edit')}</DropdownMenuItem>}
+                          <DropdownMenuItem className="gap-2 text-destructive rounded-lg transition-colors focus:bg-destructive/10 hover:bg-destructive/5" onClick={() => handleDeleteMessage(msg.id)}><Trash2 size={14} /> {t('delete')}</DropdownMenuItem>
                         </>
                       )}
                     </DropdownMenuContent>
@@ -685,8 +685,8 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       <div className={cn("pt-4 border-t space-y-2", isAdminView && "opacity-50 pointer-events-none")}>
         {replyingTo && (
           <div className="flex items-center justify-between bg-muted/50 p-2 rounded-xl text-xs border-l-4 border-primary animate-in slide-in-from-bottom-2">
-            <div className="flex flex-col min-w-0">
-              <span className="font-bold text-primary">Replying to {replyingTo.senderId === user?.uid ? "yourself" : (otherUser?.username || "User")}</span>
+            <div className="flex flex-col min-w-0 text-start">
+              <span className="font-bold text-primary">{t('reply')} {replyingTo.senderId === user?.uid ? (language === 'en' ? "yourself" : language === 'ar' ? "نفسك" : "vous-même") : (otherUser?.username || "User")}</span>
               <span className="truncate italic">"{replyingTo.messageText || "Image"}"</span>
             </div>
             <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full transition-all duration-200 active:scale-90 hover:bg-muted" onClick={() => setReplyingTo(null)}><X size={14} /></Button>
@@ -701,8 +701,8 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
             {uploading ? <Loader2 size={20} className="animate-spin" /> : <ImageIcon size={20} />}
           </label>
           <Input 
-            placeholder={isAdminView ? "Admin: Read-Only" : (editingMessage ? "Update message..." : "Type message...")} 
-            className="flex-1 h-11 rounded-full px-5 bg-muted border-none focus-visible:ring-primary/20 transition-all" 
+            placeholder={isAdminView ? "Admin: Read-Only" : (editingMessage ? t('edit') : t('type_message'))} 
+            className="flex-1 h-11 rounded-full px-5 bg-muted border-none focus-visible:ring-primary/20 transition-all text-start" 
             value={newMessage} 
             onChange={(e) => setNewMessage(e.target.value)}
             disabled={isAdminView}
@@ -713,7 +713,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
             className="w-11 h-11 rounded-full shadow-md transition-all duration-200 active:scale-90" 
             disabled={(!newMessage.trim() && !uploading) || isAdminView}
           >
-            {editingMessage ? <CheckCircle2 size={20} /> : <Send size={20} />}
+            {editingMessage ? <CheckCircle2 size={20} /> : <Send size={20} className={cn(isRTL && "rotate-180")} />}
           </Button>
         </form>
       </div>
@@ -721,16 +721,16 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       {/* Report Dialog */}
       <Dialog open={isReportOpen} onOpenChange={setIsReportOpen}>
         <DialogContent className="max-w-md rounded-2xl shadow-2xl border-none">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Flag className="text-destructive" /> Report Problem</DialogTitle>
-            <DialogDescription>Describe the issue you're facing in this chat. Our team will review the conversation history.</DialogDescription>
+          <DialogHeader className="text-start">
+            <DialogTitle className="flex items-center gap-2"><Flag className="text-destructive" /> {t('report_issue_title')}</DialogTitle>
+            <DialogDescription>{t('report_issue_desc')}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 text-start">
             <div className="space-y-2">
-              <Label>Type of Issue</Label>
+              <Label>{t('issue_type')}</Label>
               <Select value={reportType} onValueChange={setReportType}>
                 <SelectTrigger className="rounded-xl h-12 transition-all hover:bg-muted/30">
-                  <SelectValue placeholder="Select type" />
+                  <SelectValue placeholder="..." />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-none shadow-xl">
                   <SelectItem value="fraud">Potential Fraud</SelectItem>
@@ -741,10 +741,10 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Details</Label>
+              <Label>{t('issue_details')}</Label>
               <Textarea 
-                placeholder="Please provide as much detail as possible..."
-                className="rounded-xl min-h-[100px] resize-none transition-all hover:bg-muted/30"
+                placeholder="..."
+                className="rounded-xl min-h-[100px] resize-none transition-all hover:bg-muted/30 text-start"
                 value={reportReason}
                 onChange={(e) => setReportReason(e.target.value)}
               />
@@ -756,7 +756,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
               onClick={handleReportIssue}
               disabled={isReporting || !reportReason.trim()}
             >
-              {isReporting ? <Loader2 className="animate-spin" /> : "Send Report"}
+              {isReporting ? <Loader2 className="animate-spin" /> : t('send_report')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -764,35 +764,33 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
 
       <Dialog open={isOfferDialogOpen} onOpenChange={setIsOfferDialogOpen}>
         <DialogContent className="max-w-md rounded-2xl shadow-2xl border-none">
-          <DialogHeader>
-            <DialogTitle>Make a Price Offer</DialogTitle>
-            <DialogDescription>Propose a specific price for this deal. The other party must accept before you can finalize.</DialogDescription>
+          <DialogHeader className="text-start">
+            <DialogTitle>{t('make_price_offer')}</DialogTitle>
+            <DialogDescription>{t('price_offer_desc')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="relative">
-              <Banknote className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+              <Banknote className="absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
               <Input
                 type="number"
-                placeholder="Enter price (DA)"
-                className="pl-10 h-12 rounded-xl transition-all hover:bg-muted/30"
+                placeholder={t('budget')}
+                className="ps-10 h-12 rounded-xl transition-all hover:bg-muted/30 text-start"
                 value={offerPrice}
                 onChange={(e) => setOfferPrice(e.target.value)}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button className="w-full h-12 rounded-xl font-bold shadow-lg" onClick={handleMakeOffer}>Send Offer</Button>
+            <Button className="w-full h-12 rounded-xl font-bold shadow-lg" onClick={handleMakeOffer}>{t('price_offer')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={isRatingOpen} onOpenChange={setIsRatingOpen}>
         <DialogContent className="max-w-md rounded-2xl shadow-2xl border-none">
-          <DialogHeader>
-            <DialogTitle>Finalize & Settle</DialogTitle>
-            <DialogDescription>
-              Completing this will confirm that the deal took place.
-            </DialogDescription>
+          <DialogHeader className="text-start">
+            <DialogTitle>{t('finalize_settle')}</DialogTitle>
+            <DialogDescription>{t('finalize_desc')}</DialogDescription>
           </DialogHeader>
           <div className="flex justify-center gap-2 py-8">
             {[1, 2, 3, 4, 5].map((s) => (
@@ -807,7 +805,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
           </div>
           <DialogFooter>
             <Button className="w-full h-12 rounded-xl font-bold shadow-lg" disabled={ratingLoading} onClick={handleRateDeal}>
-              {ratingLoading ? <Loader2 className="animate-spin" /> : "Rate & Complete Deal"}
+              {ratingLoading ? <Loader2 className="animate-spin" /> : t('rate_complete')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -815,8 +813,8 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
 
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
         <DialogContent className="max-w-2xl rounded-2xl p-0 overflow-hidden shadow-2xl border-none">
-          <DialogHeader className="p-6 pb-2">
-            <DialogTitle className="text-2xl font-bold">Listing Details</DialogTitle>
+          <DialogHeader className="p-6 pb-2 text-start">
+            <DialogTitle className="text-2xl font-bold">{t('listing_details')}</DialogTitle>
           </DialogHeader>
           <div className="px-6 pb-8 max-h-[70vh] overflow-y-auto">
             {listing && <ListingDetailView listing={listing} />}
