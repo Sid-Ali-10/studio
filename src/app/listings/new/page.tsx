@@ -204,7 +204,7 @@ export default function NewListingPage() {
                 className="w-full h-14 rounded-xl font-bold bg-primary hover:bg-primary/90 shadow-lg text-lg gap-2"
                 disabled={loading}
               >
-                <Send size={20} />
+                <Send size={20} className={cn(isRTL && "rotate-180")} />
                 {loading ? t('btn_posting') : t('btn_create_post')}
               </Button>
             </form>

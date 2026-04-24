@@ -116,7 +116,7 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   }
 
   const isAuthPage = pathname === "/login" || pathname === "/admin/login";
-  if (isAuthPage) return <>{children}</>;
+  if (isAuthPage) return <div dir="ltr">{children}</div>;
 
   if (user && !user.emailVerified) {
     return <VerificationScreen />;

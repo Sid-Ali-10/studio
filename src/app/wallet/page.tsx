@@ -22,6 +22,15 @@ import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/LanguageContext";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface Transaction {
   id: string;
@@ -33,11 +42,13 @@ interface Transaction {
 
 export default function WalletPage() {
   const { user, profile } = useAuth();
-  const { t } = useLanguage();
+  const { t, isRTL } = useLanguage();
   const { toast } = useToast();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [rechargeLoading, setRechargeLoading] = useState<number | null>(null);
+  const [isRechargeOpen, setIsRechargeOpen] = useState(false);
+  const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -64,27 +75,29 @@ export default function WalletPage() {
     return () => unsubscribe();
   }, [user]);
 
-  const handleRecharge = async (amount: number) => {
-    if (!user) return;
-    setRechargeLoading(amount);
+  const handleRecharge = async () => {
+    if (!user || !selectedAmount) return;
+    setRechargeLoading(selectedAmount);
 
     try {
       const userRef = doc(db, "userProfiles", user.uid);
       const txRef = collection(db, "userProfiles", user.uid, "transactions");
 
       await addDoc(txRef, {
-        amount: amount,
+        amount: selectedAmount,
         type: "recharge",
         description: "Wallet Recharge",
         createdAt: serverTimestamp()
       });
 
       await updateDoc(userRef, {
-        walletBalance: increment(amount),
+        walletBalance: increment(selectedAmount),
         updatedAt: serverTimestamp()
       });
 
-      toast({ title: t('success'), description: `${amount} ${t('recharge_success')}` });
+      toast({ title: t('success'), description: `${selectedAmount} ${t('recharge_success')}` });
+      setIsRechargeOpen(false);
+      setSelectedAmount(null);
     } catch (err) {
       toast({ variant: "destructive", title: t('failed'), description: t('recharge_failed') });
     } finally {
@@ -136,15 +149,34 @@ export default function WalletPage() {
           </CardHeader>
           <CardContent className="flex flex-wrap gap-4">
             {rechargeAmounts.map((amount) => (
-              <Button
-                key={amount}
-                variant="outline"
-                className="flex-1 min-w-[120px] h-16 rounded-2xl flex flex-col gap-1 hover:border-primary transition-all"
-                onClick={() => handleRecharge(amount)}
-                disabled={rechargeLoading !== null}
-              >
-                {rechargeLoading === amount ? <Loader2 className="animate-spin" /> : <><span className="font-bold">{amount} {t('currency_da')}</span><span className="text-[10px] text-muted-foreground">{t('add_plus')}</span></>}
-              </Button>
+              <Dialog key={amount} open={isRechargeOpen && selectedAmount === amount} onOpenChange={(open) => {
+                setIsRechargeOpen(open);
+                if (open) setSelectedAmount(amount);
+              }}>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="flex-1 min-w-[120px] h-16 rounded-2xl flex flex-col gap-1 hover:border-primary transition-all"
+                  >
+                    <span className="font-bold">{amount} {t('currency_da')}</span>
+                    <span className="text-[10px] text-muted-foreground">{t('add_plus')}</span>
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="rounded-2xl border-none shadow-2xl" dir={isRTL ? "rtl" : "ltr"}>
+                  <DialogHeader className="text-start">
+                    <DialogTitle>{t('confirm')} {t('recharge_funds')}</DialogTitle>
+                    <DialogDescription>
+                      {t('confirm')} {amount} {t('currency_da')} {t('recharge_subtitle')}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter className="gap-2">
+                    <Button variant="ghost" className="rounded-xl" onClick={() => setIsRechargeOpen(false)}>{t('cancel')}</Button>
+                    <Button className="rounded-xl px-8" onClick={handleRecharge} disabled={rechargeLoading !== null}>
+                      {rechargeLoading ? <Loader2 className="animate-spin" /> : t('confirm')}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             ))}
           </CardContent>
         </Card>

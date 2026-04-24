@@ -25,11 +25,22 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { db } from '@/lib/firebase';
 import { doc, serverTimestamp } from 'firebase/firestore';
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
 import { ToastAction } from '@/components/ui/toast';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/context/LanguageContext';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export interface Listing {
   id: string;
@@ -66,6 +77,7 @@ export function ListingCard({ listing, isFavorited, onToggleFavorite, onDelete }
 
   const handleConnect = async (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!user) {
       toast({ title: t('auth_required'), description: t('login_connect') });
       return;
@@ -83,7 +95,7 @@ export function ListingCard({ listing, isFavorited, onToggleFavorite, onDelete }
       listerId: listing.listerId,
       listerName: listing.userName,
       buyerName: profile?.username || user.email?.split('@')[0] || 'User',
-      lastMessageText: 'Conversation started',
+      lastMessageText: t('conv_started'),
       lastMessageTimestamp: serverTimestamp(),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -105,6 +117,12 @@ export function ListingCard({ listing, isFavorited, onToggleFavorite, onDelete }
     }
   };
 
+  const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onDelete?.(listing.id);
+  };
+
   return (
     <Card className="listing-card overflow-hidden border-none shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col h-full bg-card">
       <CardHeader className="pb-2">
@@ -119,16 +137,16 @@ export function ListingCard({ listing, isFavorited, onToggleFavorite, onDelete }
             <span>{t(listing.type)}</span>
           </Badge>
           <button
-            onClick={(e) => { e.preventDefault(); onToggleFavorite?.(listing.id); }}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleFavorite?.(listing.id); }}
             className={cn('p-2 rounded-full transition-all', isFavorited ? 'text-red-500' : 'text-muted-foreground')}
           >
             <Heart size={20} fill={isFavorited ? 'currentColor' : 'none'} />
           </button>
         </div>
-        <CardTitle className="text-xl line-clamp-1">{listing.title}</CardTitle>
+        <CardTitle className="text-xl line-clamp-1 text-start">{listing.title}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 flex-1">
-        <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">{listing.description}</p>
+        <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem] text-start">{listing.description}</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-4">
           <div className="flex items-center gap-2 text-sm text-muted-foreground text-start">
             <Globe size={16} className="text-primary shrink-0" />
@@ -149,7 +167,7 @@ export function ListingCard({ listing, isFavorited, onToggleFavorite, onDelete }
         </div>
       </CardContent>
       <CardFooter className="pt-2 border-t flex items-center justify-between bg-muted/20">
-        <Link href={`/profile/${listing.listerId}`} className="flex items-center gap-2">
+        <Link href={`/profile/${listing.listerId}`} className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
           <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold">
             {listing.userName?.substring(0, 2).toUpperCase()}
           </div>
@@ -161,10 +179,26 @@ export function ListingCard({ listing, isFavorited, onToggleFavorite, onDelete }
         <div className="flex items-center gap-1">
           {isOwner ? (
             <>
-              <Link href={`/listings/edit/${listing.id}`}>
+              <Link href={`/listings/edit/${listing.id}`} onClick={(e) => e.stopPropagation()}>
                 <Button variant="ghost" size="icon" className="h-8 w-8"><Edit size={16} /></Button>
               </Link>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDelete?.(listing.id)}><Trash2 size={16} /></Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={(e) => e.stopPropagation()}>
+                    <Trash2 size={16} />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="rounded-2xl border-none shadow-2xl" dir={isRTL ? "rtl" : "ltr"}>
+                  <AlertDialogHeader className="text-start">
+                    <AlertDialogTitle>{t('confirm_delete_title')}</AlertDialogTitle>
+                    <AlertDialogDescription>{t('confirm_delete')}</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter className="gap-2">
+                    <AlertDialogCancel className="rounded-xl">{t('cancel')}</AlertDialogCancel>
+                    <AlertDialogAction className="rounded-xl bg-destructive hover:bg-destructive/90" onClick={handleDelete}>{t('delete')}</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </>
           ) : (
             <Button

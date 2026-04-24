@@ -47,6 +47,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { enUS, arSA, fr } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -144,6 +145,8 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
+
+  const dateLocale = language === 'ar' ? arSA : language === 'fr' ? fr : enUS;
 
   const isAdminView = profile?.isAdmin && !participants.includes(user?.uid || "");
   const isLister = user?.uid === listing?.listerId;
@@ -602,7 +605,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                   {msg.imageUrl && <img src={msg.imageUrl} alt="Chat" className="rounded-lg mb-2 max-w-full h-auto" />}
                   {msg.messageText && <p className="text-sm">{msg.messageText}{msg.isEdited && <span className="text-[9px] opacity-70 ml-2">({t('edit')})</span>}</p>}
                   <span className={cn("text-[9px] mt-1 block opacity-60", isOwn ? "text-right" : "text-left")}>
-                    {msg.timestamp ? format(msg.timestamp.toDate(), "HH:mm") : ""}
+                    {msg.timestamp ? format(msg.timestamp.toDate(), "HH:mm", { locale: dateLocale }) : ""}
                   </span>
                 </div>
                 {!isAdminView && (
@@ -630,7 +633,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
         {replyingTo && (
           <div className="flex items-center justify-between bg-muted/50 p-2 rounded-xl text-xs border-l-4 border-primary animate-in slide-in-from-bottom-2">
             <div className="flex flex-col min-w-0 text-start">
-              <span className="font-bold text-primary">{t('reply')} {replyingTo.senderId === user?.uid ? "You" : (otherUser?.username || "User")}</span>
+              <span className="font-bold text-primary">{t('reply')} {replyingTo.senderId === user?.uid ? t('you') : (otherUser?.username || t('user'))}</span>
               <span className="truncate italic">"{replyingTo.messageText || "Image"}"</span>
             </div>
             <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full transition-all duration-200 active:scale-90 hover:bg-muted" onClick={() => setReplyingTo(null)}><X size={14} /></Button>
@@ -664,7 +667,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
 
       {/* Report Dialog */}
       <Dialog open={isReportOpen} onOpenChange={setIsReportOpen}>
-        <DialogContent className="max-w-md rounded-2xl shadow-2xl border-none">
+        <DialogContent className="max-w-md rounded-2xl shadow-2xl border-none" dir={isRTL ? "rtl" : "ltr"}>
           <DialogHeader className="text-start">
             <DialogTitle className="flex items-center gap-2"><Flag className="text-destructive" /> {t('report_issue_title')}</DialogTitle>
             <DialogDescription>{t('report_issue_desc')}</DialogDescription>
@@ -707,7 +710,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       </Dialog>
 
       <Dialog open={isOfferDialogOpen} onOpenChange={setIsOfferDialogOpen}>
-        <DialogContent className="max-w-md rounded-2xl shadow-2xl border-none">
+        <DialogContent className="max-w-md rounded-2xl shadow-2xl border-none" dir={isRTL ? "rtl" : "ltr"}>
           <DialogHeader className="text-start">
             <DialogTitle>{t('make_price_offer')}</DialogTitle>
             <DialogDescription>{t('price_offer_desc')}</DialogDescription>
@@ -731,7 +734,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       </Dialog>
 
       <Dialog open={isRatingOpen} onOpenChange={setIsRatingOpen}>
-        <DialogContent className="max-w-md rounded-2xl shadow-2xl border-none">
+        <DialogContent className="max-w-md rounded-2xl shadow-2xl border-none" dir={isRTL ? "rtl" : "ltr"}>
           <DialogHeader className="text-start">
             <DialogTitle>{t('finalize_settle')}</DialogTitle>
             <DialogDescription>{t('finalize_desc')}</DialogDescription>
@@ -756,7 +759,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       </Dialog>
 
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-        <DialogContent className="max-w-2xl rounded-2xl p-0 overflow-hidden shadow-2xl border-none">
+        <DialogContent className="max-w-2xl rounded-2xl p-0 overflow-hidden shadow-2xl border-none" dir={isRTL ? "rtl" : "ltr"}>
           <DialogHeader className="p-6 pb-2 text-start">
             <DialogTitle className="text-2xl font-bold">{t('listing_details')}</DialogTitle>
           </DialogHeader>

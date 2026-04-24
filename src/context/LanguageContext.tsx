@@ -27,6 +27,9 @@ export const translations: Translations = {
   light: { en: "Light", ar: "فاتح", fr: "Clair" },
   dark: { en: "Dark", ar: "داكن", fr: "Sombre" },
   back: { en: "Back", ar: "رجوع", fr: "Retour" },
+  save: { en: "Save", ar: "حفظ", fr: "Enregistrer" },
+  cancel: { en: "Cancel", ar: "إلغاء", fr: "Annuler" },
+  confirm: { en: "Confirm", ar: "تأكيد", fr: "Confirmer" },
   
   // Board / Listings
   board_title: { en: "Listings Board", ar: "لوحة الإعلانات", fr: "Tableau des annonces" },
@@ -45,7 +48,8 @@ export const translations: Translations = {
   connect: { en: "Connect", ar: "تواصل", fr: "Connecter" },
   connected: { en: "Connected", ar: "متصل", fr: "Connecté" },
   listing_deleted: { en: "Listing deleted", ar: "تم حذف الإعلان", fr: "Annonce supprimée" },
-  confirm_delete: { en: "Are you sure?", ar: "هل أنت متأكد؟", fr: "Êtes-vous sûr ?" },
+  confirm_delete: { en: "Are you sure you want to delete this?", ar: "هل أنت متأكد أنك تريد الحذف؟", fr: "Êtes-vous sûr de vouloir supprimer ceci ?" },
+  confirm_delete_title: { en: "Confirm Deletion", ar: "تأكيد الحذف", fr: "Confirmer la suppression" },
 
   // Saved Listings Page
   saved_title: { en: "Saved Listings", ar: "الإعلانات المحفوظة", fr: "Annonces enregistrées" },
@@ -121,9 +125,9 @@ export const translations: Translations = {
   no_chats: { en: "No chats yet", ar: "لا توجد محادثات بعد", fr: "Pas de discussions" },
   no_chats_desc: { en: "Start a deal on the board!", ar: "ابدأ صفقة من اللوحة!", fr: "Commencez une transaction !" },
   conv_started: { en: "Conversation started", ar: "بدأت المحادثة", fr: "Discussion entamée" },
-  admin_monitor_notice: { en: "This conversation is monitored by GetMeDZ Administration", ar: "هذه المحادثة مراقبة من قبل إدارة GetMeDZ", fr: "Cette conversation est surveillée par l'administration" },
+  admin_monitor_notice: { en: "THIS CONVERSATION IS MONITORED BY GETMEDZ ADMINISTRATION", ar: "هذه المحادثة مراقبة من قبل إدارة GetMeDZ", fr: "CETTE CONVERSATION EST SURVEILLÉE PAR L'ADMINISTRATION" },
   rated: { en: "Rated", ar: "تم التقييم", fr: "Évalué" },
-  agreed_price_label: { en: "Agreed Price", ar: "السعر المتفق عليه", fr: "Prix convenu" },
+  agreed_price_label: { en: "AGREED PRICE", ar: "السعر المتفق عليه", fr: "PRIX CONVENU" },
   report_problem: { en: "Report Problem", ar: "الإبلاغ عن مشكلة", fr: "Signaler" },
   delete_chat: { en: "Delete Chat", ar: "حذف المحادثة", fr: "Supprimer" },
   complete_deal: { en: "Complete Deal", ar: "إتمام الصفقة", fr: "Finaliser" },
@@ -164,7 +168,7 @@ export const translations: Translations = {
   login_connect: { en: "Log in to connect.", ar: "سجل الدخول للتواصل.", fr: "Connectez-vous pour continuer." },
   
   // Filters
-  search_placeholder: { en: "Search by title or description...", ar: "بحث عن طريق العنوان أو الوصف...", fr: "Recherche par titre ou description..." },
+  search_placeholder: { en: "Search by title or description...", ar: "البحث عن طريق العنوان أو الوصف...", fr: "Recherche par titre ou description..." },
   filter_city: { en: "Filter by city", ar: "تصفية حسب المدينة", fr: "Filtrer par ville" },
   filter_weight: { en: "Min weight (kg)", ar: "أقل وزن (كجم)", fr: "Poids min (kg)" },
   filter_budget: { en: "Max budget (DA)", ar: "أقصى ميزانية (د.ج)", fr: "Budget max (DA)" },
