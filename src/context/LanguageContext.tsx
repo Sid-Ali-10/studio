@@ -26,6 +26,7 @@ export const translations: Translations = {
   theme: { en: "Theme", ar: "المظهر", fr: "Thème" },
   light: { en: "Light", ar: "فاتح", fr: "Clair" },
   dark: { en: "Dark", ar: "داكن", fr: "Sombre" },
+  back: { en: "Back", ar: "رجوع", fr: "Retour" },
   
   // Board / Listings
   board_title: { en: "Listings Board", ar: "لوحة الإعلانات", fr: "Tableau des annonces" },
@@ -54,9 +55,12 @@ export const translations: Translations = {
   browse_board: { en: "Browse Board", ar: "تصفح اللوحة", fr: "Parcourir le tableau" },
   removed_favorite: { en: "Removed from favorites", ar: "تمت الإزالة من المحفوظات", fr: "Supprimé des favoris" },
 
-  // Create Listing Page
+  // Create & Edit Listing Page
   create_listing_title: { en: "Create Listing", ar: "إنشاء إعلان", fr: "Créer une annonce" },
   create_listing_desc: { en: "Reach out to our community", ar: "تواصل مع مجتمعنا", fr: "Contactez notre communauté" },
+  edit_post_title: { en: "Edit Post", ar: "تعديل المنشور", fr: "Modifier la publication" },
+  edit_post_desc_traveler: { en: "Update your traveler details.", ar: "تحديث تفاصيل المسافر الخاصة بك.", fr: "Mettez à jour vos informations de voyageur." },
+  edit_post_desc_buyer: { en: "Update your buyer details.", ar: "تحديث تفاصيل المشتري الخاصة بك.", fr: "Mettez à jour vos informations d'acheteur." },
   tab_traveler: { en: "Traveler", ar: "مسافر", fr: "Voyageur" },
   tab_buyer: { en: "Buyer", ar: "مشتري", fr: "Acheteur" },
   traveler_offer_title: { en: "Traveler Offer", ar: "عرض مسافر", fr: "Offre de voyageur" },
@@ -82,7 +86,9 @@ export const translations: Translations = {
   placeholder_weight: { en: "e.g. 5", ar: "مثلاً: 5", fr: "ex: 5" },
   placeholder_budget: { en: "e.g. 20000", ar: "مثلاً: 20000", fr: "ex: 20000" },
   btn_create_post: { en: "Create Post", ar: "إنشاء منشور", fr: "Créer une publication" },
+  btn_update_post: { en: "Update Post", ar: "تحديث المنشور", fr: "Mettre à jour" },
   btn_posting: { en: "Posting...", ar: "جاري النشر...", fr: "Publication en cours..." },
+  btn_saving: { en: "Saving...", ar: "جاري الحفظ...", fr: "Enregistrement..." },
   listing_created: { en: "Listing created!", ar: "تم إنشاء الإعلان!", fr: "Annonce créée !" },
   listing_live: { en: "Your post is now live.", ar: "منشورك متاح الآن.", fr: "Votre publication est maintenant en ligne." },
   error: { en: "Error", ar: "خطأ", fr: "Erreur" },

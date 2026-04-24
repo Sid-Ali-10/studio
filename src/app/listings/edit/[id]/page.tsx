@@ -13,12 +13,15 @@ import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Save, ArrowLeft } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
+import { cn } from "@/lib/utils";
 
 export default function EditListingPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const id = resolvedParams.id;
   
   const { user } = useAuth();
+  const { t, isRTL } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [type, setType] = useState<"traveler" | "buyer">("traveler");
@@ -43,7 +46,7 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
         if (snap.exists()) {
           const data = snap.data();
           if (data.listerId !== user?.uid) {
-            toast({ variant: "destructive", title: "Access denied" });
+            toast({ variant: "destructive", title: t('error') });
             router.push("/");
             return;
           }
@@ -65,7 +68,7 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
       }
     };
     if (user) fetchListing();
-  }, [id, user, router, toast]);
+  }, [id, user, router, toast, t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,10 +80,10 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
         ...formData,
         updatedAt: serverTimestamp(),
       });
-      toast({ title: "Listing updated!" });
+      toast({ title: t('success') });
       router.back();
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Error", description: error.message });
+      toast({ variant: "destructive", title: t('error'), description: error.message });
     } finally {
       setLoading(false);
     }
@@ -95,63 +98,128 @@ export default function EditListingPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <Button variant="ghost" onClick={() => router.back()} className="gap-2 rounded-full hover:bg-muted">
-        <ArrowLeft size={18} /> Back
-      </Button>
+      <div className="flex items-center justify-between">
+        <Button 
+          variant="ghost" 
+          onClick={() => router.back()} 
+          className="gap-2 rounded-full hover:bg-muted"
+        >
+          <ArrowLeft size={18} className={cn(isRTL && "rotate-180")} /> {t('back')}
+        </Button>
+      </div>
       
-      <Card className="border-none shadow-xl rounded-2xl overflow-hidden">
+      <Card className="border-none shadow-xl rounded-2xl overflow-hidden text-start">
         <CardHeader>
-          <CardTitle>Edit Post</CardTitle>
-          <CardDescription>Update your {type} details.</CardDescription>
+          <CardTitle className="text-2xl font-bold">{t('edit_post_title')}</CardTitle>
+          <CardDescription>
+            {type === "traveler" ? t('edit_post_desc_traveler') : t('edit_post_desc_buyer')}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="title">Title</Label>
-              <Input id="title" name="title" className="rounded-xl h-12" value={formData.title} onChange={handleInputChange} required />
+              <Label htmlFor="title" className="font-bold">{t('label_title')}</Label>
+              <Input 
+                id="title" 
+                name="title" 
+                className="rounded-xl h-12 text-start" 
+                value={formData.title} 
+                onChange={handleInputChange} 
+                required 
+              />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea id="description" name="description" className="rounded-xl min-h-[120px]" value={formData.description} onChange={handleInputChange} required />
+              <Label htmlFor="description" className="font-bold">{t('label_description')}</Label>
+              <Textarea 
+                id="description" 
+                name="description" 
+                className="rounded-xl min-h-[120px] resize-none text-start" 
+                value={formData.description} 
+                onChange={handleInputChange} 
+                required 
+              />
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="city">
-                  {type === "traveler" ? "Departure City" : "Purchase Source (Country/City)"}
+                <Label htmlFor="city" className="font-bold">
+                  {type === "traveler" ? t('label_departure_city') : t('label_purchase_source')}
                 </Label>
-                <Input id="city" name="city" className="rounded-xl h-12" value={formData.city} onChange={handleInputChange} required />
+                <Input 
+                  id="city" 
+                  name="city" 
+                  className="rounded-xl h-12 text-start" 
+                  value={formData.city} 
+                  onChange={handleInputChange} 
+                  required 
+                />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="destination">
-                  {type === "traveler" ? "Final Delivery Location" : "Your City in Algeria"}
+                <Label htmlFor="destination" className="font-bold">
+                  {type === "traveler" ? t('label_final_delivery') : t('label_buyer_city')}
                 </Label>
-                <Input id="destination" name="destination" className="rounded-xl h-12" value={formData.destination} onChange={handleInputChange} required />
+                <Input 
+                  id="destination" 
+                  name="destination" 
+                  className="rounded-xl h-12 text-start" 
+                  value={formData.destination} 
+                  onChange={handleInputChange} 
+                  required 
+                />
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="date">
-                  {type === "traveler" ? "Arrival Date" : "Desired By Date"}
+                <Label htmlFor="date" className="font-bold">
+                  {type === "traveler" ? t('label_arrival_date') : t('label_desired_date')}
                 </Label>
-                <Input id="date" name="date" type="date" className="rounded-xl h-12" value={formData.date} onChange={handleInputChange} required />
+                <Input 
+                  id="date" 
+                  name="date" 
+                  type="date" 
+                  className="rounded-xl h-12 text-start" 
+                  value={formData.date} 
+                  onChange={handleInputChange} 
+                  required 
+                />
               </div>
               {type === "traveler" ? (
                 <div className="space-y-2">
-                  <Label htmlFor="weight">Available Weight (kg)</Label>
-                  <Input id="weight" name="weight" type="number" className="rounded-xl h-12" value={formData.weight} onChange={handleInputChange} required />
+                  <Label htmlFor="weight" className="font-bold">{t('label_available_weight')}</Label>
+                  <Input 
+                    id="weight" 
+                    name="weight" 
+                    type="number" 
+                    className="rounded-xl h-12 text-start" 
+                    value={formData.weight} 
+                    onChange={handleInputChange} 
+                    required 
+                  />
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <Label htmlFor="price">Max Budget (DA)</Label>
-                  <Input id="price" name="price" type="number" className="rounded-xl h-12" value={formData.price} onChange={handleInputChange} required />
+                  <Label htmlFor="price" className="font-bold">{t('label_max_budget')}</Label>
+                  <Input 
+                    id="price" 
+                    name="price" 
+                    type="number" 
+                    className="rounded-xl h-12 text-start" 
+                    value={formData.price} 
+                    onChange={handleInputChange} 
+                    required 
+                  />
                 </div>
               )}
             </div>
 
-            <Button type="submit" className="w-full h-14 rounded-xl font-bold gap-2 mt-4" disabled={loading}>
-              <Save size={20} /> {loading ? "Saving..." : "Update Post"}
+            <Button 
+              type="submit" 
+              className="w-full h-14 rounded-xl font-black text-lg gap-2 mt-4 shadow-lg transition-all active:scale-[0.98]" 
+              disabled={loading}
+            >
+              {loading ? <Loader2 className="animate-spin" /> : <Save size={20} />}
+              {loading ? t('btn_saving') : t('btn_update_post')}
             </Button>
           </form>
         </CardContent>
