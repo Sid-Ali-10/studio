@@ -67,7 +67,6 @@ export default function AuthPage() {
     e.preventDefault();
     setLoading(true);
     
-    // Trim inputs to avoid whitespace issues
     const cleanEmail = email.trim();
     const cleanPassword = password.trim();
     const cleanUsername = username.trim();
@@ -76,12 +75,10 @@ export default function AuthPage() {
       if (isLogin) {
         await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
         toast({ title: "Welcome back!", description: "Successfully logged in." });
-        // Immediate redirect
         router.push("/");
       } else {
         const { user } = await createUserWithEmailAndPassword(auth, cleanEmail, cleanPassword);
         
-        // Send verification email
         await sendEmailVerification(user);
         
         const profileRef = doc(db, "userProfiles", user.uid);
@@ -137,7 +134,7 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-[#F0F2F5]">
+    <div dir="ltr" className="min-h-screen flex items-center justify-center p-4 bg-[#F0F2F5] text-left">
       <div className="w-full max-w-md space-y-8 animate-in fade-in duration-700">
         <div className="text-center space-y-2">
           <div className="inline-flex items-center justify-center mb-4">
@@ -149,8 +146,8 @@ export default function AuthPage() {
 
         <Card className="border-none shadow-2xl">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold">{isLogin ? "Login" : "Create Account"}</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-2xl font-bold text-left">{isLogin ? "Login" : "Create Account"}</CardTitle>
+            <CardDescription className="text-left">
               {isLogin ? "Welcome back! Please enter your details" : "Join our community of travelers and buyers"}
             </CardDescription>
           </CardHeader>
@@ -164,7 +161,7 @@ export default function AuthPage() {
                       name="username"
                       autoComplete="username"
                       placeholder="Username"
-                      className="pl-10 h-12 rounded-xl"
+                      className="pl-10 h-12 rounded-xl text-left"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       required={!isLogin}
@@ -180,7 +177,7 @@ export default function AuthPage() {
                     type="email"
                     autoComplete="email"
                     placeholder="Email"
-                    className="pl-10 h-12 rounded-xl"
+                    className="pl-10 h-12 rounded-xl text-left"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -195,7 +192,7 @@ export default function AuthPage() {
                     type={showPassword ? "text" : "password"}
                     autoComplete={isLogin ? "current-password" : "new-password"}
                     placeholder="Password"
-                    className="pl-10 pr-10 h-12 rounded-xl"
+                    className="pl-10 pr-10 h-12 rounded-xl text-left"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -239,10 +236,10 @@ export default function AuthPage() {
                       Forgot Password?
                     </button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-md rounded-2xl">
+                  <DialogContent className="sm:max-w-md rounded-2xl" dir="ltr">
                     <DialogHeader>
-                      <DialogTitle>Reset Password</DialogTitle>
-                      <DialogDescription>
+                      <DialogTitle className="text-left">Reset Password</DialogTitle>
+                      <DialogDescription className="text-left">
                         Enter your email address and we'll send you a link to reset your password.
                       </DialogDescription>
                     </DialogHeader>
@@ -254,7 +251,7 @@ export default function AuthPage() {
                           type="email"
                           autoComplete="email"
                           placeholder="Email Address"
-                          className="pl-10 h-12 rounded-xl"
+                          className="pl-10 h-12 rounded-xl text-left"
                           value={resetEmail}
                           onChange={(e) => setResetEmail(e.target.value)}
                           required

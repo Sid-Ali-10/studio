@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -29,11 +30,8 @@ export default function AdminLoginPage() {
       try {
         const currentUser = auth.currentUser;
 
-        // If a user is logged in, promote them to Admin in Firestore
-        // so the Security Rules allow them to fetch all data.
         if (currentUser) {
           const profileRef = doc(db, 'userProfiles', currentUser.uid);
-          // Using setDoc with merge is safer than updateDoc as it creates the doc if missing
           await setDoc(
             profileRef,
             {
@@ -77,7 +75,7 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
+    <div dir="ltr" className="min-h-screen flex items-center justify-center bg-muted/30 p-4 text-left">
       <Card className="w-full max-w-md border-none shadow-2xl overflow-hidden rounded-3xl">
         <div className="bg-primary h-2 w-full" />
         <CardHeader className="text-center pb-2">
@@ -95,7 +93,7 @@ export default function AdminLoginPage() {
                 <Input
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Enter Secret Key"
-                  className={`pl-10 pr-10 h-14 rounded-2xl border-2 transition-all duration-200 ${
+                  className={`pl-10 pr-10 h-14 rounded-2xl border-2 transition-all duration-200 text-left ${
                     error ? 'border-destructive' : 'focus:border-primary'
                   }`}
                   value={key}
@@ -108,7 +106,7 @@ export default function AdminLoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-muted-foreground hover:text-primary hover:bg-muted rounded-full transition-all duration-200 active:scale-90 focus:outline-none"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-muted-foreground hover:text-primary rounded-full transition-all duration-200 active:scale-90 focus:outline-none"
                   title={showPassword ? 'Hide secret key' : 'Show secret key'}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}

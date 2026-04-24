@@ -48,7 +48,7 @@ const VerificationScreen = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background px-6 text-center">
+    <div dir="ltr" className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background px-6 text-center">
       <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mb-6">
         <Mail className="text-primary w-10 h-10" />
       </div>
@@ -111,11 +111,11 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribe();
   }, [user]);
 
-  if (loading || (showSplash && pathname !== "/login")) {
+  if (loading || (showSplash && pathname !== "/login" && pathname !== "/admin/login")) {
     return <SplashScreen />;
   }
 
-  const isAuthPage = pathname === "/login";
+  const isAuthPage = pathname === "/login" || pathname === "/admin/login";
   if (isAuthPage) return <>{children}</>;
 
   if (user && !user.emailVerified) {
