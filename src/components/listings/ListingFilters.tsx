@@ -24,7 +24,7 @@ interface ListingFiltersProps {
 }
 
 export function ListingFilters({ filters, onFilterChange, showPrice = true, showWeight = true }: ListingFiltersProps) {
-  const { t } = useLanguage();
+  const { t, isRTL } = useLanguage();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -47,11 +47,11 @@ export function ListingFilters({ filters, onFilterChange, showPrice = true, show
   return (
     <div className="bg-card p-4 rounded-2xl shadow-sm border space-y-4 animate-in fade-in duration-300">
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+        <Search className="absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
         <Input
           name="search"
           placeholder={t('search_placeholder')}
-          className="pl-10 h-11 rounded-xl bg-muted/50 border-none text-start"
+          className="ps-10 h-11 rounded-xl bg-muted/50 border-none text-start"
           value={filters.search}
           onChange={handleChange}
         />
@@ -59,22 +59,22 @@ export function ListingFilters({ filters, onFilterChange, showPrice = true, show
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="relative">
-          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+          <MapPin className="absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
           <Input
             name="city"
             placeholder={t('filter_city')}
-            className="pl-10 h-10 rounded-xl bg-muted/50 border-none text-sm text-start"
+            className="ps-10 h-10 rounded-xl bg-muted/50 border-none text-sm text-start"
             value={filters.city}
             onChange={handleChange}
           />
         </div>
         
         <div className="relative">
-          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+          <Calendar className="absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
           <Input
             name="date"
             type="date"
-            className="pl-10 h-10 rounded-xl bg-muted/50 border-none text-sm text-start"
+            className="ps-10 h-10 rounded-xl bg-muted/50 border-none text-sm text-start"
             value={filters.date}
             onChange={handleChange}
           />
@@ -82,12 +82,12 @@ export function ListingFilters({ filters, onFilterChange, showPrice = true, show
 
         {showWeight && (
           <div className="relative">
-            <Weight className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+            <Weight className="absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
             <Input
               name="minWeight"
               type="number"
               placeholder={t('filter_weight')}
-              className="pl-10 h-10 rounded-xl bg-muted/50 border-none text-sm text-start"
+              className="ps-10 h-10 rounded-xl bg-muted/50 border-none text-sm text-start"
               value={filters.minWeight}
               onChange={handleChange}
             />
@@ -96,12 +96,12 @@ export function ListingFilters({ filters, onFilterChange, showPrice = true, show
 
         {showPrice && (
           <div className="relative">
-            <Banknote className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+            <Banknote className="absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
             <Input
               name="maxPrice"
               type="number"
               placeholder={t('filter_budget')}
-              className="pl-10 h-10 rounded-xl bg-muted/50 border-none text-sm text-start"
+              className="ps-10 h-10 rounded-xl bg-muted/50 border-none text-sm text-start"
               value={filters.maxPrice}
               onChange={handleChange}
             />

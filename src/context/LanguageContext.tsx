@@ -36,7 +36,14 @@ export const translations: Translations = {
   buyer: { en: "Buyer", ar: "مشتري", fr: "Acheteur" },
   buyers: { en: "Buyers", ar: "المشترون", fr: "Acheteurs" },
   no_results: { en: "No results found", ar: "لا توجد نتائج", fr: "Aucun résultat trouvé" },
-  
+  from: { en: "From", ar: "من", fr: "De" },
+  to: { en: "To", ar: "إلى", fr: "À" },
+  arriving: { en: "Arriving", ar: "الوصول", fr: "Arrivée" },
+  weight: { en: "Weight", ar: "الوزن", fr: "Poids" },
+  budget: { en: "Budget", ar: "الميزانية", fr: "Budget" },
+  connect: { en: "Connect", ar: "تواصل", fr: "Connecter" },
+  connected: { en: "Connected", ar: "متصل", fr: "Connecté" },
+
   // Saved Listings Page
   saved_title: { en: "Saved Listings", ar: "الإعلانات المحفوظة", fr: "Annonces enregistrées" },
   saved_subtitle: { en: "Your personal wishlist of interesting deals.", ar: "قائمة أمنياتك الشخصية للعروض المثيرة للاهتمام.", fr: "Votre liste de souhaits personnelle pour des offres intéressantes." },
@@ -65,7 +72,7 @@ export const translations: Translations = {
   label_max_budget: { en: "Max Budget (DA)", ar: "أقصى ميزانية (د.ج)", fr: "Budget max (DA)" },
   placeholder_traveler_title: { en: "e.g. Arriving from Paris on July 10", ar: "مثلاً: قادم من باريس في 10 يوليو", fr: "ex: Arrivée de Paris le 10 juillet" },
   placeholder_buyer_title: { en: "e.g. Need iPhone 15 Pro from UAE", ar: "مثلاً: أحتاج آيفون 15 برو من الإمارات", fr: "ex: Besoin d'un iPhone 15 Pro des EAU" },
-  placeholder_description: { en: "Details about items you can carry, delivery preferences, or product specifics.", ar: "تفاصيل حول العناصر التي يمكنك حملها، أو تفضيلات التسليم، أو تفاصيل المنتج.", fr: "Détails sur les articles que vous pouvez transporter, vos préférences de livraison ou les spécificités du produit." },
+  placeholder_description: { en: "Details about items you can carry...", ar: "تفاصيل حول العناصر التي يمكنك حملها...", fr: "Détails sur les articles..." },
   placeholder_departure_city: { en: "e.g. Paris, France", ar: "مثلاً: باريس، فرنسا", fr: "ex: Paris, France" },
   placeholder_purchase_source: { en: "e.g. Dubai, UAE", ar: "مثلاً: دبي، الإمارات", fr: "ex: Dubaï, Émirats Arabes Unis" },
   placeholder_delivery_location: { en: "e.g. Oran", ar: "مثلاً: وهران", fr: "ex: Oran" },
@@ -74,25 +81,6 @@ export const translations: Translations = {
   btn_create_post: { en: "Create Post", ar: "إنشاء منشور", fr: "Créer une publication" },
   btn_posting: { en: "Posting...", ar: "جاري النشر...", fr: "Publication en cours..." },
 
-  // Listing Card
-  connect: { en: "Connect", ar: "تواصل", fr: "Connecter" },
-  connected: { en: "Connected", ar: "متصل", fr: "Connecté" },
-  from: { en: "From", ar: "من", fr: "De" },
-  to: { en: "To", ar: "إلى", fr: "À" },
-  arriving: { en: "Arriving", ar: "الوصول", fr: "Arrivée" },
-  weight: { en: "Weight", ar: "الوزن", fr: "Poids" },
-  budget: { en: "Budget", ar: "الميزانية", fr: "Budget" },
-  price: { en: "Price", ar: "السعر", fr: "Prix" },
-  
-  // Auth
-  login: { en: "Login", ar: "دخول", fr: "Connexion" },
-  signup: { en: "Sign Up", ar: "تسجيل", fr: "S'inscrire" },
-  email: { en: "Email", ar: "البريد", fr: "Email" },
-  password: { en: "Password", ar: "كلمة السر", fr: "Mot de passe" },
-  username: { en: "Username", ar: "اسم المستخدم", fr: "Nom d'utilisateur" },
-  forgot_password: { en: "Forgot Password?", ar: "نسيت كلمة السر؟", fr: "Mot de passe oublié ?" },
-  welcome: { en: "Welcome", ar: "مرحباً", fr: "Bienvenue" },
-  
   // Wallet
   wallet_title: { en: "Wallet", ar: "المحفظة", fr: "Portefeuille" },
   wallet_subtitle: { en: "Manage your marketplace funds and commissions.", ar: "إدارة أموال السوق والعمولات الخاصة بك.", fr: "Gérez vos fonds et vos commissions." },
@@ -114,11 +102,10 @@ export const translations: Translations = {
   // Chat
   type_message: { en: "Type message...", ar: "اكتب رسالة...", fr: "Écrire..." },
   send: { en: "Send", ar: "إرسال", fr: "Envoyer" },
-  make_offer: { en: "Offer Price", ar: "عرض سعر", fr: "Proposer un prix" },
   complete_deal: { en: "Complete Deal", ar: "إتمام الصفقة", fr: "Finaliser" },
-  report: { en: "Report", ar: "إبلاغ", fr: "Signaler" },
+  price_offer: { en: "Price Offer", ar: "عرض سعر", fr: "Offre de prix" },
   
-  // Filters & Placeholders
+  // Filters
   search_placeholder: { en: "Search by title or description...", ar: "بحث عن طريق العنوان أو الوصف...", fr: "Recherche par titre ou description..." },
   filter_city: { en: "Filter by city", ar: "تصفية حسب المدينة", fr: "Filtrer par ville" },
   filter_weight: { en: "Min weight (kg)", ar: "أقل وزن (كجم)", fr: "Poids min (kg)" },
@@ -129,7 +116,6 @@ export const translations: Translations = {
   verified: { en: "Verified", ar: "موثق", fr: "Vérifié" },
   deals: { en: "Deals", ar: "صفقات", fr: "Transactions" },
   postings: { en: "Postings", ar: "المنشورات", fr: "Annonces" },
-  wallet_funds: { en: "Wallet Funds", ar: "رصيد المحفظة", fr: "Fonds du portefeuille" },
 };
 
 interface LanguageContextType {

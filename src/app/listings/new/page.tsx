@@ -19,7 +19,7 @@ import { useLanguage } from "@/context/LanguageContext";
 
 export default function NewListingPage() {
   const { user, profile } = useAuth();
-  const { t } = useLanguage();
+  const { t, isRTL } = useLanguage();
   const [type, setType] = useState<"traveler" | "buyer">("traveler");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -77,7 +77,7 @@ export default function NewListingPage() {
         <p className="text-muted-foreground">{t('create_listing_desc')}</p>
       </div>
 
-      <Tabs defaultValue="traveler" onValueChange={(v) => setType(v as any)}>
+      <Tabs defaultValue="traveler" onValueChange={(v) => setType(v as any)} dir={isRTL ? "rtl" : "ltr"}>
         <TabsList className="bg-card grid grid-cols-2 h-14 p-1 rounded-2xl w-full mb-6">
           <TabsTrigger value="traveler" className="rounded-xl flex gap-2">
             <Plane size={18} /> {t('tab_traveler')}
