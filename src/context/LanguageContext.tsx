@@ -51,6 +51,16 @@ export const translations: Translations = {
   confirm_delete: { en: "Are you sure you want to delete this?", ar: "هل أنت متأكد أنك تريد الحذف؟", fr: "Êtes-vous sûr de vouloir supprimer ceci ?" },
   confirm_delete_title: { en: "Confirm Deletion", ar: "تأكيد الحذف", fr: "Confirmer la suppression" },
 
+  // Detail View Labels
+  label_from_detail: { en: "FROM", ar: "من", fr: "DE" },
+  label_to_detail: { en: "TO", ar: "إلى", fr: "À" },
+  label_arrival_date_detail: { en: "ARRIVAL DATE", ar: "تاريخ الوصول", fr: "DATE D'ARRIVÉE" },
+  label_available_weight_detail: { en: "AVAILABLE WEIGHT", ar: "الوزن المتاح", fr: "POIDS DISPONIBLE" },
+  label_purchase_source_detail: { en: "PURCHASE SOURCE", ar: "مصدر الشراء", fr: "SOURCE D'ACHAT" },
+  label_city_algeria_detail: { en: "CITY IN ALGERIA", ar: "مدينة في الجزائر", fr: "VILLE EN ALGÉRIE" },
+  label_desired_by_detail: { en: "DESIRED BY", ar: "مطلوب بحلول", fr: "SOUHAITÉ AVANT LE" },
+  label_budget_detail: { en: "BUDGET", ar: "الميزانية", fr: "BUDGET" },
+
   // Saved Listings Page
   saved_title: { en: "Saved Listings", ar: "الإعلانات المحفوظة", fr: "Annonces enregistrées" },
   saved_subtitle: { en: "Your personal wishlist of interesting deals.", ar: "قائمة أمنياتك الشخصية للعروض المثيرة للاهتمام.", fr: "Votre liste de souhaits personnelle pour des offres intéressantes." },
@@ -155,7 +165,7 @@ export const translations: Translations = {
   offer_sent: { en: "Offer sent", ar: "تم إرسال العرض", fr: "Offre envoyée" },
   offer_failed: { en: "Failed to send offer", ar: "فشل إرسال العرض", fr: "Échec de l'envoi de l'offre" },
   offer_accepted: { en: "Offer Accepted!", ar: "تم قبول العرض!", fr: "Offre acceptée !" },
-  offer_rejected: { en: "Offer Rejected", ar: "تم رفض العرض", fr: "Offre rejetée" },
+  offer_rejected: { en: "Offer Rejected", ar: "تم رفض العرض", fr: "Offre rejeteé" },
   msg_updated: { en: "Message updated", ar: "تم تحديث الرسالة", fr: "Message mis à jour" },
   msg_deleted: { en: "Message deleted", ar: "تم حذف الرسالة", fr: "Message supprimé" },
   conv_removed: { en: "Conversation removed", ar: "تمت إزالة المحادثة", fr: "Discussion supprimée" },

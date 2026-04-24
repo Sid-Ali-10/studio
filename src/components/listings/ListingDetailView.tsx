@@ -6,12 +6,15 @@ import { Badge } from "@/components/ui/badge";
 import { Plane, ShoppingBag, MapPin, Calendar, Weight, Globe, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type Listing } from "./ListingCard";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface ListingDetailViewProps {
   listing: Listing;
 }
 
 export function ListingDetailView({ listing }: ListingDetailViewProps) {
+  const { t, isRTL } = useLanguage();
+
   return (
     <div className="space-y-6 py-4">
       <div className="flex items-center justify-between">
@@ -24,17 +27,17 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
           )}
         >
           {listing.type === "traveler" ? (
-            <Plane size={12} className="mr-1.5" />
+            <Plane size={12} className={cn(isRTL ? "ml-1.5" : "mr-1.5")} />
           ) : (
-            <ShoppingBag size={12} className="mr-1.5" />
+            <ShoppingBag size={12} className={cn(isRTL ? "ml-1.5" : "mr-1.5")} />
           )}
-          <span>{listing.type}</span>
+          <span>{t(listing.type)}</span>
         </Badge>
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold border border-primary/20">
             {listing.userName?.substring(0, 2).toUpperCase() || "UN"}
           </div>
-          <div className="flex flex-col">
+          <div className="flex flex-col text-start">
             <span className="text-xs font-semibold">{listing.userName}</span>
             <div className="flex items-center gap-0.5">
               <Star size={10} className="fill-yellow-400 text-yellow-400" />
@@ -44,7 +47,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
         </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-2 text-start">
         <h3 className="text-2xl font-bold">{listing.title}</h3>
         <p className="text-muted-foreground whitespace-pre-wrap">{listing.description}</p>
       </div>
@@ -52,78 +55,78 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-muted/30 p-4 rounded-2xl">
         {listing.type === "traveler" ? (
           <>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 text-start">
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
                 <Globe size={20} />
               </div>
               <div className="flex flex-col">
-                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">From</span>
+                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{t('label_from_detail')}</span>
                 <span className="font-semibold text-sm">{listing.city}</span>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 text-start">
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
                 <MapPin size={20} />
               </div>
               <div className="flex flex-col">
-                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">To</span>
+                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{t('label_to_detail')}</span>
                 <span className="font-semibold text-sm">{listing.destination}</span>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 text-start">
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
                 <Calendar size={20} />
               </div>
               <div className="flex flex-col">
-                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Arrival Date</span>
+                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{t('label_arrival_date_detail')}</span>
                 <span className="font-semibold text-sm">{listing.date}</span>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 text-start">
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
                 <Weight size={20} />
               </div>
               <div className="flex flex-col">
-                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Available Weight</span>
+                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{t('label_available_weight_detail')}</span>
                 <span className="font-semibold text-sm">{listing.weight} kg</span>
               </div>
             </div>
           </>
         ) : (
           <>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 text-start">
               <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent shrink-0">
                 <Globe size={20} />
               </div>
               <div className="flex flex-col">
-                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Purchase Source</span>
+                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{t('label_purchase_source_detail')}</span>
                 <span className="font-semibold text-sm">{listing.city}</span>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 text-start">
               <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent shrink-0">
                 <MapPin size={20} />
               </div>
               <div className="flex flex-col">
-                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">City in Algeria</span>
+                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{t('label_city_algeria_detail')}</span>
                 <span className="font-semibold text-sm">{listing.destination}</span>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 text-start">
               <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent shrink-0">
                 <Calendar size={20} />
               </div>
               <div className="flex flex-col">
-                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Desired By</span>
+                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{t('label_desired_by_detail')}</span>
                 <span className="font-semibold text-sm">{listing.date}</span>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 text-start">
               <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent shrink-0">
                 <ShoppingBag size={20} />
               </div>
               <div className="flex flex-col">
-                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Budget</span>
+                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{t('label_budget_detail')}</span>
                 <span className="font-semibold text-sm">{listing.price} DA</span>
               </div>
             </div>
