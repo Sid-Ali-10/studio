@@ -56,7 +56,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
         {listing.type === "traveler" ? (
           <>
             <div className="flex items-center gap-3 text-start">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-emerald-500 shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
                 <Globe size={20} />
               </div>
               <div className="flex flex-col">
@@ -65,7 +65,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
               </div>
             </div>
             <div className="flex items-center gap-3 text-start">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-emerald-500 shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
                 <MapPin size={20} />
               </div>
               <div className="flex flex-col">
@@ -74,7 +74,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
               </div>
             </div>
             <div className="flex items-center gap-3 text-start">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-emerald-500 shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
                 <Calendar size={20} />
               </div>
               <div className="flex flex-col">
@@ -83,7 +83,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
               </div>
             </div>
             <div className="flex items-center gap-3 text-start">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-emerald-500 shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
                 <Weight size={20} />
               </div>
               <div className="flex flex-col">
@@ -95,7 +95,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
         ) : (
           <>
             <div className="flex items-center gap-3 text-start">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
                 <Globe size={20} />
               </div>
               <div className="flex flex-col">
@@ -104,7 +104,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
               </div>
             </div>
             <div className="flex items-center gap-3 text-start">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
                 <MapPin size={20} />
               </div>
               <div className="flex flex-col">
@@ -113,7 +113,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
               </div>
             </div>
             <div className="flex items-center gap-3 text-start">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
                 <Calendar size={20} />
               </div>
               <div className="flex flex-col">
@@ -122,7 +122,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
               </div>
             </div>
             <div className="flex items-center gap-3 text-start">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
                 <ShoppingBag size={20} />
               </div>
               <div className="flex flex-col">
