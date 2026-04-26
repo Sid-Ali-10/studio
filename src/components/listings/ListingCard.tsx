@@ -25,7 +25,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { db } from '@/lib/firebase';
 import { doc, serverTimestamp } from 'firebase/firestore';
-import { setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
 import { ToastAction } from '@/components/ui/toast';
 import { useRouter } from 'next/navigation';
@@ -130,7 +130,7 @@ export function ListingCard({ listing, isFavorited, onToggleFavorite, onDelete }
           <Badge
             className={cn(
               'mb-2 uppercase text-[10px] tracking-widest px-3 py-1 rounded-full border-none font-bold',
-              listing.type === 'traveler' ? 'bg-primary text-white' : 'bg-accent text-white'
+              listing.type === 'traveler' ? 'bg-primary text-white' : 'bg-emerald-500 text-white'
             )}
           >
             {listing.type === 'traveler' ? <Plane size={12} className={isRTL ? "ml-1.5" : "mr-1.5"} /> : <ShoppingBag size={12} className={isRTL ? "ml-1.5" : "mr-1.5"} />}
@@ -149,19 +149,19 @@ export function ListingCard({ listing, isFavorited, onToggleFavorite, onDelete }
         <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem] text-start">{listing.description}</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-4">
           <div className="flex items-center gap-2 text-sm text-muted-foreground text-start">
-            <Globe size={16} className="text-primary shrink-0" />
+            <Globe size={16} className="text-emerald-500 shrink-0" />
             <span className="truncate"><span className="font-bold opacity-70 text-[10px] uppercase">{t('from')}:</span> {listing.city}</span>
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground text-start">
-            <MapPin size={16} className="text-primary shrink-0" />
+            <MapPin size={16} className="text-emerald-500 shrink-0" />
             <span className="truncate"><span className="font-bold opacity-70 text-[10px] uppercase">{t('to')}:</span> {listing.destination}</span>
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground text-start">
-            <Calendar size={16} className="text-primary shrink-0" />
+            <Calendar size={16} className="text-emerald-500 shrink-0" />
             <span className="truncate"><span className="font-bold opacity-70 text-[10px] uppercase">{t('arriving')}:</span> {listing.date}</span>
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground text-start">
-            {listing.type === 'traveler' ? <Weight size={16} className="text-primary shrink-0" /> : <ShoppingBag size={16} className="text-accent shrink-0" />}
+            {listing.type === 'traveler' ? <Weight size={16} className="text-emerald-500 shrink-0" /> : <ShoppingBag size={16} className="text-emerald-500 shrink-0" />}
             <span className="truncate"><span className="font-bold opacity-70 text-[10px] uppercase">{listing.type === 'traveler' ? t('weight') : t('budget')}:</span> {listing.type === 'traveler' ? `${listing.weight} kg` : `${listing.price} ${t('currency_da')}`}</span>
           </div>
         </div>
@@ -180,11 +180,11 @@ export function ListingCard({ listing, isFavorited, onToggleFavorite, onDelete }
           {isOwner ? (
             <>
               <Link href={`/listings/edit/${listing.id}`} onClick={(e) => e.stopPropagation()}>
-                <Button variant="ghost" size="icon" className="h-8 w-8"><Edit size={16} /></Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-accent transition-all active:scale-[0.98]"><Edit size={16} /></Button>
               </Link>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={(e) => e.stopPropagation()}>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 transition-all active:scale-[0.98]" onClick={(e) => e.stopPropagation()}>
                     <Trash2 size={16} />
                   </Button>
                 </AlertDialogTrigger>
@@ -204,7 +204,7 @@ export function ListingCard({ listing, isFavorited, onToggleFavorite, onDelete }
             <Button
               variant="ghost"
               size="sm"
-              className={cn('gap-2 rounded-full h-8 text-xs font-bold', hasConnected ? 'text-accent' : 'text-primary')}
+              className={cn('gap-2 rounded-full h-8 text-xs font-bold transition-all active:scale-[0.98]', hasConnected ? 'text-emerald-500' : 'text-primary hover:bg-accent')}
               disabled={isConnecting}
               onClick={handleConnect}
             >

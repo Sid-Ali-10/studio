@@ -497,7 +497,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
           variant="ghost" 
           size="icon" 
           onClick={() => router.back()} 
-          className="rounded-full hover:bg-muted transition-all duration-200 active:scale-90"
+          className="rounded-full hover:bg-accent transition-all duration-200 active:scale-[0.98]"
         >
           <ArrowLeft size={20} className={cn(isRTL && "rotate-180")} />
         </Button>
@@ -517,7 +517,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
           {!isAdminView && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full transition-all duration-200 active:scale-90 hover:bg-muted">
+                <Button variant="ghost" size="icon" className="rounded-full transition-all duration-200 active:scale-[0.98] hover:bg-accent">
                   <MoreHorizontal size={20} />
                 </Button>
               </DropdownMenuTrigger>
@@ -538,7 +538,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                 <Button 
                   variant={hasUserRated ? "outline" : "default"}
                   size="sm" 
-                  className="rounded-full gap-2 font-bold shadow-sm"
+                  className="rounded-full gap-2 font-bold shadow-sm transition-all active:scale-[0.98]"
                   onClick={() => !hasUserRated && setIsRatingOpen(true)}
                   disabled={hasUserRated}
                 >
@@ -546,7 +546,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                   <span className="hidden sm:inline">{hasUserRated ? t('rated') : t('complete_deal')}</span>
                 </Button>
               ) : (
-                <Button variant="outline" size="sm" className="rounded-full gap-2 font-bold" onClick={() => setIsOfferDialogOpen(true)}>
+                <Button variant="outline" size="sm" className="rounded-full gap-2 font-bold transition-all active:scale-[0.98]" onClick={() => setIsOfferDialogOpen(true)}>
                   <Banknote size={16} /> <span className="hidden sm:inline">{t('price_offer')}</span>
                 </Button>
               )}
@@ -566,10 +566,10 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
             <span className="text-xs">{convData.offerSenderId === user?.uid ? t('offer_sent_notice') : `${otherUser?.username} ${t('offer_received_notice')}`}</span>
             {convData.offerSenderId !== user?.uid && !isAdminView && (
               <div className="flex gap-2">
-                <Button size="sm" className="h-8 rounded-lg gap-1" onClick={() => handleRespondToOffer(true)}>
+                <Button size="sm" className="h-8 rounded-lg gap-1 transition-all active:scale-[0.98]" onClick={() => handleRespondToOffer(true)}>
                   <Check size={14} /> {t('accept')}
                 </Button>
-                <Button size="sm" variant="ghost" className="h-8 rounded-lg gap-1 text-destructive hover:bg-destructive/10" onClick={() => handleRespondToOffer(false)}>
+                <Button size="sm" variant="ghost" className="h-8 rounded-lg gap-1 text-destructive hover:bg-destructive/10 transition-all active:scale-[0.98]" onClick={() => handleRespondToOffer(false)}>
                   <Ban size={14} /> {t('reject')}
                 </Button>
               </div>
@@ -579,9 +579,9 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       )}
 
       {convData?.agreedPrice && (
-        <div className="mt-2 px-4 py-2 bg-accent/10 border border-accent/20 rounded-xl flex items-center justify-between animate-in fade-in duration-300">
-          <span className="text-xs font-bold text-accent uppercase tracking-wider">{t('agreed_price_label')}</span>
-          <span className="font-black text-accent">{convData.agreedPrice} {t('currency_da')}</span>
+        <div className="mt-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-between animate-in fade-in duration-300">
+          <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">{t('agreed_price_label')}</span>
+          <span className="font-black text-emerald-700">{convData.agreedPrice} {t('currency_da')}</span>
         </div>
       )}
 
@@ -600,7 +600,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
               <div className={cn("flex items-end gap-1 w-full relative", isOwn ? "flex-row-reverse" : "flex-row")}>
                 <div className={cn(
                   "max-w-[85%] sm:max-w-[75%] p-3 rounded-2xl relative break-words whitespace-pre-wrap transition-all duration-200 shadow-sm",
-                  isOwn ? "bg-primary text-white rounded-tr-none hover:bg-primary/90" : "bg-card text-foreground rounded-tl-none border hover:bg-muted/30"
+                  isOwn ? "bg-primary text-white rounded-tr-none hover:bg-primary/90" : "bg-card text-foreground rounded-tl-none border hover:bg-accent"
                 )}>
                   {msg.imageUrl && <img src={msg.imageUrl} alt="Chat" className="rounded-lg mb-2 max-w-full h-auto" />}
                   {msg.messageText && <p className="text-sm">{msg.messageText}{msg.isEdited && <span className="text-[9px] opacity-70 ml-2">({t('edit')})</span>}</p>}
@@ -611,13 +611,13 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
                 {!isAdminView && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 active:scale-90 hover:bg-muted">
+                      <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 active:scale-[0.98] hover:bg-accent">
                         <MoreHorizontal size={14} />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="rounded-xl p-2 w-48 shadow-xl border-none">
-                      <DropdownMenuItem className="gap-2 rounded-lg transition-colors focus:bg-muted hover:bg-muted" onClick={() => setReplyingTo(msg)}><Reply size={14} /> {t('reply')}</DropdownMenuItem>
-                      {editAllowed && <DropdownMenuItem className="gap-2 rounded-lg transition-colors focus:bg-muted hover:bg-muted" onClick={() => handleEditInit(msg)}><Pencil size={14} /> {t('edit')}</DropdownMenuItem>}
+                      <DropdownMenuItem className="gap-2 rounded-lg transition-colors focus:bg-accent hover:bg-accent" onClick={() => setReplyingTo(msg)}><Reply size={14} /> {t('reply')}</DropdownMenuItem>
+                      {editAllowed && <DropdownMenuItem className="gap-2 rounded-lg transition-colors focus:bg-accent hover:bg-accent" onClick={() => handleEditInit(msg)}><Pencil size={14} /> {t('edit')}</DropdownMenuItem>}
                       <DropdownMenuItem className="gap-2 text-destructive rounded-lg transition-colors focus:bg-destructive/10 hover:bg-destructive/5" onClick={() => handleDeleteMessage(msg.id)}><Trash2 size={14} /> {t('delete')}</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -636,13 +636,13 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
               <span className="font-bold text-primary">{t('reply')} {replyingTo.senderId === user?.uid ? t('you') : (otherUser?.username || t('user'))}</span>
               <span className="truncate italic">"{replyingTo.messageText || "Image"}"</span>
             </div>
-            <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full transition-all duration-200 active:scale-90 hover:bg-muted" onClick={() => setReplyingTo(null)}><X size={14} /></Button>
+            <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full transition-all duration-200 active:scale-[0.98] hover:bg-accent" onClick={() => setReplyingTo(null)}><X size={14} /></Button>
           </div>
         )}
         <form className="flex items-center gap-2" onSubmit={handleSendMessage}>
           <input type="file" id="image-upload" className="hidden" accept="image/*" disabled={uploading || isAdminView} onChange={handleImageUpload} />
           <label htmlFor="image-upload" className={cn(
-            "flex items-center justify-center w-11 h-11 rounded-full bg-muted cursor-pointer shrink-0 hover:bg-muted/80 transition-all duration-200 active:scale-90",
+            "flex items-center justify-center w-11 h-11 rounded-full bg-muted cursor-pointer shrink-0 hover:bg-accent transition-all duration-200 active:scale-[0.98]",
             isAdminView && "cursor-not-allowed"
           )}>
             {uploading ? <Loader2 size={20} className="animate-spin" /> : <ImageIcon size={20} />}
@@ -657,7 +657,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
           <Button 
             type="submit" 
             size="icon" 
-            className="w-11 h-11 rounded-full shadow-md transition-all duration-200 active:scale-90" 
+            className="w-11 h-11 rounded-full shadow-md transition-all duration-200 active:scale-[0.98]" 
             disabled={(!newMessage.trim() && !uploading) || isAdminView}
           >
             {editingMessage ? <CheckCircle2 size={20} /> : <Send size={20} className={cn(isRTL && "rotate-180")} />}
@@ -676,7 +676,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
             <div className="space-y-2">
               <Label>{t('issue_type')}</Label>
               <Select value={reportType} onValueChange={setReportType}>
-                <SelectTrigger className="rounded-xl h-12 transition-all hover:bg-muted/30">
+                <SelectTrigger className="rounded-xl h-12 transition-all hover:bg-accent">
                   <SelectValue placeholder="..." />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-none shadow-xl">
@@ -691,7 +691,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
               <Label>{t('issue_details')}</Label>
               <Textarea 
                 placeholder="..."
-                className="rounded-xl min-h-[100px] resize-none transition-all hover:bg-muted/30 text-start"
+                className="rounded-xl min-h-[100px] resize-none transition-all hover:bg-accent text-start"
                 value={reportReason}
                 onChange={(e) => setReportReason(e.target.value)}
               />
@@ -699,7 +699,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
           </div>
           <DialogFooter>
             <Button 
-              className="w-full h-12 rounded-xl font-bold bg-destructive hover:bg-destructive/90 shadow-lg" 
+              className="w-full h-12 rounded-xl font-bold bg-destructive hover:bg-destructive/90 shadow-lg transition-all active:scale-[0.98]" 
               onClick={handleReportIssue}
               disabled={isReporting || !reportReason.trim()}
             >
@@ -721,14 +721,14 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
               <Input
                 type="number"
                 placeholder={t('budget')}
-                className="ps-10 h-12 rounded-xl transition-all hover:bg-muted/30 text-start"
+                className="ps-10 h-12 rounded-xl transition-all hover:bg-accent text-start"
                 value={offerPrice}
                 onChange={(e) => setOfferPrice(e.target.value)}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button className="w-full h-12 rounded-xl font-bold shadow-lg" onClick={handleMakeOffer}>{t('price_offer')}</Button>
+            <Button className="w-full h-12 rounded-xl font-bold shadow-lg transition-all active:scale-[0.98]" onClick={handleMakeOffer}>{t('price_offer')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -751,7 +751,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
             ))}
           </div>
           <DialogFooter>
-            <Button className="w-full h-12 rounded-xl font-bold shadow-lg" disabled={ratingLoading} onClick={handleRateDeal}>
+            <Button className="w-full h-12 rounded-xl font-bold shadow-lg transition-all active:scale-[0.98]" disabled={ratingLoading} onClick={handleRateDeal}>
               {ratingLoading ? <Loader2 className="animate-spin" /> : t('rate_complete')}
             </Button>
           </DialogFooter>

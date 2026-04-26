@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plane, ShoppingBag, Send } from "lucide-react";
 import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { useLanguage } from "@/context/LanguageContext";
+import { cn } from "@/lib/utils";
 
 export default function NewListingPage() {
   const { user, profile } = useAuth();
