@@ -329,8 +329,8 @@ export default function AdminDashboard() {
             </Card>
             <Card className="rounded-3xl border-none shadow-sm hover:shadow-md transition-shadow duration-200">
               <CardContent className="p-6 flex items-center gap-4">
-                <div className="w-12 h-12 bg-green-500/10 rounded-2xl flex items-center justify-center">
-                  <Package className="text-green-500" />
+                <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center">
+                  <Package className="text-emerald-600" />
                 </div>
                 <div>
                   <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Listings</p>
@@ -479,27 +479,27 @@ export default function AdminDashboard() {
                   <Card
                     key={u.id}
                     className={cn(
-                      "rounded-2xl border-none shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-muted/30 transition-all duration-200",
+                      "rounded-2xl border-none shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-accent/30 transition-all duration-200",
                       u.isBanned && "opacity-60 bg-destructive/5"
                     )}
                   >
-                    <div className="flex items-center gap-4 min-w-0">
+                    <Link href={`/profile/${u.id}`} className="flex items-center gap-4 min-w-0 flex-1 group/user">
                       <div className={cn(
-                        "w-12 h-12 rounded-2xl flex items-center justify-center font-black shrink-0 shadow-sm",
+                        "w-12 h-12 rounded-2xl flex items-center justify-center font-black shrink-0 shadow-sm transition-transform group-hover/user:scale-105",
                         u.isBanned ? "bg-destructive/20 text-destructive" : "bg-primary/10 text-primary"
                       )}>
                         {u.username?.charAt(0).toUpperCase()}
                       </div>
                       <div className="flex flex-col min-w-0">
-                        <div className="font-black text-sm md:text-base flex items-center gap-2 truncate">
+                        <div className="font-black text-sm md:text-base flex items-center gap-2 truncate group-hover/user:text-primary transition-colors">
                           {u.username} 
-                          {u.isVerified && <CheckCircle2 size={14} className="text-accent" />}
+                          {u.isVerified && <CheckCircle2 size={14} className="text-primary" />}
                           {u.isBanned && <Badge variant="destructive" className="h-4 text-[8px] px-1 font-black">BANNED</Badge>}
                         </div>
                         <p className="text-xs text-muted-foreground truncate font-medium">{u.email}</p>
                       </div>
-                    </div>
-                    <div className="flex gap-2 ml-auto sm:ml-0">
+                    </Link>
+                    <div className="flex gap-2 ml-auto sm:ml-0 relative z-10">
                       <Button
                         variant="ghost"
                         size="icon"
@@ -519,7 +519,7 @@ export default function AdminDashboard() {
                         onClick={() => handleCopyEmail(u.email, u.id)}
                         title="Copy Email Address"
                       >
-                        {copiedId === u.id ? <Check size={18} className="text-accent" /> : <Copy size={18} />}
+                        {copiedId === u.id ? <Check size={18} className="text-primary" /> : <Copy size={18} />}
                       </Button>
                     </div>
                   </Card>
@@ -534,7 +534,7 @@ export default function AdminDashboard() {
                 .map((l) => (
                   <Card
                     key={l.id}
-                    className="rounded-2xl border-none shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-muted/30 transition-all duration-200"
+                    className="rounded-2xl border-none shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-accent/30 transition-all duration-200"
                   >
                     <div className="min-w-0">
                       <p className="font-black truncate">{l.title}</p>
@@ -561,7 +561,7 @@ export default function AdminDashboard() {
               {convos.map((c) => (
                 <Card
                   key={c.id}
-                  className="rounded-2xl border-none shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-muted/30 transition-all duration-200"
+                  className="rounded-2xl border-none shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-accent/30 transition-all duration-200"
                 >
                   <div className="min-w-0">
                     <p className="font-black text-sm truncate">{c.listingTitle || 'Private Inquiry'}</p>
@@ -599,7 +599,7 @@ export default function AdminDashboard() {
                 .map((t) => (
                   <Card
                     key={t.id}
-                    className="rounded-2xl border-none shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-muted/30 transition-all duration-200"
+                    className="rounded-2xl border-none shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-accent/30 transition-all duration-200"
                   >
                     <div className="flex items-center gap-4 min-w-0">
                       <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600 shrink-0">
