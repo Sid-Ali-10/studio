@@ -13,7 +13,7 @@ interface ListingDetailViewProps {
 
 export function ListingDetailView({ listing }: ListingDetailViewProps) {
   const { t, isRTL } = useLanguage();
-  const iconColor = listing.type === 'traveler' ? 'text-primary' : 'text-emerald-500';
+  const iconColor = listing.type === 'traveler' ? 'text-primary' : 'text-emerald-600';
 
   return (
     <div className="space-y-6 py-4">
@@ -95,7 +95,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
         ) : (
           <>
             <div className="flex items-center gap-3 text-start">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 shrink-0">
                 <Globe size={20} className={iconColor} />
               </div>
               <div className="flex flex-col">
@@ -104,7 +104,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
               </div>
             </div>
             <div className="flex items-center gap-3 text-start">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 shrink-0">
                 <MapPin size={20} className={iconColor} />
               </div>
               <div className="flex flex-col">
@@ -113,7 +113,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
               </div>
             </div>
             <div className="flex items-center gap-3 text-start">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 shrink-0">
                 <Calendar size={20} className={iconColor} />
               </div>
               <div className="flex flex-col">
@@ -122,7 +122,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
               </div>
             </div>
             <div className="flex items-center gap-3 text-start">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 shrink-0">
                 <ShoppingBag size={20} className={iconColor} />
               </div>
               <div className="flex flex-col">

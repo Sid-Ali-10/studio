@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -156,7 +155,7 @@ export default function WalletPage() {
                 <DialogTrigger asChild>
                   <Button
                     variant="outline"
-                    className="flex-1 min-w-[120px] h-16 rounded-2xl flex flex-col gap-1 hover:border-primary transition-all"
+                    className="flex-1 min-w-[120px] h-16 rounded-2xl flex flex-col gap-1 hover:border-primary transition-all active:scale-[0.98]"
                   >
                     <span className="font-bold">{amount} {t('currency_da')}</span>
                     <span className="text-[10px] text-muted-foreground">{t('add_plus')}</span>
@@ -170,8 +169,8 @@ export default function WalletPage() {
                     </DialogDescription>
                   </DialogHeader>
                   <DialogFooter className="gap-2">
-                    <Button variant="ghost" className="rounded-xl" onClick={() => setIsRechargeOpen(false)}>{t('cancel')}</Button>
-                    <Button className="rounded-xl px-8" onClick={handleRecharge} disabled={rechargeLoading !== null}>
+                    <Button variant="ghost" className="rounded-xl active:scale-[0.98]" onClick={() => setIsRechargeOpen(false)}>{t('cancel')}</Button>
+                    <Button className="rounded-xl px-8 active:scale-[0.98]" onClick={handleRecharge} disabled={rechargeLoading !== null}>
                       {rechargeLoading ? <Loader2 className="animate-spin" /> : t('confirm')}
                     </Button>
                   </DialogFooter>

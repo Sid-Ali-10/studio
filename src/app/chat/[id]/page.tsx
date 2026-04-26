@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef, use } from "react";
@@ -676,7 +675,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
             <div className="space-y-2">
               <Label>{t('issue_type')}</Label>
               <Select value={reportType} onValueChange={setReportType}>
-                <SelectTrigger className="rounded-xl h-12 transition-all hover:bg-accent">
+                <SelectTrigger className="rounded-xl h-12 transition-all hover:bg-accent active:scale-[0.98]">
                   <SelectValue placeholder="..." />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-none shadow-xl">

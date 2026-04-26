@@ -201,7 +201,7 @@ export default function NewListingPage() {
 
               <Button
                 type="submit"
-                className="w-full h-14 rounded-xl font-bold bg-primary hover:bg-primary/90 shadow-lg text-lg gap-2"
+                className="w-full h-14 rounded-xl font-bold bg-primary hover:bg-primary/90 shadow-lg text-lg gap-2 transition-all active:scale-[0.98]"
                 disabled={loading}
               >
                 <Send size={20} className={cn(isRTL && "rotate-180")} />

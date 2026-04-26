@@ -73,7 +73,7 @@ export function ListingCard({ listing, isFavorited, onToggleFavorite, onDelete }
   const [hasConnected, setHasConnected] = useState(false);
 
   const isOwner = user?.uid === listing.listerId;
-  const iconColor = listing.type === 'traveler' ? 'text-primary' : 'text-emerald-500';
+  const iconColor = listing.type === 'traveler' ? 'text-primary' : 'text-emerald-600';
 
   const handleConnect = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -138,7 +138,7 @@ export function ListingCard({ listing, isFavorited, onToggleFavorite, onDelete }
           </Badge>
           <button
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleFavorite?.(listing.id); }}
-            className={cn('p-2 rounded-full transition-all', isFavorited ? 'text-red-500' : 'text-muted-foreground')}
+            className={cn('p-2 rounded-full transition-all active:scale-110', isFavorited ? 'text-red-500' : 'text-muted-foreground')}
           >
             <Heart size={20} fill={isFavorited ? 'currentColor' : 'none'} />
           </button>
@@ -204,7 +204,7 @@ export function ListingCard({ listing, isFavorited, onToggleFavorite, onDelete }
             <Button
               variant="ghost"
               size="sm"
-              className={cn('gap-2 rounded-full h-8 text-xs font-bold transition-all active:scale-[0.98]', hasConnected ? 'text-emerald-500' : 'text-primary hover:bg-accent')}
+              className={cn('gap-2 rounded-full h-8 text-xs font-bold transition-all active:scale-[0.98]', hasConnected ? 'text-emerald-600' : 'text-primary hover:bg-accent')}
               disabled={isConnecting}
               onClick={handleConnect}
             >
