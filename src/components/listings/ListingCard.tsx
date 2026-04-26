@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -74,6 +73,7 @@ export function ListingCard({ listing, isFavorited, onToggleFavorite, onDelete }
   const [hasConnected, setHasConnected] = useState(false);
 
   const isOwner = user?.uid === listing.listerId;
+  const iconColor = listing.type === 'traveler' ? 'text-primary' : 'text-emerald-500';
 
   const handleConnect = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -149,19 +149,19 @@ export function ListingCard({ listing, isFavorited, onToggleFavorite, onDelete }
         <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem] text-start">{listing.description}</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-4">
           <div className="flex items-center gap-2 text-sm text-muted-foreground text-start">
-            <Globe size={16} className="text-primary shrink-0" />
+            <Globe size={16} className={cn(iconColor, "shrink-0")} />
             <span className="truncate"><span className="font-bold opacity-70 text-[10px] uppercase">{t('from')}:</span> {listing.city}</span>
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground text-start">
-            <MapPin size={16} className="text-primary shrink-0" />
+            <MapPin size={16} className={cn(iconColor, "shrink-0")} />
             <span className="truncate"><span className="font-bold opacity-70 text-[10px] uppercase">{t('to')}:</span> {listing.destination}</span>
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground text-start">
-            <Calendar size={16} className="text-primary shrink-0" />
+            <Calendar size={16} className={cn(iconColor, "shrink-0")} />
             <span className="truncate"><span className="font-bold opacity-70 text-[10px] uppercase">{t('arriving')}:</span> {listing.date}</span>
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground text-start">
-            {listing.type === 'traveler' ? <Weight size={16} className="text-primary shrink-0" /> : <ShoppingBag size={16} className="text-primary shrink-0" />}
+            {listing.type === 'traveler' ? <Weight size={16} className={cn(iconColor, "shrink-0")} /> : <ShoppingBag size={16} className={cn(iconColor, "shrink-0")} />}
             <span className="truncate"><span className="font-bold opacity-70 text-[10px] uppercase">{listing.type === 'traveler' ? t('weight') : t('budget')}:</span> {listing.type === 'traveler' ? `${listing.weight} kg` : `${listing.price} ${t('currency_da')}`}</span>
           </div>
         </div>

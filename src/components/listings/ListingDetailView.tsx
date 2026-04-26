@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from "react";
@@ -14,6 +13,7 @@ interface ListingDetailViewProps {
 
 export function ListingDetailView({ listing }: ListingDetailViewProps) {
   const { t, isRTL } = useLanguage();
+  const iconColor = listing.type === 'traveler' ? 'text-primary' : 'text-emerald-500';
 
   return (
     <div className="space-y-6 py-4">
@@ -57,7 +57,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
           <>
             <div className="flex items-center gap-3 text-start">
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                <Globe size={20} />
+                <Globe size={20} className={iconColor} />
               </div>
               <div className="flex flex-col">
                 <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{t('label_from_detail')}</span>
@@ -66,7 +66,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
             </div>
             <div className="flex items-center gap-3 text-start">
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                <MapPin size={20} />
+                <MapPin size={20} className={iconColor} />
               </div>
               <div className="flex flex-col">
                 <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{t('label_to_detail')}</span>
@@ -75,7 +75,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
             </div>
             <div className="flex items-center gap-3 text-start">
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                <Calendar size={20} />
+                <Calendar size={20} className={iconColor} />
               </div>
               <div className="flex flex-col">
                 <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{t('label_arrival_date_detail')}</span>
@@ -84,7 +84,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
             </div>
             <div className="flex items-center gap-3 text-start">
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                <Weight size={20} />
+                <Weight size={20} className={iconColor} />
               </div>
               <div className="flex flex-col">
                 <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{t('label_available_weight_detail')}</span>
@@ -95,8 +95,8 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
         ) : (
           <>
             <div className="flex items-center gap-3 text-start">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                <Globe size={20} />
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
+                <Globe size={20} className={iconColor} />
               </div>
               <div className="flex flex-col">
                 <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{t('label_purchase_source_detail')}</span>
@@ -104,8 +104,8 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
               </div>
             </div>
             <div className="flex items-center gap-3 text-start">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                <MapPin size={20} />
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
+                <MapPin size={20} className={iconColor} />
               </div>
               <div className="flex flex-col">
                 <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{t('label_city_algeria_detail')}</span>
@@ -113,8 +113,8 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
               </div>
             </div>
             <div className="flex items-center gap-3 text-start">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                <Calendar size={20} />
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
+                <Calendar size={20} className={iconColor} />
               </div>
               <div className="flex flex-col">
                 <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{t('label_desired_by_detail')}</span>
@@ -122,8 +122,8 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
               </div>
             </div>
             <div className="flex items-center gap-3 text-start">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                <ShoppingBag size={20} />
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
+                <ShoppingBag size={20} className={iconColor} />
               </div>
               <div className="flex flex-col">
                 <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{t('label_budget_detail')}</span>
