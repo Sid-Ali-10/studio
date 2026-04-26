@@ -664,7 +664,6 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
         </form>
       </div>
 
-      {/* Report Dialog */}
       <Dialog open={isReportOpen} onOpenChange={setIsReportOpen}>
         <DialogContent className="max-w-md rounded-2xl shadow-2xl border-none" dir={isRTL ? "rtl" : "ltr"}>
           <DialogHeader className="text-start">

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -38,6 +37,9 @@ import { format } from 'date-fns';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import { type Listing } from '@/components/listings/ListingCard';
+import { ListingDetailView } from '@/components/listings/ListingDetailView';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface AdminStats {
   totalUsers: number;
@@ -63,6 +65,9 @@ export default function AdminDashboard() {
   const [platformCommission, setPlatformCommission] = useState(1000);
   const [savingSettings, setSavingSettings] = useState(false);
   const [processingAction, setProcessingAction] = useState<string | null>(null);
+  
+  const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   const router = useRouter();
   const { toast } = useToast();
@@ -178,7 +183,11 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDelete = async (coll: string, id: string) => {
+  const handleDelete = async (coll: string, id: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (!confirm(`Are you sure you want to permanently delete this ${coll.slice(0, -1)}?`)) return;
     setProcessingAction(`delete-${id}`);
 
@@ -213,7 +222,9 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleToggleBan = async (userId: string, currentBanned: boolean) => {
+  const handleToggleBan = async (userId: string, currentBanned: boolean, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     setProcessingAction(`ban-${userId}`);
     try {
       await updateDoc(doc(db, 'userProfiles', userId), {
@@ -232,7 +243,9 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleCopyEmail = (email: string, id: string) => {
+  const handleCopyEmail = (email: string, id: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     navigator.clipboard.writeText(email);
     setCopiedId(id);
     toast({
@@ -240,6 +253,11 @@ export default function AdminDashboard() {
       description: `${email} has been copied to your clipboard.`,
     });
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleShowListing = (listing: Listing) => {
+    setSelectedListing(listing);
+    setIsDetailOpen(true);
   };
 
   const handleLogout = () => {
@@ -288,7 +306,6 @@ export default function AdminDashboard() {
         </div>
 
         <div className="space-y-6">
-          {/* Main Commissions Card - Largest Element */}
           <Card className="rounded-[2.5rem] border-none shadow-xl bg-primary text-primary-foreground overflow-hidden">
             <CardContent className="p-8 md:p-12 flex flex-col md:flex-row md:items-center justify-between gap-8">
               <div className="flex items-center gap-8">
@@ -304,7 +321,7 @@ export default function AdminDashboard() {
               </div>
               <div className="hidden lg:block border-l border-white/10 pl-8 h-24 flex flex-col justify-center">
                 <div className="flex items-center gap-3 bg-white/10 px-6 py-4 rounded-3xl backdrop-blur-md">
-                   <div className="w-3 h-3 bg-accent rounded-full animate-pulse" />
+                   <div className="w-3 h-3 bg-emerald-400 rounded-full animate-pulse" />
                    <div className="space-y-0.5">
                      <p className="text-[10px] uppercase font-black opacity-60">Status</p>
                      <p className="font-bold text-sm">System Healthy</p>
@@ -314,7 +331,6 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
 
-          {/* Secondary Stats Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             <Card className="rounded-3xl border-none shadow-sm hover:shadow-md transition-shadow duration-200">
               <CardContent className="p-6 flex items-center gap-4">
@@ -409,7 +425,7 @@ export default function AdminDashboard() {
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="rounded-full text-muted-foreground hover:bg-muted"
+                            className="rounded-full text-muted-foreground hover:bg-accent"
                             onClick={() => handleReportAction(r.id, 'ignored')}
                             title="Ignore Report"
                           >
@@ -418,7 +434,7 @@ export default function AdminDashboard() {
                           <Button 
                             variant="secondary" 
                             size="sm" 
-                            className="flex-1 sm:flex-none rounded-xl h-9 gap-2 font-bold"
+                            className="flex-1 sm:flex-none rounded-xl h-9 gap-2 font-bold transition-all active:scale-[0.98]"
                             onClick={() => handleReportAction(r.id, 'resolved')}
                           >
                             <CheckCircle2 size={14} /> Resolve
@@ -446,21 +462,12 @@ export default function AdminDashboard() {
                               <Button 
                                 variant="ghost" 
                                 size="sm" 
-                                className="h-7 px-3 text-[10px] rounded-lg text-destructive hover:bg-destructive/10 font-bold"
-                                onClick={() => handleToggleBan(r.targetUserId, users.find(u => u.id === r.targetUserId)?.isBanned)}
+                                className="h-7 px-3 text-[10px] rounded-lg text-destructive hover:bg-destructive/10 font-bold transition-all active:scale-[0.98]"
+                                onClick={(e) => handleToggleBan(r.targetUserId, users.find(u => u.id === r.targetUserId)?.isBanned, e)}
                               >
                                 {users.find(u => u.id === r.targetUserId)?.isBanned ? 'Unban' : 'Ban User'}
                               </Button>
                             </div>
-                          </div>
-                        )}
-                        {r.conversationId && (
-                          <div className="col-span-full pt-2">
-                            <Link href={`/chat/${r.conversationId}`}>
-                              <Button variant="outline" className="w-full rounded-xl gap-2 h-11 border-primary/20 hover:bg-primary/5 font-bold transition-all active:scale-[0.98]">
-                                <ExternalLink size={16} /> Review Conversation Context
-                              </Button>
-                            </Link>
                           </div>
                         )}
                       </div>
@@ -479,7 +486,7 @@ export default function AdminDashboard() {
                   <Card
                     key={u.id}
                     className={cn(
-                      "rounded-2xl border-none shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-accent/30 transition-all duration-200",
+                      "rounded-2xl border-none shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-accent transition-all duration-200",
                       u.isBanned && "opacity-60 bg-destructive/5"
                     )}
                   >
@@ -505,9 +512,9 @@ export default function AdminDashboard() {
                         size="icon"
                         className={cn(
                           "rounded-full transition-all duration-200 active:scale-90",
-                          u.isBanned ? "text-accent" : "text-destructive hover:bg-destructive/10"
+                          u.isBanned ? "text-primary" : "text-destructive hover:bg-destructive/10"
                         )}
-                        onClick={() => handleToggleBan(u.id, u.isBanned)}
+                        onClick={(e) => handleToggleBan(u.id, u.isBanned, e)}
                         title={u.isBanned ? "Unban User" : "Ban User"}
                       >
                         {u.isBanned ? <UserCheck size={18} /> : <UserX size={18} />}
@@ -515,11 +522,11 @@ export default function AdminDashboard() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all duration-200 active:scale-90"
-                        onClick={() => handleCopyEmail(u.email, u.id)}
+                        className="rounded-full text-muted-foreground hover:text-black hover:bg-accent transition-all duration-200 active:scale-90"
+                        onClick={(e) => handleCopyEmail(u.email, u.id, e)}
                         title="Copy Email Address"
                       >
-                        {copiedId === u.id ? <Check size={18} className="text-primary" /> : <Copy size={18} />}
+                        {copiedId === u.id ? <Check size={18} className="text-emerald-600" /> : <Copy size={18} />}
                       </Button>
                     </div>
                   </Card>
@@ -534,9 +541,10 @@ export default function AdminDashboard() {
                 .map((l) => (
                   <Card
                     key={l.id}
-                    className="rounded-2xl border-none shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-accent/30 transition-all duration-200"
+                    className="rounded-2xl border-none shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-accent transition-all duration-200 cursor-pointer"
+                    onClick={() => handleShowListing(l)}
                   >
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1 text-start">
                       <p className="font-black truncate">{l.title}</p>
                       <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
                         {l.type} • {l.city || 'Anywhere'} → {l.destination || 'Algeria'}
@@ -546,7 +554,7 @@ export default function AdminDashboard() {
                       variant="ghost"
                       size="icon"
                       className="rounded-full text-destructive hover:text-white hover:bg-destructive transition-all duration-200 active:scale-90 ml-auto sm:ml-0"
-                      onClick={() => handleDelete('listings', l.id)}
+                      onClick={(e) => handleDelete('listings', l.id, e)}
                       disabled={processingAction === `delete-${l.id}`}
                     >
                       {processingAction === `delete-${l.id}` ? <Loader2 className="animate-spin w-4 h-4" /> : <Trash2 size={18} />}
@@ -561,9 +569,9 @@ export default function AdminDashboard() {
               {convos.map((c) => (
                 <Card
                   key={c.id}
-                  className="rounded-2xl border-none shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-accent/30 transition-all duration-200"
+                  className="rounded-2xl border-none shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-accent transition-all duration-200"
                 >
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1 text-start">
                     <p className="font-black text-sm truncate">{c.listingTitle || 'Private Inquiry'}</p>
                     <p className="text-[10px] text-muted-foreground font-medium truncate">Conversation ID: {c.id.slice(0, 16)}...</p>
                   </div>
@@ -572,7 +580,7 @@ export default function AdminDashboard() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="rounded-full text-primary hover:bg-primary/10 transition-all duration-200 active:scale-90"
+                        className="rounded-full text-primary hover:bg-accent transition-all duration-200 active:scale-90"
                       >
                         <Eye size={18} />
                       </Button>
@@ -581,7 +589,7 @@ export default function AdminDashboard() {
                       variant="ghost"
                       size="icon"
                       className="rounded-full text-destructive hover:text-white hover:bg-destructive transition-all duration-200 active:scale-90"
-                      onClick={() => handleDelete('conversations', c.id)}
+                      onClick={(e) => handleDelete('conversations', c.id, e)}
                       disabled={processingAction === `delete-${c.id}`}
                     >
                       {processingAction === `delete-${c.id}` ? <Loader2 className="animate-spin w-4 h-4" /> : <Trash2 size={18} />}
@@ -599,15 +607,15 @@ export default function AdminDashboard() {
                 .map((t) => (
                   <Card
                     key={t.id}
-                    className="rounded-2xl border-none shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-accent/30 transition-all duration-200"
+                    className="rounded-2xl border-none shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-accent transition-all duration-200"
                   >
                     <div className="flex items-center gap-4 min-w-0">
                       <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600 shrink-0">
                         <History size={24} />
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-black text-sm truncate text-start">{t.description}</p>
-                        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider text-start">
+                      <div className="min-w-0 flex-1 text-start">
+                        <p className="font-black text-sm truncate">{t.description}</p>
+                        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
                           {t.createdAt ? format(t.createdAt.toDate(), 'PPPp') : 'Processing'}
                         </p>
                       </div>
@@ -642,9 +650,6 @@ export default function AdminDashboard() {
                         onChange={(e) => setPlatformCommission(Number(e.target.value))}
                       />
                     </div>
-                    <p className="text-[10px] text-muted-foreground italic font-medium">
-                      This fixed amount is automatically deducted from travelers for every successfully completed deal.
-                    </p>
                   </div>
 
                   <Button
@@ -652,13 +657,7 @@ export default function AdminDashboard() {
                     onClick={handleSaveSettings}
                     disabled={savingSettings}
                   >
-                    {savingSettings ? (
-                      <Loader2 className="animate-spin" />
-                    ) : (
-                      <>
-                        <Save size={20} /> Commit Changes
-                      </>
-                    )}
+                    {savingSettings ? <Loader2 className="animate-spin" /> : <><Save size={20} /> Commit Changes</>}
                   </Button>
                 </div>
               </CardContent>
@@ -666,6 +665,17 @@ export default function AdminDashboard() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+        <DialogContent className="max-w-2xl rounded-2xl p-0 overflow-hidden shadow-2xl border-none">
+          <DialogHeader className="p-6 pb-2 text-start">
+            <DialogTitle className="text-2xl font-bold">Listing Content Review</DialogTitle>
+          </DialogHeader>
+          <div className="px-6 pb-8 max-h-[70vh] overflow-y-auto">
+            {selectedListing && <ListingDetailView listing={selectedListing} />}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

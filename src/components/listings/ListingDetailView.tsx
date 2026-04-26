@@ -23,7 +23,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
             "uppercase text-[10px] tracking-widest px-3 py-1 rounded-full border-none font-bold",
             listing.type === "traveler" 
               ? "bg-primary text-white" 
-              : "bg-emerald-500 text-white"
+              : "bg-emerald-600 text-white"
           )}
         >
           {listing.type === "traveler" ? (

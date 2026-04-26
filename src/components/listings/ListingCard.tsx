@@ -123,6 +123,12 @@ export function ListingCard({ listing, isFavorited, onToggleFavorite, onDelete }
     onDelete?.(listing.id);
   };
 
+  const handleToggleFav = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onToggleFavorite?.(listing.id);
+  };
+
   return (
     <Card className="listing-card overflow-hidden border-none shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col h-full bg-card">
       <CardHeader className="pb-2">
@@ -130,14 +136,14 @@ export function ListingCard({ listing, isFavorited, onToggleFavorite, onDelete }
           <Badge
             className={cn(
               'mb-2 uppercase text-[10px] tracking-widest px-3 py-1 rounded-full border-none font-bold',
-              listing.type === 'traveler' ? 'bg-primary text-white' : 'bg-emerald-500 text-white'
+              listing.type === 'traveler' ? 'bg-primary text-white' : 'bg-emerald-600 text-white'
             )}
           >
             {listing.type === 'traveler' ? <Plane size={12} className={isRTL ? "ml-1.5" : "mr-1.5"} /> : <ShoppingBag size={12} className={isRTL ? "ml-1.5" : "mr-1.5"} />}
             <span>{t(listing.type)}</span>
           </Badge>
           <button
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleFavorite?.(listing.id); }}
+            onClick={handleToggleFav}
             className={cn('p-2 rounded-full transition-all active:scale-110', isFavorited ? 'text-red-500' : 'text-muted-foreground')}
           >
             <Heart size={20} fill={isFavorited ? 'currentColor' : 'none'} />
