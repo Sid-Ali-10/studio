@@ -195,7 +195,7 @@ export default function WalletPage() {
                   <div className="flex items-center gap-4 text-start">
                     <div className={cn(
                       "w-12 h-12 rounded-xl flex items-center justify-center shrink-0",
-                      tx.amount > 0 ? "bg-accent/10 text-accent" : "bg-primary/10 text-primary"
+                      tx.amount > 0 ? "bg-emerald-500/10 text-emerald-600" : "bg-primary/10 text-primary"
                     )}>
                       {tx.amount > 0 ? <Plus size={24} /> : <Banknote size={24} />}
                     </div>
@@ -204,7 +204,7 @@ export default function WalletPage() {
                       <p className="text-[10px] text-muted-foreground uppercase">{t(`type_${tx.type}`)} • {tx.createdAt ? format(tx.createdAt.toDate(), "PPpp") : "..."}</p>
                     </div>
                   </div>
-                  <div className={cn("text-lg font-black shrink-0 text-start sm:text-end", tx.amount > 0 ? "text-accent" : "text-primary")}>
+                  <div className={cn("text-lg font-black shrink-0 text-start sm:text-end", tx.amount > 0 ? "text-emerald-600" : "text-primary")}>
                     {tx.amount > 0 ? "+" : ""}{tx.amount.toLocaleString()} {t('currency_da')}
                   </div>
                 </CardContent>
