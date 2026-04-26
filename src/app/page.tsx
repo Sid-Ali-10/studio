@@ -1,9 +1,8 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
 import { db } from "@/lib/firebase";
-import { collection, query, limit, startAfter, getDocs, where, doc, deleteDoc, setDoc } from "firebase/firestore";
+import { collection, query, limit, startAfter, getDocs, where, doc, onSnapshot, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Package } from "lucide-react";
@@ -11,6 +10,7 @@ import { ListingCard, type Listing } from "@/components/listings/ListingCard";
 import { ListingFilters } from "@/components/listings/ListingFilters";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/context/LanguageContext";
+import { setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 export default function Home() {
   const { user } = useAuth();
@@ -31,14 +31,24 @@ export default function Home() {
     minWeight: "",
   });
 
+  // Real-time favorites sync
   useEffect(() => {
-    if (!user) return;
-    const fetchFavorites = async () => {
-      const favSnapshot = await getDocs(collection(db, "userProfiles", user.uid, "favorites"));
-      const favIds = new Set(favSnapshot.docs.map(doc => doc.data().listingId));
+    if (!user) {
+      setFavorites(new Set());
+      return;
+    }
+
+    const favsRef = collection(db, "userProfiles", user.uid, "favorites");
+    const unsubscribe = onSnapshot(favsRef, (snapshot) => {
+      const favIds = new Set(snapshot.docs.map(doc => doc.id));
       setFavorites(favIds);
-    };
-    fetchFavorites();
+    }, (error) => {
+      if (error.code !== 'permission-denied') {
+        console.error("Favorites sync error:", error);
+      }
+    });
+
+    return () => unsubscribe();
   }, [user]);
 
   const fetchListings = async (loadMore = false) => {
@@ -107,40 +117,41 @@ export default function Home() {
     });
   }, [listings, advancedFilters]);
 
-  const toggleFavorite = async (listingId: string) => {
-    if (!user) return;
+  const toggleFavorite = (listingId: string) => {
+    if (!user) {
+      toast({ title: t('auth_required'), description: t('login_connect') });
+      return;
+    }
+
     const isFav = favorites.has(listingId);
     const favRef = doc(db, "userProfiles", user.uid, "favorites", listingId);
-    try {
-      if (isFav) {
-        await deleteDoc(favRef);
-        setFavorites(prev => {
-          const next = new Set(prev);
-          next.delete(listingId);
-          return next;
-        });
-      } else {
-        await setDoc(favRef, { listingId, createdAt: new Date().toISOString(), userId: user.uid });
-        setFavorites(prev => new Set(prev).add(listingId));
-      }
-    } catch (err) { console.error(err); }
+    
+    if (isFav) {
+      deleteDocumentNonBlocking(favRef);
+    } else {
+      setDocumentNonBlocking(favRef, { 
+        listingId, 
+        createdAt: serverTimestamp(), 
+        userId: user.uid 
+      }, { merge: true });
+    }
   };
 
-  const handleDeleteListing = async (listingId: string) => {
-    if (!confirm("Are you sure?")) return;
+  const handleDeleteListing = (listingId: string) => {
+    if (!confirm(t('confirm_delete'))) return;
     try {
-      await deleteDoc(doc(db, "listings", listingId));
+      deleteDocumentNonBlocking(doc(db, "listings", listingId));
       setListings(prev => prev.filter(l => l.id !== listingId));
-      toast({ title: "Listing deleted" });
+      toast({ title: t('listing_deleted') });
     } catch (err) { console.error(err); }
   };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
+        <div className="text-start">
           <h1 className="text-2xl font-bold tracking-tight">{t('board_title')}</h1>
-          <p className="text-muted-foreground">{t('board_subtitle')}</p>
+          <p className="text-sm text-muted-foreground">{t('board_subtitle')}</p>
         </div>
         <Tabs value={filter} className="w-full md:w-auto" onValueChange={(v) => setFilter(v as any)}>
           <TabsList className="bg-card grid grid-cols-3 h-12 p-1 rounded-xl w-full md:w-64 shadow-sm">

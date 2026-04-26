@@ -1,15 +1,14 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo, use } from "react";
 import { useRouter } from "next/navigation";
 import { db, auth } from "@/lib/firebase";
-import { doc, getDoc, collection, query, where, getDocs, deleteDoc, setDoc, serverTimestamp, addDoc } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs, onSnapshot, serverTimestamp } from "firebase/firestore";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Star, CheckCircle, Package, LogOut, Loader2, Trash2, Wallet, Moon, Sun, Flag, AlertTriangle, Ban, Languages } from "lucide-react";
+import { Star, CheckCircle, Package, LogOut, Loader2, Wallet, Moon, Sun, Languages } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { useAuth } from "@/context/AuthContext";
 import { ListingCard, type Listing } from "@/components/listings/ListingCard";
@@ -20,22 +19,13 @@ import Link from "next/link";
 import { useTheme } from "@/context/ThemeContext";
 import { useLanguage, type Language } from "@/context/LanguageContext";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { deleteDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 export default function ProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -47,17 +37,12 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
   const { toast } = useToast();
   const [profile, setProfile] = useState<any>(null);
   const [allListings, setAllListings] = useState<Listing[]>([]);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [tab, setTab] = useState<"all" | "traveler" | "buyer">("all");
   const [loading, setLoading] = useState(true);
-  const [userRating, setUserRating] = useState<number | null>(null);
-  const [ratingId, setRatingId] = useState<string | null>(null);
   const [totalRatings, setTotalRatings] = useState(0);
   const [avgRating, setAvgRating] = useState(0);
   const router = useRouter();
-
-  const [isReportOpen, setIsReportOpen] = useState(false);
-  const [reportReason, setReportReason] = useState("");
-  const [isReporting, setIsReporting] = useState(false);
 
   const [advancedFilters, setAdvancedFilters] = useState({
     search: "",
@@ -70,7 +55,18 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
 
   const isOwnProfile = currentUser?.uid === id;
 
+  // Real-time favorites sync
+  useEffect(() => {
+    if (!currentUser) return;
+    const favsRef = collection(db, "userProfiles", currentUser.uid, "favorites");
+    const unsubscribe = onSnapshot(favsRef, (snapshot) => {
+      setFavorites(new Set(snapshot.docs.map(doc => doc.id)));
+    });
+    return () => unsubscribe();
+  }, [currentUser]);
+
   const fetchProfileData = async () => {
+    if (!id) return;
     setLoading(true);
     try {
       const userDoc = await getDoc(doc(db, "userProfiles", id as string));
@@ -87,19 +83,6 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
         setAvgRating(5.0);
       }
 
-      if (currentUser && !isOwnProfile) {
-        const myRatingQuery = query(
-          collection(db, "ratings"), 
-          where("ratedUserId", "==", id),
-          where("raterId", "==", currentUser.uid)
-        );
-        const myRatingSnap = await getDocs(myRatingQuery);
-        if (!myRatingSnap.empty) {
-          setUserRating(myRatingSnap.docs[0].data().stars);
-          setRatingId(myRatingSnap.docs[0].id);
-        }
-      }
-
       const q = query(collection(db, "listings"), where("listerId", "==", id));
       const snapshot = await getDocs(q);
       setAllListings(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Listing)));
@@ -111,8 +94,8 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
   };
 
   useEffect(() => {
-    if (id) fetchProfileData();
-  }, [id, currentUser]);
+    fetchProfileData();
+  }, [id]);
 
   const filteredListings = useMemo(() => {
     return allListings.filter(l => {
@@ -143,15 +126,22 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
     router.push("/login");
   };
 
-  const handleDeleteListing = async (listingId: string) => {
-    if (!confirm("Are you sure?")) return;
-    try {
-      await deleteDoc(doc(db, "listings", listingId));
-      setAllListings(prev => prev.filter(l => l.id !== listingId));
-      toast({ title: "Listing deleted" });
-    } catch (err) {
-      console.error(err);
+  const toggleFavorite = (listingId: string) => {
+    if (!currentUser) return;
+    const isFav = favorites.has(listingId);
+    const favRef = doc(db, "userProfiles", currentUser.uid, "favorites", listingId);
+    if (isFav) {
+      deleteDocumentNonBlocking(favRef);
+    } else {
+      setDocumentNonBlocking(favRef, { listingId, createdAt: serverTimestamp(), userId: currentUser.uid }, { merge: true });
     }
+  };
+
+  const handleDeleteListing = (listingId: string) => {
+    if (!confirm(t('confirm_delete'))) return;
+    deleteDocumentNonBlocking(doc(db, "listings", listingId));
+    setAllListings(prev => prev.filter(l => l.id !== listingId));
+    toast({ title: t('listing_deleted') });
   };
 
   if (loading) {
@@ -205,7 +195,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                 <div className="flex flex-col gap-4 pt-2 items-center md:items-start">
                   <div className="flex flex-wrap items-center gap-3 justify-center md:justify-start">
                     <Select value={language} onValueChange={(val) => setLanguage(val as Language)}>
-                      <SelectTrigger className="w-[140px] rounded-xl bg-card border-none shadow-sm h-10">
+                      <SelectTrigger className="w-[140px] rounded-xl bg-card border-none shadow-sm h-10 transition-all active:scale-[0.98]">
                         <Languages className="mr-2 h-4 w-4" />
                         <SelectValue placeholder="Language" />
                       </SelectTrigger>
@@ -216,11 +206,11 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                       </SelectContent>
                     </Select>
 
-                    <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-full bg-card shadow-sm h-10 w-10">
+                    <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-full bg-card shadow-sm h-10 w-10 transition-all active:scale-[0.98]">
                       {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
                     </Button>
                     
-                    <Button variant="destructive" className="rounded-xl px-6 h-10 shadow-lg" onClick={handleLogout}>
+                    <Button variant="destructive" className="rounded-xl px-6 h-10 shadow-lg transition-all active:scale-[0.98]" onClick={handleLogout}>
                       <LogOut size={18} className="mr-2" /> {t('logout')}
                     </Button>
                   </div>
@@ -233,7 +223,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
 
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <h2 className="text-2xl font-bold">{t('postings')}</h2>
+          <h2 className="text-2xl font-bold text-start">{t('postings')}</h2>
           <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full md:w-auto">
             <TabsList className="bg-card grid grid-cols-3 h-10 p-1 rounded-xl w-full md:w-64 shadow-sm">
               <TabsTrigger value="all" className="rounded-lg">{t('all')}</TabsTrigger>
@@ -255,6 +245,8 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
             <ListingCard 
               key={listing.id} 
               listing={listing} 
+              isFavorited={favorites.has(listing.id)}
+              onToggleFavorite={toggleFavorite}
               onDelete={handleDeleteListing}
             />
           ))}

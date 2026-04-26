@@ -1,9 +1,8 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, doc, deleteDoc, getDoc } from "firebase/firestore";
+import { collection, onSnapshot, doc, getDoc } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +11,7 @@ import { ListingCard, type Listing } from "@/components/listings/ListingCard";
 import { ListingFilters } from "@/components/listings/ListingFilters";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/context/LanguageContext";
+import { deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 export default function FavoritesPage() {
   const { user } = useAuth();
@@ -28,30 +28,32 @@ export default function FavoritesPage() {
     minWeight: "",
   });
 
-  const fetchFavorites = async () => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      const favSnapshot = await getDocs(collection(db, "userProfiles", user.uid, "favorites"));
-      const listingPromises = favSnapshot.docs.map(favDoc => 
-        getDoc(doc(db, "listings", favDoc.data().listingId))
-      );
-      
-      const listingSnapshots = await Promise.all(listingPromises);
-      const favListings = listingSnapshots
-        .filter(snap => snap.exists())
-        .map(snap => ({ id: snap.id, ...snap.data() } as Listing));
-        
-      setListings(favListings);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchFavorites();
+    if (!user) return;
+
+    setLoading(true);
+    const favsRef = collection(db, "userProfiles", user.uid, "favorites");
+    
+    const unsubscribe = onSnapshot(favsRef, async (snapshot) => {
+      try {
+        const listingPromises = snapshot.docs.map(favDoc => 
+          getDoc(doc(db, "listings", favDoc.id))
+        );
+        
+        const listingSnapshots = await Promise.all(listingPromises);
+        const favListings = listingSnapshots
+          .filter(snap => snap.exists())
+          .map(snap => ({ id: snap.id, ...snap.data() } as Listing));
+          
+        setListings(favListings);
+      } catch (err) {
+        console.error("Fetch fav listings error:", err);
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    return () => unsubscribe();
   }, [user]);
 
   const filteredListings = useMemo(() => {
@@ -76,29 +78,19 @@ export default function FavoritesPage() {
     });
   }, [listings, advancedFilters]);
 
-  const removeFavorite = async (listingId: string) => {
+  const removeFavorite = (listingId: string) => {
     if (!user) return;
-    try {
-      await deleteDoc(doc(db, "userProfiles", user.uid, "favorites", listingId));
-      setListings(prev => prev.filter(l => l.id !== listingId));
-      toast({ title: t('removed_favorite') || "Removed from favorites" });
-    } catch (err) {
-      console.error(err);
-    }
+    deleteDocumentNonBlocking(doc(db, "userProfiles", user.uid, "favorites", listingId));
+    toast({ title: t('removed_favorite') });
   };
 
-  const handleDeleteListing = async (listingId: string) => {
-    if (!confirm("Are you sure you want to delete this post?")) return;
-    try {
-      await deleteDoc(doc(db, "listings", listingId));
-      setListings(prev => prev.filter(l => l.id !== listingId));
-      toast({ title: "Listing deleted permanently" });
-    } catch (err) {
-      console.error(err);
-    }
+  const handleDeleteListing = (listingId: string) => {
+    if (!confirm(t('confirm_delete'))) return;
+    deleteDocumentNonBlocking(doc(db, "listings", listingId));
+    toast({ title: t('listing_deleted') });
   };
 
-  if (loading) {
+  if (loading && listings.length === 0) {
     return (
       <div className="flex justify-center p-20">
         <Loader2 className="animate-spin text-primary" size={40} />
