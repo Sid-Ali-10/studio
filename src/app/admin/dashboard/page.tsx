@@ -602,7 +602,7 @@ export default function AdminDashboard() {
                     className="rounded-2xl border-none shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-muted/30 transition-all duration-200"
                   >
                     <div className="flex items-center gap-4 min-w-0">
-                      <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent shrink-0">
+                      <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600 shrink-0">
                         <History size={24} />
                       </div>
                       <div className="min-w-0 flex-1">
@@ -612,7 +612,7 @@ export default function AdminDashboard() {
                         </p>
                       </div>
                     </div>
-                    <div className="font-black text-accent text-start sm:text-end shrink-0 text-lg">
+                    <div className="font-black text-emerald-600 text-start sm:text-end shrink-0 text-lg">
                       +{t.amount.toLocaleString()} DA
                     </div>
                   </Card>
