@@ -4,7 +4,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { db, auth } from '@/lib/firebase';
-import { collection, getDocs, doc, getDoc, deleteDoc, updateDoc, addDoc, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, deleteDoc, updateDoc, addDoc, onSnapshot, query, limit } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -69,8 +69,7 @@ export default function AdminDashboard() {
   const [subscriptionPackages, setSubscriptionPackages] = useState<SubscriptionPackage[]>([]);
   const [revenueHistory, setRevenueHistory] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-
+  
   const [processingAction, setProcessingAction] = useState<string | null>(null);
   
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
@@ -142,12 +141,11 @@ export default function AdminDashboard() {
   const fetchStaticData = async () => {
     setLoading(true);
     try {
-      const [usersSnap, listingsSnap, convosSnap, reportsSnap] = await Promise.all([
-        getDocs(collection(db, 'userProfiles')),
-        getDocs(collection(db, 'listings')),
-        getDocs(collection(db, 'conversations')),
-        getDocs(collection(db, 'reports')),
-      ]);
+      // Fetch with limit to match security rules if necessary
+      const usersSnap = await getDocs(query(collection(db, 'userProfiles'), limit(50)));
+      const listingsSnap = await getDocs(query(collection(db, 'listings'), limit(50)));
+      const convosSnap = await getDocs(query(collection(db, 'conversations'), limit(50)));
+      const reportsSnap = await getDocs(query(collection(db, 'reports'), limit(50)));
 
       setUsers(usersSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       setListings(listingsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -161,8 +159,16 @@ export default function AdminDashboard() {
         totalConvos: convosSnap.size,
         totalReports: reportsSnap.size,
       }));
-    } catch (err) {
-      toast({ variant: 'destructive', title: 'Data Load Error' });
+    } catch (err: any) {
+      console.error("Data Load Error:", err);
+      toast({ variant: 'destructive', title: 'Data Load Error', description: err.message });
+      
+      if (err.code === 'permission-denied') {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: 'admin_dashboard_fetch',
+          operation: 'list'
+        }));
+      }
     } finally {
       setLoading(false);
     }
@@ -244,11 +250,16 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-muted/20 p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-              <ShieldAlert className="text-primary" /> Admin Center
-            </h1>
-            <p className="text-sm text-muted-foreground">Monitor platform activity and revenue.</p>
+          <div className="flex items-center gap-4">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
+                <ShieldAlert className="text-primary" /> Admin Center
+              </h1>
+              <p className="text-sm text-muted-foreground">Monitor platform activity and revenue.</p>
+            </div>
+            <Button variant="ghost" size="icon" onClick={fetchStaticData} className="rounded-full h-10 w-10 active:scale-95 transition-all">
+              <RefreshCw size={20} />
+            </Button>
           </div>
           <Button variant="outline" className="rounded-xl w-full md:w-auto" onClick={() => { sessionStorage.removeItem('admin_token'); router.push('/admin/login'); }}>
             Logout
@@ -353,7 +364,9 @@ export default function AdminDashboard() {
 
           <TabsContent value="reports">
             <div className="grid gap-4">
-              {reports.map((r) => (
+              {reports.length === 0 ? (
+                <p className="text-center py-12 text-muted-foreground">No reports found.</p>
+              ) : reports.map((r) => (
                 <Card key={r.id} className="rounded-2xl border-none shadow-sm overflow-hidden p-4 md:p-6 space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-2">
@@ -376,19 +389,21 @@ export default function AdminDashboard() {
 
           <TabsContent value="users">
             <div className="grid gap-3">
-              {users.filter(u => u.username?.toLowerCase().includes(searchTerm.toLowerCase())).map((u) => (
-                <Card key={u.id} className={cn("rounded-2xl border-none shadow-sm p-4 flex items-center justify-between hover:bg-accent", u.isBanned && "opacity-60")}>
-                  <Link href={`/profile/${u.id}`} className="flex items-center gap-4 min-w-0 flex-1">
-                    <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center font-black">{u.username?.charAt(0).toUpperCase()}</div>
+              {users.length === 0 ? (
+                <p className="text-center py-12 text-muted-foreground">No users found.</p>
+              ) : users.filter(u => u.username?.toLowerCase().includes(searchTerm.toLowerCase())).map((u) => (
+                <Card key={u.id} className={cn("rounded-2xl border-none shadow-sm p-4 flex items-center justify-between hover:bg-accent transition-all duration-200", u.isBanned && "opacity-60")}>
+                  <Link href={`/profile/${u.id}`} className="flex items-center gap-4 min-w-0 flex-1 group">
+                    <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center font-black transition-transform group-hover:scale-105">{u.username?.charAt(0).toUpperCase()}</div>
                     <div className="flex flex-col text-start">
                       <div className="font-black text-sm md:text-base flex items-center gap-2">
-                        {u.username} {u.isVerified && <CheckCircle2 size={14} className="text-primary" />}
+                        <span className="group-hover:text-primary transition-colors">{u.username}</span> {u.isVerified && <CheckCircle2 size={14} className="text-primary" />}
                         {u.isBanned && <Badge variant="destructive" className="h-4 text-[8px] px-1">BANNED</Badge>}
                       </div>
                       <p className="text-xs text-muted-foreground">{u.email}</p>
                     </div>
                   </Link>
-                  <Button variant="ghost" size="icon" className="rounded-full" onClick={(e) => handleToggleBan(u.id, u.isBanned, e)}>
+                  <Button variant="ghost" size="icon" className="rounded-full relative z-10" onClick={(e) => handleToggleBan(u.id, u.isBanned, e)}>
                     {u.isBanned ? <UserCheck size={18} /> : <UserX size={18} />}
                   </Button>
                 </Card>
@@ -398,13 +413,31 @@ export default function AdminDashboard() {
 
           <TabsContent value="listings">
             <div className="grid gap-3">
-              {listings.filter(l => l.title?.toLowerCase().includes(searchTerm.toLowerCase())).map((l) => (
-                <Card key={l.id} className="rounded-2xl border-none shadow-sm p-4 flex items-center justify-between hover:bg-accent cursor-pointer" onClick={() => { setSelectedListing(l); setIsDetailOpen(true); }}>
+              {listings.length === 0 ? (
+                <p className="text-center py-12 text-muted-foreground">No listings found.</p>
+              ) : listings.filter(l => l.title?.toLowerCase().includes(searchTerm.toLowerCase())).map((l) => (
+                <Card key={l.id} className="rounded-2xl border-none shadow-sm p-4 flex items-center justify-between hover:bg-accent cursor-pointer transition-all duration-200" onClick={() => { setSelectedListing(l); setIsDetailOpen(true); }}>
                   <div className="min-w-0 flex-1 text-start">
-                    <p className="font-black truncate">{l.title}</p>
+                    <p className="font-black truncate group-hover:text-primary transition-colors">{l.title}</p>
                     <p className="text-[10px] text-muted-foreground uppercase">{l.type} • {l.city || 'Anywhere'}</p>
                   </div>
-                  <Button variant="ghost" size="icon" className="rounded-full text-destructive" onClick={(e) => handleDelete('listings', l.id, e)}><Trash2 size={18} /></Button>
+                  <Button variant="ghost" size="icon" className="rounded-full text-destructive relative z-10" onClick={(e) => handleDelete('listings', l.id, e)}><Trash2 size={18} /></Button>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="convos">
+            <div className="grid gap-3">
+              {convos.length === 0 ? (
+                <p className="text-center py-12 text-muted-foreground">No conversations found.</p>
+              ) : convos.filter(c => (c.listingTitle || '').toLowerCase().includes(searchTerm.toLowerCase())).map((c) => (
+                <Card key={c.id} className="rounded-2xl border-none shadow-sm p-4 flex items-center justify-between hover:bg-accent cursor-pointer transition-all duration-200" onClick={() => router.push(`/chat/${c.id}`)}>
+                  <div className="min-w-0 flex-1 text-start">
+                    <p className="font-black truncate group-hover:text-primary transition-colors">{c.listingTitle || 'Untitled Chat'}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase">Participants: {c.participantIds?.length || 0} • Last activity: {c.updatedAt ? format(c.updatedAt.toDate ? c.updatedAt.toDate() : new Date(c.updatedAt), 'PPpp') : '...'}</p>
+                  </div>
+                  <Button variant="ghost" size="icon" className="rounded-full text-destructive relative z-10" onClick={(e) => handleDelete('conversations', c.id, e)}><Trash2 size={18} /></Button>
                 </Card>
               ))}
             </div>
@@ -413,30 +446,36 @@ export default function AdminDashboard() {
           <TabsContent value="subs">
             <div className="space-y-4">
               <div className="flex items-center justify-between"><h3 className="text-lg font-bold">Subscription Packages</h3><Button onClick={() => handleOpenPackageDialog()} className="rounded-xl gap-2"><Plus size={18} /> Add Package</Button></div>
-              <div className="grid gap-3">{subscriptionPackages.map((pkg) => (
-                <Card key={pkg.id} className="rounded-2xl border-none shadow-sm p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-4 text-start">
-                    <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600"><CreditCard size={24} /></div>
-                    <div><p className="font-black">{pkg.name}</p><p className="text-xs text-muted-foreground font-bold">{pkg.credits} Credits • {pkg.price} DA</p></div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="ghost" size="icon" onClick={() => handleOpenPackageDialog(pkg)} className="rounded-full"><Pencil size={18} /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete('subscriptionPackages', pkg.id)} className="rounded-full text-destructive"><Trash2 size={18} /></Button>
-                  </div>
-                </Card>
-              ))}</div>
+              <div className="grid gap-3">
+                {subscriptionPackages.length === 0 ? (
+                  <p className="text-center py-12 text-muted-foreground italic">No packages configured.</p>
+                ) : subscriptionPackages.map((pkg) => (
+                  <Card key={pkg.id} className="rounded-2xl border-none shadow-sm p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-4 text-start">
+                      <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600"><CreditCard size={24} /></div>
+                      <div><p className="font-black">{pkg.name}</p><p className="text-xs text-muted-foreground font-bold">{pkg.credits} Credits • {pkg.price} DA</p></div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="ghost" size="icon" onClick={() => handleOpenPackageDialog(pkg)} className="rounded-full"><Pencil size={18} /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete('subscriptionPackages', pkg.id)} className="rounded-full text-destructive"><Trash2 size={18} /></Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
             </div>
           </TabsContent>
 
           <TabsContent value="revenue">
             <div className="grid gap-3">
-              {revenueHistory.map((t) => (
-                <Card key={t.id} className="rounded-2xl border-none shadow-sm p-4 flex items-center justify-between hover:bg-accent">
+              {revenueHistory.length === 0 ? (
+                <p className="text-center py-12 text-muted-foreground">No revenue recorded yet.</p>
+              ) : revenueHistory.map((t) => (
+                <Card key={t.id} className="rounded-2xl border-none shadow-sm p-4 flex items-center justify-between hover:bg-accent transition-all duration-200">
                   <div className="flex items-center gap-4 text-start flex-1 min-w-0">
                     <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600 shrink-0"><ShoppingBag size={24} /></div>
                     <div className="min-w-0">
-                      <p className="font-bold text-sm truncate">{t.packageName} Purchase</p>
-                      <p className="text-[10px] text-muted-foreground uppercase">Buyer: {t.buyerName || 'User'} • {t.createdAt ? format(t.createdAt.toDate(), 'PPPp') : '...'}</p>
+                      <p className="font-bold text-sm truncate group-hover:text-primary transition-colors">{t.packageName} Purchase</p>
+                      <p className="text-[10px] text-muted-foreground uppercase">Buyer: {t.buyerName || 'User'} • {t.createdAt ? format(t.createdAt.toDate ? t.createdAt.toDate() : new Date(t.createdAt), 'PPPp') : '...'}</p>
                     </div>
                   </div>
                   <div className="font-black text-emerald-600 text-lg">+{t.amount?.toLocaleString()} DA</div>
@@ -461,7 +500,7 @@ export default function AdminDashboard() {
             <div className="space-y-2"><Label>Price (DA)</Label><Input type="number" value={currentPackage.price} onChange={(e) => setCurrentPackage({...currentPackage, price: Number(e.target.value)})} className="rounded-xl" /></div>
           </div>
         </div>
-        <DialogFooter><Button onClick={handleSavePackage} disabled={savingPackage} className="w-full rounded-xl">{savingPackage ? <Loader2 className="animate-spin" /> : 'Save Package'}</Button></DialogFooter>
+        <DialogFooter><Button onClick={handleSavePackage} disabled={savingPackage} className="w-full rounded-xl active:scale-[0.98] transition-all">{savingPackage ? <Loader2 className="animate-spin" /> : 'Save Package'}</Button></DialogFooter>
       </DialogContent></Dialog>
     </div>
   );
