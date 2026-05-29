@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef, use } from "react";
@@ -127,7 +128,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
   const [listing, setListing] = useState<Listing | null>(null);
   const [convData, setConvData] = useState<ConversationData | null>(null);
   
-  const [currentCommission, setCurrentCommission] = useState(1000);
+  const [currentCommission, setCurrentCommission] = useState(1);
   
   const [isRatingOpen, setIsRatingOpen] = useState(false);
   const [ratingStars, setRatingStars] = useState(5);
@@ -175,7 +176,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
         
         const settingsSnap = await getDoc(doc(db, "settings", "config"));
         if (settingsSnap.exists()) {
-          setCurrentCommission(settingsSnap.data().defaultCommission || 1000);
+          setCurrentCommission(settingsSnap.data().defaultCommission || 1);
         }
 
         unsubscribeConv = onSnapshot(convRef, (snap) => {
@@ -391,15 +392,38 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       return;
     }
 
-    const agreedPrice = convData.agreedPrice;
-    
-    if (!isLister) {
-      if ((profile?.walletBalance || 0) < agreedPrice) {
+    // Identify traveler to check credits
+    let travelerUid = "";
+    if (listing?.type === 'traveler') {
+      travelerUid = listing.listerId;
+    } else {
+      travelerUid = participants.find(p => p !== listing?.listerId) || "";
+    }
+
+    if (travelerUid === user.uid) {
+      const currentBalance = profile?.walletBalance || 0;
+      if (currentBalance < currentCommission) {
         toast({
           variant: "destructive",
           title: t('insufficient_balance'),
         });
         return;
+      }
+    } else {
+      // If user is not the traveler, we might still want to check if the traveler has credits?
+      // For MVP, we allow the buyer to rate, but deduction happens at finalization (when both rate).
+      // Or we can check traveler profile directly.
+      const travelerSnap = await getDoc(doc(db, "userProfiles", travelerUid));
+      if (travelerSnap.exists()) {
+        const tProfile = travelerSnap.data();
+        if ((tProfile.walletBalance || 0) < currentCommission) {
+          toast({
+            variant: "destructive",
+            title: t('insufficient_balance'),
+            description: "The traveler needs more credits to complete this deal."
+          });
+          return;
+        }
       }
     }
 

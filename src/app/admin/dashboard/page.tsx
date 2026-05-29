@@ -668,6 +668,14 @@ export default function AdminDashboard() {
         </Tabs>
       </div>
 
+      <div className="fixed bottom-4 right-4 z-[60]">
+         <Link href="/">
+           <Button className="rounded-full h-14 w-14 shadow-2xl transition-all active:scale-90">
+             <RefreshCw size={24} />
+           </Button>
+         </Link>
+      </div>
+
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
         <DialogContent className="max-w-2xl rounded-2xl p-0 overflow-hidden shadow-2xl border-none">
           <DialogHeader className="p-6 pb-2 text-start">
