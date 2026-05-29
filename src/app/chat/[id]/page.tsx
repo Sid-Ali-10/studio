@@ -298,8 +298,15 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
       setNewMessage("");
       setReplyingTo(null);
       await addDoc(collection(db, "conversations", activeConvId, "messages"), msgData);
+
+      // Create a cleaner preview for the list view
+      const isUrl = /^(https?:\/\/[^\s]+)$/.test(text.trim());
+      let previewText = text;
+      if (imageUrl) previewText = "📷 Image";
+      else if (isUrl) previewText = "🔗 Link";
+
       await updateDoc(doc(db, "conversations", activeConvId), {
-        lastMessageText: imageUrl ? "📷 Image" : text,
+        lastMessageText: previewText,
         lastMessageTimestamp: serverTimestamp(),
         updatedAt: serverTimestamp(),
         unreadBy: arrayUnion(otherUserId),
