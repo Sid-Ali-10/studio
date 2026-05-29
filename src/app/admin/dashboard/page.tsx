@@ -67,7 +67,6 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<AdminStats>({ totalUsers: 0, totalListings: 0, totalConvos: 0, totalRevenueDA: 0, totalReports: 0 });
   const [users, setUsers] = useState<any[]>([]);
   const [listings, setListings] = useState<any[]>([]);
-  const [convos, setConvos] = useState<any[]>([]);
   const [reports, setReports] = useState<any[]>([]);
   const [subscriptionPackages, setSubscriptionPackages] = useState<SubscriptionPackage[]>([]);
   const [revenueHistory, setRevenueHistory] = useState<any[]>([]);
@@ -146,12 +145,11 @@ export default function AdminDashboard() {
     try {
       const usersSnap = await getDocs(query(collection(db, 'userProfiles'), limit(50)));
       const listingsSnap = await getDocs(query(collection(db, 'listings'), limit(50)));
-      const convosSnap = await getDocs(query(collection(db, 'conversations'), limit(50)));
+      const convosSnap = await getDocs(query(collection(db, 'conversations'), limit(1)));
       const reportsSnap = await getDocs(query(collection(db, 'reports'), limit(50)));
 
       setUsers(usersSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       setListings(listingsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setConvos(convosSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       setReports(reportsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
       setStats(prev => ({
@@ -187,7 +185,6 @@ export default function AdminDashboard() {
     try {
       await deleteDoc(doc(db, coll, id));
       if (coll === 'listings') setListings((prev) => prev.filter((l) => l.id !== id));
-      if (coll === 'conversations') setConvos((prev) => prev.filter((c) => c.id !== id));
       if (coll === 'reports') setReports((prev) => prev.filter((r) => r.id !== id));
       if (coll === 'subscriptionPackages') setSubscriptionPackages((prev) => prev.filter((p) => p.id !== id));
       toast({ title: 'Success' });
@@ -325,7 +322,7 @@ export default function AdminDashboard() {
                   <MessageSquare className="text-purple-500" />
                 </div>
                 <div className="text-start">
-                  <p className="text-[10px] text-muted-foreground uppercase font-bold">Chats</p>
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold">Chats (DB Size)</p>
                   <p className="text-2xl font-black">{stats.totalConvos}</p>
                 </div>
               </CardContent>
@@ -350,7 +347,6 @@ export default function AdminDashboard() {
               <TabsTrigger value="reports" className="rounded-xl px-6 md:px-8">Reports</TabsTrigger>
               <TabsTrigger value="users" className="rounded-xl px-6 md:px-8">Users</TabsTrigger>
               <TabsTrigger value="listings" className="rounded-xl px-6 md:px-8">Listings</TabsTrigger>
-              <TabsTrigger value="convos" className="rounded-xl px-6 md:px-8">Chats</TabsTrigger>
               <TabsTrigger value="subs" className="rounded-xl px-6 md:px-8">Subscription Packages</TabsTrigger>
               <TabsTrigger value="revenue" className="rounded-xl px-6 md:px-8">Revenue Log</TabsTrigger>
             </TabsList>
@@ -467,22 +463,6 @@ export default function AdminDashboard() {
             </div>
           </TabsContent>
 
-          <TabsContent value="convos">
-            <div className="grid gap-3">
-              {convos.length === 0 ? (
-                <p className="text-center py-12 text-muted-foreground">No conversations found.</p>
-              ) : convos.filter(c => (c.listingTitle || '').toLowerCase().includes(searchTerm.toLowerCase())).map((c) => (
-                <Card key={c.id} className="rounded-2xl border-none shadow-sm p-4 flex items-center justify-between hover:bg-accent cursor-pointer transition-all duration-200" onClick={() => router.push(`/chat/${c.id}`)}>
-                  <div className="min-w-0 flex-1 text-start">
-                    <p className="font-black truncate group-hover:text-primary transition-colors">{c.listingTitle || 'Untitled Chat'}</p>
-                    <p className="text-[10px] text-muted-foreground uppercase">Participants: {c.participantIds?.length || 0} • Last activity: {c.updatedAt ? format(c.updatedAt.toDate ? c.updatedAt.toDate() : new Date(c.updatedAt), 'PPpp') : '...'}</p>
-                  </div>
-                  <Button variant="ghost" size="icon" className="rounded-full text-destructive relative z-10" onClick={(e) => handleDelete('conversations', c.id, e)}><Trash2 size={18} /></Button>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
-
           <TabsContent value="subs">
             <div className="space-y-4">
               <div className="flex items-center justify-between"><h3 className="text-lg font-bold">Subscription Packages</h3><Button onClick={() => handleOpenPackageDialog()} className="rounded-xl gap-2"><Plus size={18} /> Add Package</Button></div>
@@ -526,6 +506,14 @@ export default function AdminDashboard() {
         </Tabs>
       </div>
 
+      <div className="fixed bottom-8 right-8 z-50">
+          <Link href="/">
+            <Button className="rounded-full h-14 w-14 shadow-2xl transition-all active:scale-90">
+              <RefreshCw size={24} />
+            </Button>
+          </Link>
+      </div>
+
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}><DialogContent className="max-w-2xl rounded-2xl p-0 overflow-hidden shadow-2xl border-none">
         <DialogHeader className="p-6 text-start"><DialogTitle className="text-2xl font-bold">Listing Content Review</DialogTitle></DialogHeader>
         <div className="px-6 pb-8 max-h-[70vh] overflow-y-auto">{selectedListing && <ListingDetailView listing={selectedListing as any} />}</div>
@@ -545,3 +533,5 @@ export default function AdminDashboard() {
     </div>
   );
 }
+
+    
