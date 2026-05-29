@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -42,6 +43,8 @@ import { cn } from '@/lib/utils';
 import { type Listing } from '@/components/listings/ListingCard';
 import { ListingDetailView } from '@/components/listings/ListingDetailView';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 interface AdminStats {
   totalUsers: number;
@@ -101,7 +104,14 @@ export default function AdminDashboard() {
           return;
         }
 
-        const profileSnap = await getDoc(doc(db, 'userProfiles', user.uid));
+        const profileSnap = await getDoc(doc(db, 'userProfiles', user.uid)).catch(async (e) => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: `userProfiles/${user.uid}`,
+            operation: 'get'
+          }));
+          throw e;
+        });
+
         if (profileSnap.exists() && profileSnap.data().isAdmin === true) {
           setIsAdminInDb(true);
           fetchData(user.uid);
@@ -111,7 +121,6 @@ export default function AdminDashboard() {
           setLoading(false);
         }
       } catch (err) {
-        console.error('Access verification failed', err);
         setIsAdminInDb(false);
         setLoading(false);
       }
@@ -122,7 +131,13 @@ export default function AdminDashboard() {
 
   const fetchPackages = async () => {
     try {
-      const packagesSnap = await getDocs(collection(db, 'subscriptionPackages'));
+      const packagesSnap = await getDocs(collection(db, 'subscriptionPackages')).catch(async (e) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: 'subscriptionPackages',
+          operation: 'list'
+        }));
+        throw e;
+      });
       setSubscriptionPackages(packagesSnap.docs.map(d => ({ id: d.id, ...d.data() } as SubscriptionPackage)));
     } catch (err) {
       console.error('Failed to fetch packages', err);
@@ -133,11 +148,21 @@ export default function AdminDashboard() {
     setLoading(true);
 
     try {
+      const fetchCollection = async (path: string) => {
+        return getDocs(collection(db, path)).catch(async (e) => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path,
+            operation: 'list'
+          }));
+          throw e;
+        });
+      };
+
       const [usersSnap, listingsSnap, convosSnap, reportsSnap] = await Promise.all([
-        getDocs(collection(db, 'userProfiles')),
-        getDocs(collection(db, 'listings')),
-        getDocs(collection(db, 'conversations')),
-        getDocs(collection(db, 'reports')),
+        fetchCollection('userProfiles'),
+        fetchCollection('listings'),
+        fetchCollection('conversations'),
+        fetchCollection('reports'),
       ]);
 
       const usersData = usersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -152,10 +177,15 @@ export default function AdminDashboard() {
       const reportsData = reportsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
       setReports(reportsData);
 
-      const transSnap = await getDocs(collection(db, 'userProfiles', adminUid, 'transactions'));
+      const transSnap = await getDocs(collection(db, 'userProfiles', adminUid, 'transactions')).catch(async (e) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: `userProfiles/${adminUid}/transactions`,
+          operation: 'list'
+        }));
+        throw e;
+      });
       const transData = transSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
       
-      // Filter for subscription sales (money revenue)
       const salesData = transData.filter(t => t.type === 'subscription_sale');
       setRevenueHistory(salesData);
 
@@ -184,7 +214,13 @@ export default function AdminDashboard() {
     setProcessingAction(`delete-${id}`);
 
     try {
-      await deleteDoc(doc(db, coll, id));
+      await deleteDoc(doc(db, coll, id)).catch(async (err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: `${coll}/${id}`,
+          operation: 'delete'
+        }));
+        throw err;
+      });
       
       if (coll === 'listings') setListings((prev) => prev.filter((l) => l.id !== id));
       if (coll === 'conversations') setConvos((prev) => prev.filter((c) => c.id !== id));
@@ -207,10 +243,24 @@ export default function AdminDashboard() {
     setSavingPackage(true);
     try {
       if (currentPackage.id) {
-        await updateDoc(doc(db, 'subscriptionPackages', currentPackage.id), currentPackage);
+        await updateDoc(doc(db, 'subscriptionPackages', currentPackage.id), currentPackage).catch(async (e) => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: `subscriptionPackages/${currentPackage.id}`,
+            operation: 'update',
+            requestResourceData: currentPackage
+          }));
+          throw e;
+        });
         setSubscriptionPackages(prev => prev.map(p => p.id === currentPackage.id ? (currentPackage as SubscriptionPackage) : p));
       } else {
-        const docRef = await addDoc(collection(db, 'subscriptionPackages'), currentPackage);
+        const docRef = await addDoc(collection(db, 'subscriptionPackages'), currentPackage).catch(async (e) => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: 'subscriptionPackages',
+            operation: 'create',
+            requestResourceData: currentPackage
+          }));
+          throw e;
+        });
         setSubscriptionPackages(prev => [...prev, { id: docRef.id, ...currentPackage } as SubscriptionPackage]);
       }
       toast({ title: 'Success', description: 'Package saved successfully.' });
@@ -237,7 +287,14 @@ export default function AdminDashboard() {
     const newStatus = !currentStatus;
     setProcessingAction(`ban-${userId}`);
     try {
-      await updateDoc(doc(db, 'userProfiles', userId), { isBanned: newStatus });
+      await updateDoc(doc(db, 'userProfiles', userId), { isBanned: newStatus }).catch(async (err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: `userProfiles/${userId}`,
+          operation: 'update',
+          requestResourceData: { isBanned: newStatus }
+        }));
+        throw err;
+      });
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, isBanned: newStatus } : u));
       toast({ title: newStatus ? 'User Banned' : 'User Reinstated' });
     } catch (err) {
@@ -264,7 +321,14 @@ export default function AdminDashboard() {
   const handleReportAction = async (reportId: string, newStatus: string) => {
     setProcessingAction(`report-${reportId}`);
     try {
-      await updateDoc(doc(db, 'reports', reportId), { status: newStatus });
+      await updateDoc(doc(db, 'reports', reportId), { status: newStatus }).catch(async (e) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: `reports/${reportId}`,
+          operation: 'update',
+          requestResourceData: { status: newStatus }
+        }));
+        throw e;
+      });
       setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: newStatus } : r));
       toast({ title: `Report ${newStatus}` });
     } catch (err) {
@@ -667,7 +731,7 @@ export default function AdminDashboard() {
                         </p>
                       </div>
                     </div>
-                    <div className="font-black text-emerald-600 text-start sm:text-end shrink-0 text-lg">
+                    <div className={cn("font-black text-emerald-600 text-start sm:text-end shrink-0 text-lg")}>
                       +{t.amount?.toLocaleString()} DA
                     </div>
                   </Card>

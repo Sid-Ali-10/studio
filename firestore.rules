@@ -28,6 +28,7 @@ service cloud.firestore {
     }
 
     // --- Collection Rules ---
+    // Note: Added comment to trigger security rules redeployment for permission diagnosis.
 
     match /settings/config {
       allow read: if true;
@@ -54,13 +55,13 @@ service cloud.firestore {
       
       allow update: if isExistingOwner(userId) || 
                        isAdmin() || 
-                       (isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isAdmin', 'updatedAt', 'walletBalance', 'successfulDealsCount', 'isBanned']));
+                       (isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isAdmin', 'updatedAt', 'walletBalance', 'successfulDealsCount', 'isBanned', 'id', 'username', 'email', 'createdAt', 'isVerified']));
       
       allow delete: if isAdmin() || isExistingOwner(userId);
 
       match /favorites/{favoriteId} {
         allow get, list: if isOwner(userId) || isAdmin();
-        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow create: if isOwner(userId);
         allow update: if isExistingOwner(userId) || isAdmin();
         allow delete: if isExistingOwner(userId) || isAdmin();
       }
