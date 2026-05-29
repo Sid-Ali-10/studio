@@ -4,7 +4,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { db, auth } from '@/lib/firebase';
-import { collection, getDocs, doc, getDoc, serverTimestamp, deleteDoc, updateDoc, query, where, addDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, deleteDoc, updateDoc, addDoc, onSnapshot } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,10 +19,6 @@ import {
   CheckCircle2,
   AlertTriangle,
   Eye,
-  Banknote,
-  History,
-  Copy,
-  Check,
   Flag,
   UserX,
   UserCheck,
@@ -104,17 +100,11 @@ export default function AdminDashboard() {
           return;
         }
 
-        const profileSnap = await getDoc(doc(db, 'userProfiles', user.uid)).catch(async (e) => {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: `userProfiles/${user.uid}`,
-            operation: 'get'
-          }));
-          throw e;
-        });
-
+        const profileSnap = await getDoc(doc(db, 'userProfiles', user.uid));
         if (profileSnap.exists() && profileSnap.data().isAdmin === true) {
           setIsAdminInDb(true);
-          fetchData(user.uid);
+          fetchStaticData();
+          listenToRevenue();
           fetchPackages();
         } else {
           setIsAdminInDb(false);
@@ -131,75 +121,48 @@ export default function AdminDashboard() {
 
   const fetchPackages = async () => {
     try {
-      const packagesSnap = await getDocs(collection(db, 'subscriptionPackages')).catch(async (e) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: 'subscriptionPackages',
-          operation: 'list'
-        }));
-        throw e;
-      });
+      const packagesSnap = await getDocs(collection(db, 'subscriptionPackages'));
       setSubscriptionPackages(packagesSnap.docs.map(d => ({ id: d.id, ...d.data() } as SubscriptionPackage)));
     } catch (err) {
       console.error('Failed to fetch packages', err);
     }
   };
 
-  const fetchData = async (adminUid: string) => {
+  const listenToRevenue = () => {
+    return onSnapshot(collection(db, 'revenue'), (snap) => {
+      const revData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const sortedRev = revData.sort((a: any, b: any) => b.createdAt?.toMillis() - a.createdAt?.toMillis());
+      setRevenueHistory(sortedRev);
+      
+      const total = revData.reduce((sum: number, r: any) => sum + (r.amount || 0), 0);
+      setStats(prev => ({ ...prev, totalRevenueDA: total }));
+    });
+  };
+
+  const fetchStaticData = async () => {
     setLoading(true);
-
     try {
-      const fetchCollection = async (path: string) => {
-        return getDocs(collection(db, path)).catch(async (e) => {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path,
-            operation: 'list'
-          }));
-          throw e;
-        });
-      };
-
       const [usersSnap, listingsSnap, convosSnap, reportsSnap] = await Promise.all([
-        fetchCollection('userProfiles'),
-        fetchCollection('listings'),
-        fetchCollection('conversations'),
-        fetchCollection('reports'),
+        getDocs(collection(db, 'userProfiles')),
+        getDocs(collection(db, 'listings')),
+        getDocs(collection(db, 'conversations')),
+        getDocs(collection(db, 'reports')),
       ]);
 
-      const usersData = usersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setUsers(usersData);
+      setUsers(usersSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setListings(listingsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setConvos(convosSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setReports(reportsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
-      const listingsData = listingsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setListings(listingsData);
-
-      const convosData = convosSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setConvos(convosData);
-
-      const reportsData = reportsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setReports(reportsData);
-
-      const transSnap = await getDocs(collection(db, 'userProfiles', adminUid, 'transactions')).catch(async (e) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: `userProfiles/${adminUid}/transactions`,
-          operation: 'list'
-        }));
-        throw e;
-      });
-      const transData = transSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      
-      const salesData = transData.filter(t => t.type === 'subscription_sale');
-      setRevenueHistory(salesData);
-
-      const revenueSum = salesData.reduce((sum, t) => sum + (t.amount || 0), 0);
-
-      setStats({
+      setStats(prev => ({
+        ...prev,
         totalUsers: usersSnap.size,
         totalListings: listingsSnap.size,
         totalConvos: convosSnap.size,
-        totalRevenueDA: revenueSum,
         totalReports: reportsSnap.size,
-      });
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Data Load Error', description: 'Could not retrieve platform statistics.' });
+      }));
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Data Load Error' });
     } finally {
       setLoading(false);
     }
@@ -210,26 +173,18 @@ export default function AdminDashboard() {
       e.preventDefault();
       e.stopPropagation();
     }
-    if (!confirm(`Are you sure you want to permanently delete this ${coll.slice(0, -1)}?`)) return;
+    if (!confirm(`Are you sure?`)) return;
     setProcessingAction(`delete-${id}`);
 
     try {
-      await deleteDoc(doc(db, coll, id)).catch(async (err) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: `${coll}/${id}`,
-          operation: 'delete'
-        }));
-        throw err;
-      });
-      
+      await deleteDoc(doc(db, coll, id));
       if (coll === 'listings') setListings((prev) => prev.filter((l) => l.id !== id));
       if (coll === 'conversations') setConvos((prev) => prev.filter((c) => c.id !== id));
       if (coll === 'reports') setReports((prev) => prev.filter((r) => r.id !== id));
       if (coll === 'subscriptionPackages') setSubscriptionPackages((prev) => prev.filter((p) => p.id !== id));
-
-      toast({ title: 'Success', description: 'Resource removed successfully.' });
+      toast({ title: 'Success' });
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Deletion Failed', description: err.message });
+      toast({ variant: 'destructive', title: 'Deletion Failed' });
     } finally {
       setProcessingAction(null);
     }
@@ -237,33 +192,19 @@ export default function AdminDashboard() {
 
   const handleSavePackage = async () => {
     if (!currentPackage.name || !currentPackage.credits || !currentPackage.price) {
-      toast({ variant: 'destructive', title: 'Validation Error', description: 'All fields are required.' });
+      toast({ variant: 'destructive', title: 'Validation Error' });
       return;
     }
     setSavingPackage(true);
     try {
       if (currentPackage.id) {
-        await updateDoc(doc(db, 'subscriptionPackages', currentPackage.id), currentPackage).catch(async (e) => {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: `subscriptionPackages/${currentPackage.id}`,
-            operation: 'update',
-            requestResourceData: currentPackage
-          }));
-          throw e;
-        });
+        await updateDoc(doc(db, 'subscriptionPackages', currentPackage.id), currentPackage);
         setSubscriptionPackages(prev => prev.map(p => p.id === currentPackage.id ? (currentPackage as SubscriptionPackage) : p));
       } else {
-        const docRef = await addDoc(collection(db, 'subscriptionPackages'), currentPackage).catch(async (e) => {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: 'subscriptionPackages',
-            operation: 'create',
-            requestResourceData: currentPackage
-          }));
-          throw e;
-        });
+        const docRef = await addDoc(collection(db, 'subscriptionPackages'), currentPackage);
         setSubscriptionPackages(prev => [...prev, { id: docRef.id, ...currentPackage } as SubscriptionPackage]);
       }
-      toast({ title: 'Success', description: 'Package saved successfully.' });
+      toast({ title: 'Success' });
       setIsPackageDialogOpen(false);
     } catch (err) {
       toast({ variant: 'destructive', title: 'Save Failed' });
@@ -287,14 +228,7 @@ export default function AdminDashboard() {
     const newStatus = !currentStatus;
     setProcessingAction(`ban-${userId}`);
     try {
-      await updateDoc(doc(db, 'userProfiles', userId), { isBanned: newStatus }).catch(async (err) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: `userProfiles/${userId}`,
-          operation: 'update',
-          requestResourceData: { isBanned: newStatus }
-        }));
-        throw err;
-      });
+      await updateDoc(doc(db, 'userProfiles', userId), { isBanned: newStatus });
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, isBanned: newStatus } : u));
       toast({ title: newStatus ? 'User Banned' : 'User Reinstated' });
     } catch (err) {
@@ -304,65 +238,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleCopyEmail = (email: string, id: string, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    navigator.clipboard.writeText(email);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-    toast({ title: 'Copied to clipboard' });
-  };
-
-  const handleShowListing = (listing: any) => {
-    setSelectedListing(listing as Listing);
-    setIsDetailOpen(true);
-  };
-
-  const handleReportAction = async (reportId: string, newStatus: string) => {
-    setProcessingAction(`report-${reportId}`);
-    try {
-      await updateDoc(doc(db, 'reports', reportId), { status: newStatus }).catch(async (e) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: `reports/${reportId}`,
-          operation: 'update',
-          requestResourceData: { status: newStatus }
-        }));
-        throw e;
-      });
-      setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: newStatus } : r));
-      toast({ title: `Report ${newStatus}` });
-    } catch (err) {
-      toast({ variant: 'destructive', title: 'Action Failed' });
-    } finally {
-      setProcessingAction(null);
-    }
-  };
-
-  const handleLogout = () => {
-    sessionStorage.removeItem('admin_token');
-    router.push('/admin/login');
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-        <Loader2 className="animate-spin" size={48} />
-        <p>Loading Dashboard...</p>
-      </div>
-    );
-  }
-
-  if (isAdminInDb === false) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center text-center p-6">
-        <AlertTriangle size={40} className="text-destructive mb-4" />
-        <h1>Unauthorized</h1>
-        <Button onClick={() => router.push('/admin/login')} className="mt-4 rounded-xl transition-all active:scale-95">
-          Back to Login
-        </Button>
-      </div>
-    );
-  }
+  if (loading) return <div className="min-h-screen flex flex-col items-center justify-center gap-4"><Loader2 className="animate-spin" size={48} /><p>Loading Dashboard...</p></div>;
 
   return (
     <div className="min-h-screen bg-muted/20 p-4 md:p-8">
@@ -374,11 +250,7 @@ export default function AdminDashboard() {
             </h1>
             <p className="text-sm text-muted-foreground">Monitor platform activity and revenue.</p>
           </div>
-          <Button
-            variant="outline"
-            className="rounded-xl w-full md:w-auto transition-all duration-200 hover:bg-destructive hover:text-white active:scale-95"
-            onClick={handleLogout}
-          >
+          <Button variant="outline" className="rounded-xl w-full md:w-auto" onClick={() => { sessionStorage.removeItem('admin_token'); router.push('/admin/login'); }}>
             Logout
           </Button>
         </div>
@@ -410,46 +282,46 @@ export default function AdminDashboard() {
           </Card>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-            <Card className="rounded-3xl border-none shadow-sm hover:shadow-md transition-shadow duration-200">
+            <Card className="rounded-3xl border-none shadow-sm hover:shadow-md transition-shadow">
               <CardContent className="p-6 flex items-center gap-4">
                 <div className="w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center">
                   <Users className="text-blue-500" />
                 </div>
                 <div className="text-start">
-                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Users</p>
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold">Users</p>
                   <p className="text-2xl font-black">{stats.totalUsers}</p>
                 </div>
               </CardContent>
             </Card>
-            <Card className="rounded-3xl border-none shadow-sm hover:shadow-md transition-shadow duration-200">
+            <Card className="rounded-3xl border-none shadow-sm hover:shadow-md transition-shadow">
               <CardContent className="p-6 flex items-center gap-4">
                 <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center">
                   <Package className="text-emerald-600" />
                 </div>
                 <div className="text-start">
-                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Listings</p>
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold">Listings</p>
                   <p className="text-2xl font-black">{stats.totalListings}</p>
                 </div>
               </CardContent>
             </Card>
-            <Card className="rounded-3xl border-none shadow-sm hover:shadow-md transition-shadow duration-200">
+            <Card className="rounded-3xl border-none shadow-sm hover:shadow-md transition-shadow">
               <CardContent className="p-6 flex items-center gap-4">
                 <div className="w-12 h-12 bg-purple-500/10 rounded-2xl flex items-center justify-center">
                   <MessageSquare className="text-purple-500" />
                 </div>
                 <div className="text-start">
-                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Chats</p>
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold">Chats</p>
                   <p className="text-2xl font-black">{stats.totalConvos}</p>
                 </div>
               </CardContent>
             </Card>
-            <Card className="rounded-3xl border-none shadow-sm hover:shadow-md transition-shadow duration-200">
+            <Card className="rounded-3xl border-none shadow-sm hover:shadow-md transition-shadow">
               <CardContent className="p-6 flex items-center gap-4">
                 <div className="w-12 h-12 bg-destructive/10 rounded-2xl flex items-center justify-center">
                   <Flag className="text-destructive" />
                 </div>
                 <div className="text-start">
-                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Reports</p>
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold">Reports</p>
                   <p className="text-2xl font-black">{stats.totalReports}</p>
                 </div>
               </CardContent>
@@ -459,13 +331,13 @@ export default function AdminDashboard() {
 
         <Tabs defaultValue="reports" className="space-y-6">
           <div className="w-full overflow-x-auto pb-2 scrollbar-hide">
-            <TabsList className="inline-flex h-14 bg-card p-1 shadow-sm rounded-2xl whitespace-nowrap min-w-full md:min-w-0">
-              <TabsTrigger value="reports" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Reports</TabsTrigger>
-              <TabsTrigger value="users" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Users</TabsTrigger>
-              <TabsTrigger value="listings" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Listings</TabsTrigger>
-              <TabsTrigger value="convos" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Chats</TabsTrigger>
-              <TabsTrigger value="subs" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Subscription Packages</TabsTrigger>
-              <TabsTrigger value="revenue" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Revenue Log</TabsTrigger>
+            <TabsList className="inline-flex h-14 bg-card p-1 shadow-sm rounded-2xl whitespace-nowrap">
+              <TabsTrigger value="reports" className="rounded-xl px-6 md:px-8">Reports</TabsTrigger>
+              <TabsTrigger value="users" className="rounded-xl px-6 md:px-8">Users</TabsTrigger>
+              <TabsTrigger value="listings" className="rounded-xl px-6 md:px-8">Listings</TabsTrigger>
+              <TabsTrigger value="convos" className="rounded-xl px-6 md:px-8">Chats</TabsTrigger>
+              <TabsTrigger value="subs" className="rounded-xl px-6 md:px-8">Subscription Packages</TabsTrigger>
+              <TabsTrigger value="revenue" className="rounded-xl px-6 md:px-8">Revenue Log</TabsTrigger>
             </TabsList>
           </div>
 
@@ -473,7 +345,7 @@ export default function AdminDashboard() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
             <Input
               placeholder="Filter current view..."
-              className="pl-10 h-12 rounded-xl transition-all duration-200 focus:ring-primary/20 border-none shadow-sm text-start"
+              className="pl-10 h-12 rounded-xl transition-all border-none shadow-sm text-start"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -481,198 +353,58 @@ export default function AdminDashboard() {
 
           <TabsContent value="reports">
             <div className="grid gap-4">
-              {reports.length === 0 ? (
-                <div className="text-center py-12 bg-card rounded-3xl">
-                  <Flag className="mx-auto text-muted-foreground mb-4 opacity-20" size={48} />
-                  <p className="text-muted-foreground font-medium">No reports currently pending review.</p>
-                </div>
-              ) : (
-                reports.map((r) => (
-                  <Card key={r.id} className="rounded-2xl border-none shadow-sm overflow-hidden animate-in fade-in">
-                    <div className="p-4 md:p-6 space-y-4">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div className="flex items-center gap-2">
-                          <Badge variant={r.status === 'pending' ? 'destructive' : 'secondary'} className="rounded-lg px-3 py-1">
-                            {r.status.toUpperCase()}
-                          </Badge>
-                          <span className="text-[10px] text-muted-foreground font-medium">
-                            {r.createdAt ? format(r.createdAt.toDate(), 'PPpp') : 'Recent'}
-                          </span>
-                        </div>
-                        <div className="flex gap-2 w-full sm:w-auto">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="rounded-full text-muted-foreground hover:bg-accent"
-                            onClick={() => handleReportAction(r.id, 'ignored')}
-                            title="Ignore Report"
-                          >
-                            <Trash2 size={16} />
-                          </Button>
-                          <Button 
-                            variant="secondary" 
-                            size="sm" 
-                            className="flex-1 sm:flex-none rounded-xl h-9 gap-2 font-bold transition-all active:scale-[0.98]"
-                            onClick={() => handleReportAction(r.id, 'resolved')}
-                          >
-                            <CheckCircle2 size={14} /> Resolve
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-2 text-start">
-                        <p className="font-black text-lg flex items-center gap-2">
-                          {r.type === 'scam' ? '🚨' : '⚠️'} {r.type.toUpperCase()}
-                        </p>
-                        <p className="text-sm bg-muted/50 p-4 rounded-xl italic leading-relaxed">"{r.reason}"</p>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                        <div className="space-y-1 text-start">
-                          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Reporter</p>
-                          <p className="font-medium truncate">{users.find(u => u.id === r.reporterId)?.username || 'Unknown User'}</p>
-                        </div>
-                        {r.targetUserId && (
-                          <div className="space-y-1 text-start">
-                            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Targeted User</p>
-                            <div className="flex items-center gap-2">
-                              <p className="font-medium truncate">{users.find(u => u.id === r.targetUserId)?.username || 'User'}</p>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-7 px-3 text-[10px] rounded-lg text-destructive hover:bg-destructive/10 font-bold transition-all active:scale-[0.98]"
-                                onClick={(e) => handleToggleBan(r.targetUserId, users.find(u => u.id === r.targetUserId)?.isBanned, e)}
-                              >
-                                {users.find(u => u.id === r.targetUserId)?.isBanned ? 'Unban' : 'Ban User'}
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
+              {reports.map((r) => (
+                <Card key={r.id} className="rounded-2xl border-none shadow-sm overflow-hidden p-4 md:p-6 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                      <Badge variant={r.status === 'pending' ? 'destructive' : 'secondary'} className="rounded-lg">{r.status.toUpperCase()}</Badge>
+                      <span className="text-[10px] text-muted-foreground">{r.createdAt ? format(r.createdAt.toDate(), 'PPpp') : 'Recent'}</span>
                     </div>
-                  </Card>
-                ))
-              )}
+                    <div className="flex gap-2">
+                      <Button variant="ghost" size="icon" className="rounded-full" onClick={() => handleDelete('reports', r.id)}><Trash2 size={16} /></Button>
+                      <Button variant="secondary" size="sm" className="rounded-xl h-9 gap-2 font-bold" onClick={() => updateDoc(doc(db, 'reports', r.id), { status: 'resolved' })}><CheckCircle2 size={14} /> Resolve</Button>
+                    </div>
+                  </div>
+                  <div className="space-y-2 text-start">
+                    <p className="font-black text-lg">{r.type.toUpperCase()}</p>
+                    <p className="text-sm bg-muted/50 p-4 rounded-xl italic leading-relaxed">"{r.reason}"</p>
+                  </div>
+                </Card>
+              ))}
             </div>
           </TabsContent>
 
           <TabsContent value="users">
             <div className="grid gap-3">
-              {users
-                .filter((u) => u.username?.toLowerCase().includes(searchTerm.toLowerCase()) || u.email?.toLowerCase().includes(searchTerm.toLowerCase()))
-                .map((u) => (
-                  <Card
-                    key={u.id}
-                    className={cn(
-                      "rounded-2xl border-none shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-accent transition-all duration-200",
-                      u.isBanned && "opacity-60 bg-destructive/5"
-                    )}
-                  >
-                    <Link href={`/profile/${u.id}`} className="flex items-center gap-4 min-w-0 flex-1 group/user">
-                      <div className={cn(
-                        "w-12 h-12 rounded-2xl flex items-center justify-center font-black shrink-0 shadow-sm transition-transform group-hover/user:scale-105",
-                        u.isBanned ? "bg-destructive/20 text-destructive" : "bg-primary/10 text-primary"
-                      )}>
-                        {u.username?.charAt(0).toUpperCase()}
+              {users.filter(u => u.username?.toLowerCase().includes(searchTerm.toLowerCase())).map((u) => (
+                <Card key={u.id} className={cn("rounded-2xl border-none shadow-sm p-4 flex items-center justify-between hover:bg-accent", u.isBanned && "opacity-60")}>
+                  <Link href={`/profile/${u.id}`} className="flex items-center gap-4 min-w-0 flex-1">
+                    <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center font-black">{u.username?.charAt(0).toUpperCase()}</div>
+                    <div className="flex flex-col text-start">
+                      <div className="font-black text-sm md:text-base flex items-center gap-2">
+                        {u.username} {u.isVerified && <CheckCircle2 size={14} className="text-primary" />}
+                        {u.isBanned && <Badge variant="destructive" className="h-4 text-[8px] px-1">BANNED</Badge>}
                       </div>
-                      <div className="flex flex-col min-w-0 text-start">
-                        <div className="font-black text-sm md:text-base flex items-center gap-2 truncate group-hover/user:text-primary transition-colors">
-                          {u.username} 
-                          {u.isVerified && <CheckCircle2 size={14} className="text-primary" />}
-                          {u.isBanned && <Badge variant="destructive" className="h-4 text-[8px] px-1 font-black">BANNED</Badge>}
-                        </div>
-                        <p className="text-xs text-muted-foreground truncate font-medium">{u.email}</p>
-                      </div>
-                    </Link>
-                    <div className="flex gap-2 ml-auto sm:ml-0 relative z-10">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className={cn(
-                          "rounded-full transition-all duration-200 active:scale-90",
-                          u.isBanned ? "text-primary" : "text-destructive hover:bg-destructive/10"
-                        )}
-                        onClick={(e) => handleToggleBan(u.id, u.isBanned, e)}
-                        title={u.isBanned ? "Unban User" : "Ban User"}
-                      >
-                        {u.isBanned ? <UserCheck size={18} /> : <UserX size={18} />}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="rounded-full text-muted-foreground hover:text-black hover:bg-accent transition-all duration-200 active:scale-90"
-                        onClick={(e) => handleCopyEmail(u.email, u.id, e)}
-                        title="Copy Email Address"
-                      >
-                        {copiedId === u.id ? <Check size={18} className="text-emerald-600" /> : <Copy size={18} />}
-                      </Button>
+                      <p className="text-xs text-muted-foreground">{u.email}</p>
                     </div>
-                  </Card>
-                ))}
+                  </Link>
+                  <Button variant="ghost" size="icon" className="rounded-full" onClick={(e) => handleToggleBan(u.id, u.isBanned, e)}>
+                    {u.isBanned ? <UserCheck size={18} /> : <UserX size={18} />}
+                  </Button>
+                </Card>
+              ))}
             </div>
           </TabsContent>
 
           <TabsContent value="listings">
             <div className="grid gap-3">
-              {listings
-                .filter((l) => l.title?.toLowerCase().includes(searchTerm.toLowerCase()))
-                .map((l) => (
-                  <Card
-                    key={l.id}
-                    className="rounded-2xl border-none shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-accent transition-all duration-200 cursor-pointer"
-                    onClick={() => handleShowListing(l)}
-                  >
-                    <div className="min-w-0 flex-1 text-start">
-                      <p className="font-black truncate">{l.title}</p>
-                      <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
-                        {l.type} • {l.city || 'Anywhere'} → {l.destination || 'Algeria'}
-                      </p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="rounded-full text-destructive hover:text-white hover:bg-destructive transition-all duration-200 active:scale-90 ml-auto sm:ml-0"
-                      onClick={(e) => handleDelete('listings', l.id, e)}
-                      disabled={processingAction === `delete-${l.id}`}
-                    >
-                      {processingAction === `delete-${l.id}` ? <Loader2 className="animate-spin w-4 h-4" /> : <Trash2 size={18} />}
-                    </Button>
-                  </Card>
-                ))}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="convos">
-            <div className="grid gap-3">
-              {convos.map((c) => (
-                <Card
-                  key={c.id}
-                  className="rounded-2xl border-none shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-accent transition-all duration-200"
-                >
+              {listings.filter(l => l.title?.toLowerCase().includes(searchTerm.toLowerCase())).map((l) => (
+                <Card key={l.id} className="rounded-2xl border-none shadow-sm p-4 flex items-center justify-between hover:bg-accent cursor-pointer" onClick={() => { setSelectedListing(l); setIsDetailOpen(true); }}>
                   <div className="min-w-0 flex-1 text-start">
-                    <p className="font-black text-sm truncate">{c.listingTitle || 'Private Inquiry'}</p>
-                    <p className="text-[10px] text-muted-foreground font-medium truncate">Conversation ID: {c.id.slice(0, 16)}...</p>
+                    <p className="font-black truncate">{l.title}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase">{l.type} • {l.city || 'Anywhere'}</p>
                   </div>
-                  <div className="flex gap-2 ml-auto sm:ml-0">
-                    <Link href={`/chat/${c.id}`}>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="rounded-full text-primary hover:bg-accent transition-all duration-200 active:scale-90"
-                      >
-                        <Eye size={18} />
-                      </Button>
-                    </Link>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="rounded-full text-destructive hover:text-white hover:bg-destructive transition-all duration-200 active:scale-90"
-                      onClick={(e) => handleDelete('conversations', c.id, e)}
-                      disabled={processingAction === `delete-${c.id}`}
-                    >
-                      {processingAction === `delete-${c.id}` ? <Loader2 className="animate-spin w-4 h-4" /> : <Trash2 size={18} />}
-                    </Button>
-                  </div>
+                  <Button variant="ghost" size="icon" className="rounded-full text-destructive" onClick={(e) => handleDelete('listings', l.id, e)}><Trash2 size={18} /></Button>
                 </Card>
               ))}
             </div>
@@ -680,132 +412,57 @@ export default function AdminDashboard() {
 
           <TabsContent value="subs">
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold">Subscription Packages</h3>
-                <Button onClick={() => handleOpenPackageDialog()} className="rounded-xl gap-2 h-10 px-6 font-bold">
-                  <Plus size={18} /> Add Package
-                </Button>
-              </div>
-              <div className="grid gap-3">
-                {subscriptionPackages.map((pkg) => (
-                  <Card key={pkg.id} className="rounded-2xl border-none shadow-sm p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-4 text-start">
-                      <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600">
-                        <CreditCard size={24} />
-                      </div>
-                      <div>
-                        <p className="font-black">{pkg.name}</p>
-                        <p className="text-xs text-muted-foreground font-bold">{pkg.credits} Credits • {pkg.price} DA</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="ghost" size="icon" onClick={() => handleOpenPackageDialog(pkg)} className="rounded-full">
-                        <Pencil size={18} />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={(e) => handleDelete('subscriptionPackages', pkg.id, e)} className="rounded-full text-destructive">
-                        <Trash2 size={18} />
-                      </Button>
-                    </div>
-                  </Card>
-                ))}
-              </div>
+              <div className="flex items-center justify-between"><h3 className="text-lg font-bold">Subscription Packages</h3><Button onClick={() => handleOpenPackageDialog()} className="rounded-xl gap-2"><Plus size={18} /> Add Package</Button></div>
+              <div className="grid gap-3">{subscriptionPackages.map((pkg) => (
+                <Card key={pkg.id} className="rounded-2xl border-none shadow-sm p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-4 text-start">
+                    <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600"><CreditCard size={24} /></div>
+                    <div><p className="font-black">{pkg.name}</p><p className="text-xs text-muted-foreground font-bold">{pkg.credits} Credits • {pkg.price} DA</p></div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" size="icon" onClick={() => handleOpenPackageDialog(pkg)} className="rounded-full"><Pencil size={18} /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDelete('subscriptionPackages', pkg.id)} className="rounded-full text-destructive"><Trash2 size={18} /></Button>
+                  </div>
+                </Card>
+              ))}</div>
             </div>
           </TabsContent>
 
           <TabsContent value="revenue">
             <div className="grid gap-3">
-              {revenueHistory
-                .map((t) => (
-                  <Card
-                    key={t.id}
-                    className="rounded-2xl border-none shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-accent transition-all duration-200"
-                  >
-                    <div className="flex items-center gap-4 min-w-0 text-start">
-                      <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600 shrink-0">
-                        <ShoppingBag size={24} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-bold text-sm truncate">{t.description}</p>
-                        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
-                          Buyer: {t.buyerName || 'User'} • {t.createdAt ? format(t.createdAt.toDate(), 'PPPp') : 'Processing'}
-                        </p>
-                      </div>
+              {revenueHistory.map((t) => (
+                <Card key={t.id} className="rounded-2xl border-none shadow-sm p-4 flex items-center justify-between hover:bg-accent">
+                  <div className="flex items-center gap-4 text-start flex-1 min-w-0">
+                    <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600 shrink-0"><ShoppingBag size={24} /></div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-sm truncate">{t.packageName} Purchase</p>
+                      <p className="text-[10px] text-muted-foreground uppercase">Buyer: {t.buyerName || 'User'} • {t.createdAt ? format(t.createdAt.toDate(), 'PPPp') : '...'}</p>
                     </div>
-                    <div className={cn("font-black text-emerald-600 text-start sm:text-end shrink-0 text-lg")}>
-                      +{t.amount?.toLocaleString()} DA
-                    </div>
-                  </Card>
-                ))}
+                  </div>
+                  <div className="font-black text-emerald-600 text-lg">+{t.amount?.toLocaleString()} DA</div>
+                </Card>
+              ))}
             </div>
           </TabsContent>
         </Tabs>
       </div>
 
-      <div className="fixed bottom-4 right-4 z-[60]">
-         <Link href="/">
-           <Button className="rounded-full h-14 w-14 shadow-2xl transition-all active:scale-90">
-             <RefreshCw size={24} />
-           </Button>
-         </Link>
-      </div>
+      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}><DialogContent className="max-w-2xl rounded-2xl p-0 overflow-hidden shadow-2xl border-none">
+        <DialogHeader className="p-6 text-start"><DialogTitle className="text-2xl font-bold">Listing Content Review</DialogTitle></DialogHeader>
+        <div className="px-6 pb-8 max-h-[70vh] overflow-y-auto">{selectedListing && <ListingDetailView listing={selectedListing as any} />}</div>
+      </DialogContent></Dialog>
 
-      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="max-w-2xl rounded-2xl p-0 overflow-hidden shadow-2xl border-none">
-          <DialogHeader className="p-6 pb-2 text-start">
-            <DialogTitle className="text-2xl font-bold">Listing Content Review</DialogTitle>
-          </DialogHeader>
-          <div className="px-6 pb-8 max-h-[70vh] overflow-y-auto">
-            {selectedListing && <ListingDetailView listing={selectedListing} />}
+      <Dialog open={isPackageDialogOpen} onOpenChange={setIsPackageDialogOpen}><DialogContent className="max-w-md rounded-2xl border-none shadow-2xl">
+        <DialogHeader className="text-start"><DialogTitle>{currentPackage.id ? 'Edit Package' : 'Add Package'}</DialogTitle></DialogHeader>
+        <div className="space-y-4 py-4 text-start">
+          <div className="space-y-2"><Label>Package Name</Label><Input value={currentPackage.name} onChange={(e) => setCurrentPackage({...currentPackage, name: e.target.value})} placeholder="e.g. Starter Pack" className="rounded-xl" /></div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2"><Label>Credits</Label><Input type="number" value={currentPackage.credits} onChange={(e) => setCurrentPackage({...currentPackage, credits: Number(e.target.value)})} className="rounded-xl" /></div>
+            <div className="space-y-2"><Label>Price (DA)</Label><Input type="number" value={currentPackage.price} onChange={(e) => setCurrentPackage({...currentPackage, price: Number(e.target.value)})} className="rounded-xl" /></div>
           </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isPackageDialogOpen} onOpenChange={setIsPackageDialogOpen}>
-        <DialogContent className="max-w-md rounded-2xl border-none shadow-2xl">
-          <DialogHeader className="text-start">
-            <DialogTitle>{currentPackage.id ? 'Edit Package' : 'Add Subscription Package'}</DialogTitle>
-            <DialogDescription>Define the credits and price for this traveler subscription.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4 text-start">
-            <div className="space-y-2">
-              <Label>Package Name</Label>
-              <Input 
-                value={currentPackage.name} 
-                onChange={(e) => setCurrentPackage({...currentPackage, name: e.target.value})}
-                placeholder="e.g. Starter Pack"
-                className="rounded-xl h-12"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Operations (Credits)</Label>
-                <Input 
-                  type="number"
-                  value={currentPackage.credits} 
-                  onChange={(e) => setCurrentPackage({...currentPackage, credits: Number(e.target.value)})}
-                  placeholder="e.g. 5"
-                  className="rounded-xl h-12"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Price (DA)</Label>
-                <Input 
-                  type="number"
-                  value={currentPackage.price} 
-                  onChange={(e) => setCurrentPackage({...currentPackage, price: Number(e.target.value)})}
-                  placeholder="e.g. 500"
-                  className="rounded-xl h-12"
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={handleSavePackage} disabled={savingPackage} className="w-full h-12 rounded-xl font-bold">
-              {savingPackage ? <Loader2 className="animate-spin" /> : 'Save Package'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+        <DialogFooter><Button onClick={handleSavePackage} disabled={savingPackage} className="w-full rounded-xl">{savingPackage ? <Loader2 className="animate-spin" /> : 'Save Package'}</Button></DialogFooter>
+      </DialogContent></Dialog>
     </div>
   );
 }

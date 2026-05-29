@@ -62,39 +62,36 @@
         "updatedAt"
       ]
     },
+    "Revenue": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Revenue",
+      "type": "object",
+      "description": "Global log for subscription sales revenue.",
+      "properties": {
+        "id": { "type": "string" },
+        "amount": { "type": "number" },
+        "buyerId": { "type": "string" },
+        "buyerName": { "type": "string" },
+        "packageName": { "type": "string" },
+        "creditsGiven": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["amount", "buyerId", "packageName", "createdAt"]
+    },
     "Report": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Report",
       "type": "object",
       "description": "Represents a user report regarding another user or a specific conversation.",
       "properties": {
-        "id": {
-          "type": "string"
-        },
-        "reporterId": {
-          "type": "string"
-        },
-        "targetUserId": {
-          "type": "string"
-        },
-        "conversationId": {
-          "type": "string"
-        },
-        "type": {
-          "type": "string",
-          "enum": ["scam", "harassment", "fraud", "other"]
-        },
-        "reason": {
-          "type": "string"
-        },
-        "status": {
-          "type": "string",
-          "enum": ["pending", "reviewed", "ignored", "resolved"]
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "reporterId": { "type": "string" },
+        "targetUserId": { "type": "string" },
+        "conversationId": { "type": "string" },
+        "type": { "type": "string", "enum": ["scam", "harassment", "fraud", "other"] },
+        "reason": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "reviewed", "ignored", "resolved"] },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "reporterId", "type", "reason", "status", "createdAt"]
     },
@@ -102,29 +99,14 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Transaction",
       "type": "object",
-      "description": "Records a financial movement within a user's wallet (recharge or payment).",
+      "description": "Records a financial movement within a user's wallet.",
       "properties": {
-        "id": {
-          "type": "string"
-        },
-        "userId": {
-          "type": "string"
-        },
-        "amount": {
-          "type": "number",
-          "description": "The amount of the transaction. Positive for recharge, negative for payment."
-        },
-        "type": {
-          "type": "string",
-          "enum": ["recharge", "payment", "payout", "commission"]
-        },
-        "description": {
-          "type": "string"
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "amount": { "type": "number" },
+        "type": { "type": "string", "enum": ["recharge", "payment", "payout", "commission"] },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "userId", "amount", "type", "createdAt"]
     },
@@ -132,224 +114,89 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Listing",
       "type": "object",
-      "description": "Represents either a traveler's offer of luggage space or a buyer's request for a product from abroad.",
+      "description": "Represents either a traveler's offer of luggage space or a buyer's request.",
       "properties": {
-        "id": {
-          "type": "string"
-        },
-        "listerId": {
-          "type": "string"
-        },
-        "type": {
-          "type": "string"
-        },
-        "title": {
-          "type": "string"
-        },
-        "description": {
-          "type": "string"
-        },
-        "status": {
-          "type": "string"
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "originCity": {
-          "type": "string"
-        },
-        "destinationCity": {
-          "type": "string"
-        },
-        "arrivalDate": {
-          "type": "string",
-          "format": "date"
-        },
-        "availableLuggageWeightKg": {
-          "type": "number"
-        },
-        "productName": {
-          "type": "string"
-        },
-        "maxPriceAmount": {
-          "type": "number"
-        },
-        "currency": {
-          "type": "string"
-        },
-        "productUrl": {
-          "type": "string",
-          "format": "uri"
-        },
-        "listingImageUrl": {
-          "type": "string",
-          "format": "uri"
-        }
+        "id": { "type": "string" },
+        "listerId": { "type": "string" },
+        "type": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "originCity": { "type": "string" },
+        "destinationCity": { "type": "string" },
+        "arrivalDate": { "type": "string", "format": "date" },
+        "availableLuggageWeightKg": { "type": "number" },
+        "productName": { "type": "string" },
+        "maxPriceAmount": { "type": "number" },
+        "currency": { "type": "string" },
+        "productUrl": { "type": "string", "format": "uri" },
+        "listingImageUrl": { "type": "string", "format": "uri" }
       },
-      "required": [
-        "id",
-        "listerId",
-        "type",
-        "title",
-        "description",
-        "status",
-        "createdAt",
-        "updatedAt"
-      ]
+      "required": ["id", "listerId", "type", "title", "description", "status", "createdAt", "updatedAt"]
     },
     "Conversation": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Conversation",
       "type": "object",
-      "description": "Represents a private chat room between two users related to a specific listing.",
+      "description": "Represents a private chat room.",
       "properties": {
-        "id": {
-          "type": "string"
-        },
-        "participantIds": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "listingId": {
-          "type": "string"
-        },
-        "lastMessageText": {
-          "type": "string"
-        },
-        "lastMessageTimestamp": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "agreedPrice": {
-          "type": "number"
-        },
-        "offeredPrice": {
-          "type": "number"
-        },
-        "offerSenderId": {
-          "type": "string"
-        }
+        "id": { "type": "string" },
+        "participantIds": { "type": "array", "items": { "type": "string" } },
+        "listingId": { "type": "string" },
+        "lastMessageText": { "type": "string" },
+        "lastMessageTimestamp": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "agreedPrice": { "type": "number" },
+        "offeredPrice": { "type": "number" },
+        "offerSenderId": { "type": "string" }
       },
-      "required": [
-        "id",
-        "participantIds",
-        "listingId",
-        "createdAt",
-        "updatedAt"
-      ]
+      "required": ["id", "participantIds", "listingId", "createdAt", "updatedAt"]
     },
     "Message": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Message",
       "type": "object",
-      "description": "Represents an individual message sent within a conversation.",
       "properties": {
-        "id": {
-          "type": "string"
-        },
-        "conversationId": {
-          "type": "string"
-        },
-        "senderId": {
-          "type": "string"
-        },
-        "messageText": {
-          "type": "string"
-        },
-        "imageUrl": {
-          "type": "string",
-          "format": "uri"
-        },
-        "timestamp": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "isRead": {
-          "type": "boolean"
-        }
+        "id": { "type": "string" },
+        "conversationId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "messageText": { "type": "string" },
+        "imageUrl": { "type": "string", "format": "uri" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "isRead": { "type": "boolean" }
       },
-      "required": [
-        "id",
-        "conversationId",
-        "senderId",
-        "timestamp"
-      ]
+      "required": ["id", "conversationId", "senderId", "timestamp"]
     },
     "Rating": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Rating",
       "type": "object",
-      "description": "Represents a star rating given by one user to another user's listing.",
       "properties": {
-        "id": {
-          "type": "string"
-        },
-        "listingId": {
-          "type": "string"
-        },
-        "raterId": {
-          "type": "string"
-        },
-        "ratedUserId": {
-          "type": "string"
-        },
-        "stars": {
-          "type": "number"
-        },
-        "comment": {
-          "type": "string"
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "listingId": { "type": "string" },
+        "raterId": { "type": "string" },
+        "ratedUserId": { "type": "string" },
+        "stars": { "type": "number" },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "listingId",
-        "raterId",
-        "ratedUserId",
-        "stars",
-        "createdAt"
-      ]
+      "required": ["id", "listingId", "raterId", "ratedUserId", "stars", "createdAt"]
     },
     "PlatformConfig": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "PlatformConfig",
       "type": "object",
-      "description": "Global settings for the GetMeDZ platform.",
       "properties": {
-        "defaultCommission": {
-          "type": "number",
-          "description": "The default commission amount in DA deducted from travelers."
-        },
-        "updatedAt": {
-          "type": "string",
-          "format": "date-time"
-        }
+        "defaultCommission": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
       }
     }
   },
   "auth": {
-    "providers": [
-      "password",
-      "anonymous"
-    ]
+    "providers": ["password", "anonymous"]
   },
   "firestore": {
     "structure": [
@@ -357,150 +204,88 @@
         "path": "/userProfiles/{userId}",
         "definition": {
           "entityName": "UserProfile",
-          "schema": {
-            "$ref": "#/backend/entities/UserProfile"
-          },
-          "description": "Stores individual user profiles.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique ID of the user."
-            }
-          ]
+          "schema": { "$ref": "#/backend/entities/UserProfile" },
+          "description": "Stores individual user profiles."
+        }
+      },
+      {
+        "path": "/revenue/{revenueId}",
+        "definition": {
+          "entityName": "Revenue",
+          "schema": { "$ref": "#/backend/entities/Revenue" },
+          "description": "Global revenue tracking collection."
         }
       },
       {
         "path": "/reports/{reportId}",
         "definition": {
           "entityName": "Report",
-          "schema": {
-            "$ref": "#/backend/entities/Report"
-          },
-          "description": "Stores user complaints and fraud reports.",
-          "params": [
-            {
-              "name": "reportId",
-              "description": "The unique ID of the report."
-            }
-          ]
+          "schema": { "$ref": "#/backend/entities/Report" },
+          "description": "User complaints."
         }
       },
       {
         "path": "/settings/config",
         "definition": {
           "entityName": "PlatformConfig",
-          "schema": {
-            "$ref": "#/backend/entities/PlatformConfig"
-          },
-          "description": "Global platform settings."
+          "schema": { "$ref": "#/backend/entities/PlatformConfig" },
+          "description": "Global settings."
         }
       },
       {
         "path": "/userProfiles/{userId}/transactions/{transactionId}",
         "definition": {
           "entityName": "Transaction",
-          "schema": {
-            "$ref": "#/backend/entities/Transaction"
-          },
-          "description": "Records of financial transactions for a specific user.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique ID of the user."
-            },
-            {
-              "name": "transactionId",
-              "description": "The unique ID of the transaction."
-            }
-          ]
+          "schema": { "$ref": "#/backend/entities/Transaction" },
+          "description": "User specific logs."
         }
       },
       {
         "path": "/listings/{listingId}",
         "definition": {
           "entityName": "Listing",
-          "schema": {
-            "$ref": "#/backend/entities/Listing"
-          },
-          "description": "Stores all marketplace listings.",
-          "params": [
-            {
-              "name": "listingId",
-              "description": "The unique ID of the listing."
-            }
-          ]
+          "schema": { "$ref": "#/backend/entities/Listing" },
+          "description": "Marketplace listings."
         }
       },
       {
         "path": "/conversations/{conversationId}",
         "definition": {
           "entityName": "Conversation",
-          "schema": {
-            "$ref": "#/backend/entities/Conversation"
-          },
-          "description": "Stores metadata for private chat conversations.",
-          "params": [
-            {
-              "name": "conversationId",
-              "description": "The unique ID of the conversation."
-            }
-          ]
+          "schema": { "$ref": "#/backend/entities/Conversation" },
+          "description": "Chat metadata."
         }
       },
       {
         "path": "/conversations/{conversationId}/messages/{messageId}",
         "definition": {
           "entityName": "Message",
-          "schema": {
-            "$ref": "#/backend/entities/Message"
-          },
-          "description": "Stores individual messages within a conversation.",
-          "params": [
-            {
-              "name": "conversationId",
-              "description": "The unique ID of the parent conversation."
-            },
-            {
-              "name": "messageId",
-              "description": "The unique ID of the message."
-            }
-          ]
+          "schema": { "$ref": "#/backend/entities/Message" },
+          "description": "Messages."
         }
       },
       {
         "path": "/ratings/{ratingId}",
         "definition": {
           "entityName": "Rating",
-          "schema": {
-            "$ref": "#/backend/entities/Rating"
-          },
-          "description": "Stores user ratings.",
-          "params": [
-            {
-              "name": "ratingId",
-              "description": "The unique ID of the rating."
-            }
-          ]
+          "schema": { "$ref": "#/backend/entities/Rating" },
+          "description": "User ratings."
         }
       },
       {
         "path": "/userProfiles/{userId}/favorites/{favoriteId}",
         "definition": {
           "entityName": "Favorite",
-          "schema": {
-            "$ref": "#/backend/entities/Favorite"
-          },
-          "description": "Stores a user's favorited listings.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique ID of the user."
-            },
-            {
-              "name": "favoriteId",
-              "description": "The unique ID of the favorite entry."
-            }
-          ]
+          "schema": { "$ref": "#/backend/entities/Favorite" },
+          "description": "Favorites."
+        }
+      },
+      {
+        "path": "/subscriptionPackages/{packageId}",
+        "definition": {
+          "entityName": "SubscriptionPackage",
+          "schema": { "type": "object" },
+          "description": "Managed by admin."
         }
       }
     ]

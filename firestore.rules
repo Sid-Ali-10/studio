@@ -28,7 +28,6 @@ service cloud.firestore {
     }
 
     // --- Collection Rules ---
-    // Note: Added comment to trigger security rules redeployment for permission diagnosis.
 
     match /settings/config {
       allow read: if true;
@@ -36,8 +35,13 @@ service cloud.firestore {
     }
 
     match /subscriptionPackages/{packageId} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow write: if isAdmin();
+    }
+
+    match /revenue/{revenueId} {
+      allow create: if isSignedIn();
+      allow read: if isAdmin();
     }
 
     match /reports/{reportId} {

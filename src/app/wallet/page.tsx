@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from "react";
@@ -12,13 +13,11 @@ import {
   serverTimestamp, 
   doc, 
   increment, 
-  updateDoc,
-  getDocs,
-  where
+  updateDoc
 } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Wallet, History, Plus, Loader2, Clock, CheckCircle2, ShoppingCart } from "lucide-react";
+import { Wallet, Clock, Plus, Loader2, CheckCircle2, ShoppingCart } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -75,9 +74,7 @@ export default function WalletPage() {
       setTransactions(txs);
       setLoading(false);
     }, (error) => {
-      if (error.code !== 'permission-denied') {
-        console.error("Wallet listener error:", error);
-      }
+      console.error("Wallet listener error:", error);
       setLoading(false);
     });
 
@@ -97,10 +94,9 @@ export default function WalletPage() {
 
     try {
       const userRef = doc(db, "userProfiles", user.uid);
-      const txRef = collection(db, "userProfiles", user.uid, "transactions");
-
-      // 1. Log to User
-      await addDoc(txRef, {
+      
+      // 1. Log to User's private transactions (Allowed by rules)
+      await addDoc(collection(db, "userProfiles", user.uid, "transactions"), {
         amount: selectedPackage.credits,
         pricePaid: selectedPackage.price,
         type: "recharge",
@@ -108,25 +104,17 @@ export default function WalletPage() {
         createdAt: serverTimestamp()
       });
 
-      // 2. Log to Admin for Revenue tracking
-      const adminsQuery = query(collection(db, "userProfiles"), where("isAdmin", "==", true));
-      const adminsSnap = await getDocs(adminsQuery);
-      if (!adminsSnap.empty) {
-        const adminId = adminsSnap.docs[0].id;
-        const adminTxRef = collection(db, "userProfiles", adminId, "transactions");
-        await addDoc(adminTxRef, {
-          amount: selectedPackage.price,
-          type: "subscription_sale",
-          buyerId: user.uid,
-          buyerName: profile?.username || user.email?.split("@")[0],
-          packageName: selectedPackage.name,
-          creditsGiven: selectedPackage.credits,
-          description: `Subscription Sale: ${selectedPackage.name} to ${profile?.username || user.email}`,
-          createdAt: serverTimestamp()
-        });
-      }
+      // 2. Log to Global Revenue collection (Allowed for create by anyone)
+      await addDoc(collection(db, "revenue"), {
+        amount: selectedPackage.price,
+        buyerId: user.uid,
+        buyerName: profile?.username || user.email?.split("@")[0],
+        packageName: selectedPackage.name,
+        creditsGiven: selectedPackage.credits,
+        createdAt: serverTimestamp()
+      });
 
-      // 3. Update User Balance
+      // 3. Update User Balance (Allowed by rules)
       await updateDoc(userRef, {
         walletBalance: increment(selectedPackage.credits),
         updatedAt: serverTimestamp()
@@ -136,7 +124,7 @@ export default function WalletPage() {
       setIsRechargeOpen(false);
       setSelectedPackage(null);
     } catch (err) {
-      console.error(err);
+      console.error("Recharge Error:", err);
       toast({ variant: "destructive", title: t('failed'), description: t('recharge_failed') });
     } finally {
       setRechargeLoading(null);
