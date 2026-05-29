@@ -1,5 +1,4 @@
-
-"use client";
+'use client';
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
@@ -14,7 +13,8 @@ import {
   doc, 
   increment, 
   updateDoc,
-  getDocs
+  getDocs,
+  where
 } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -99,6 +99,7 @@ export default function WalletPage() {
       const userRef = doc(db, "userProfiles", user.uid);
       const txRef = collection(db, "userProfiles", user.uid, "transactions");
 
+      // 1. Log to User
       await addDoc(txRef, {
         amount: selectedPackage.credits,
         pricePaid: selectedPackage.price,
@@ -107,6 +108,25 @@ export default function WalletPage() {
         createdAt: serverTimestamp()
       });
 
+      // 2. Log to Admin for Revenue tracking
+      const adminsQuery = query(collection(db, "userProfiles"), where("isAdmin", "==", true));
+      const adminsSnap = await getDocs(adminsQuery);
+      if (!adminsSnap.empty) {
+        const adminId = adminsSnap.docs[0].id;
+        const adminTxRef = collection(db, "userProfiles", adminId, "transactions");
+        await addDoc(adminTxRef, {
+          amount: selectedPackage.price,
+          type: "subscription_sale",
+          buyerId: user.uid,
+          buyerName: profile?.username || user.email?.split("@")[0],
+          packageName: selectedPackage.name,
+          creditsGiven: selectedPackage.credits,
+          description: `Subscription Sale: ${selectedPackage.name} to ${profile?.username || user.email}`,
+          createdAt: serverTimestamp()
+        });
+      }
+
+      // 3. Update User Balance
       await updateDoc(userRef, {
         walletBalance: increment(selectedPackage.credits),
         updatedAt: serverTimestamp()
@@ -116,6 +136,7 @@ export default function WalletPage() {
       setIsRechargeOpen(false);
       setSelectedPackage(null);
     } catch (err) {
+      console.error(err);
       toast({ variant: "destructive", title: t('failed'), description: t('recharge_failed') });
     } finally {
       setRechargeLoading(null);

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -30,6 +29,8 @@ import {
   Pencil,
   CreditCard,
   RefreshCw,
+  TrendingUp,
+  ShoppingBag,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
@@ -46,7 +47,7 @@ interface AdminStats {
   totalUsers: number;
   totalListings: number;
   totalConvos: number;
-  totalCommissions: number;
+  totalRevenueDA: number;
   totalReports: number;
 }
 
@@ -61,13 +62,13 @@ export default function AdminDashboard() {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isAdminInDb, setIsAdminInDb] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<AdminStats>({ totalUsers: 0, totalListings: 0, totalConvos: 0, totalCommissions: 0, totalReports: 0 });
+  const [stats, setStats] = useState<AdminStats>({ totalUsers: 0, totalListings: 0, totalConvos: 0, totalRevenueDA: 0, totalReports: 0 });
   const [users, setUsers] = useState<any[]>([]);
   const [listings, setListings] = useState<any[]>([]);
   const [convos, setConvos] = useState<any[]>([]);
   const [reports, setReports] = useState<any[]>([]);
   const [subscriptionPackages, setSubscriptionPackages] = useState<SubscriptionPackage[]>([]);
-  const [allTransactions, setAllTransactions] = useState<any[]>([]);
+  const [revenueHistory, setRevenueHistory] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -153,17 +154,18 @@ export default function AdminDashboard() {
 
       const transSnap = await getDocs(collection(db, 'userProfiles', adminUid, 'transactions'));
       const transData = transSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setAllTransactions(transData);
+      
+      // Filter for subscription sales (money revenue)
+      const salesData = transData.filter(t => t.type === 'subscription_sale');
+      setRevenueHistory(salesData);
 
-      const commSum = transData
-        .filter((t) => t.type === 'commission')
-        .reduce((sum, t) => sum + t.amount, 0);
+      const revenueSum = salesData.reduce((sum, t) => sum + (t.amount || 0), 0);
 
       setStats({
         totalUsers: usersSnap.size,
         totalListings: listingsSnap.size,
         totalConvos: convosSnap.size,
-        totalCommissions: commSum,
+        totalRevenueDA: revenueSum,
         totalReports: reportsSnap.size,
       });
     } catch (err: any) {
@@ -306,7 +308,7 @@ export default function AdminDashboard() {
             <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
               <ShieldAlert className="text-primary" /> Admin Center
             </h1>
-            <p className="text-sm text-muted-foreground">Monitor platform activity and subscriptions.</p>
+            <p className="text-sm text-muted-foreground">Monitor platform activity and revenue.</p>
           </div>
           <Button
             variant="outline"
@@ -322,12 +324,12 @@ export default function AdminDashboard() {
             <CardContent className="p-8 md:p-12 flex flex-col md:flex-row md:items-center justify-between gap-8">
               <div className="flex items-center gap-8">
                 <div className="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center text-white shrink-0 shadow-inner">
-                  <Banknote size={40} />
+                  <TrendingUp size={40} />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm opacity-80 uppercase font-black tracking-widest">Total Earned Commissions</p>
+                  <p className="text-sm opacity-80 uppercase font-black tracking-widest">Total Platform Revenue</p>
                   <p className="text-5xl md:text-6xl font-black tracking-tighter">
-                    {stats.totalCommissions.toLocaleString()} <span className="text-2xl font-medium opacity-60">CREDITS</span>
+                    {stats.totalRevenueDA.toLocaleString()} <span className="text-2xl font-medium opacity-60">DA</span>
                   </p>
                 </div>
               </div>
@@ -336,7 +338,7 @@ export default function AdminDashboard() {
                    <div className="w-3 h-3 bg-emerald-400 rounded-full animate-pulse" />
                    <div className="space-y-0.5">
                      <p className="text-[10px] uppercase font-black opacity-60">Status</p>
-                     <p className="font-bold text-sm">System Healthy</p>
+                     <p className="font-bold text-sm">Revenue Tracking Active</p>
                    </div>
                 </div>
               </div>
@@ -399,7 +401,7 @@ export default function AdminDashboard() {
               <TabsTrigger value="listings" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Listings</TabsTrigger>
               <TabsTrigger value="convos" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Chats</TabsTrigger>
               <TabsTrigger value="subs" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Subscription Packages</TabsTrigger>
-              <TabsTrigger value="revenue" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Commission Log</TabsTrigger>
+              <TabsTrigger value="revenue" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Revenue Log</TabsTrigger>
             </TabsList>
           </div>
 
@@ -648,8 +650,7 @@ export default function AdminDashboard() {
 
           <TabsContent value="revenue">
             <div className="grid gap-3">
-              {allTransactions
-                .filter((t) => t.type === 'commission')
+              {revenueHistory
                 .map((t) => (
                   <Card
                     key={t.id}
@@ -657,17 +658,17 @@ export default function AdminDashboard() {
                   >
                     <div className="flex items-center gap-4 min-w-0 text-start">
                       <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600 shrink-0">
-                        <History size={24} />
+                        <ShoppingBag size={24} />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="font-bold text-sm truncate">{t.description}</p>
                         <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
-                          {t.createdAt ? format(t.createdAt.toDate(), 'PPPp') : 'Processing'}
+                          Buyer: {t.buyerName || 'User'} • {t.createdAt ? format(t.createdAt.toDate(), 'PPPp') : 'Processing'}
                         </p>
                       </div>
                     </div>
                     <div className="font-black text-emerald-600 text-start sm:text-end shrink-0 text-lg">
-                      +{t.amount.toLocaleString()} CREDITS
+                      +{t.amount?.toLocaleString()} DA
                     </div>
                   </Card>
                 ))}
