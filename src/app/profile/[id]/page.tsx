@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo, use } from "react";
@@ -186,7 +187,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                 {isOwnProfile && (
                   <Link href="/wallet" className="bg-card px-4 py-2 rounded-2xl shadow-sm flex items-center gap-2 hover:bg-muted/30 transition-all">
                     <Wallet className="text-accent" size={20} />
-                    <span className="font-bold">{profileToShow?.walletBalance?.toLocaleString() || 0} DA</span>
+                    <span className="font-bold">{profileToShow?.walletBalance?.toLocaleString() || 0} {t('currency_da')}</span>
                   </Link>
                 )}
               </div>
