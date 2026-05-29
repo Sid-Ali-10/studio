@@ -132,7 +132,7 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   ];
 
   return (
-    <div className={cn("flex flex-col min-h-screen pb-20 md:pb-0 transition-all", isRTL ? "md:pr-28" : "md:pl-28")}>
+    <div className={cn("flex flex-col min-h-screen pb-24 md:pb-0 transition-all", isRTL ? "md:pr-28" : "md:pl-28")}>
       <aside className={cn(
         "hidden md:flex fixed top-4 bottom-4 w-20 flex-col items-center py-10 bg-card/80 backdrop-blur-lg border shadow-2xl z-50 rounded-[2.5rem]",
         isRTL ? "right-4" : "left-4"
@@ -166,23 +166,27 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
         </nav>
       </aside>
 
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-card border-t flex items-center justify-around px-4 z-50">
+      {/* Modern Floating Mobile Nav Bar */}
+      <nav className={cn(
+        "md:hidden fixed bottom-4 left-4 right-4 h-16 bg-card/90 backdrop-blur-xl border shadow-2xl flex items-center justify-around px-2 z-50 rounded-[2rem] transition-all duration-300 border-primary/10",
+        isRTL ? "flex-row-reverse" : "flex-row"
+      )}>
         {navItems.map((item) => (
           <Link
             key={item.label}
             href={item.href}
             className={cn(
-              "flex flex-col items-center gap-1 transition-all p-2 rounded-xl relative",
-              pathname === item.href ? "text-primary" : "text-muted-foreground hover:bg-muted/50"
+              "flex flex-col items-center gap-1 transition-all p-2 rounded-2xl relative min-w-[3.5rem]",
+              pathname === item.href ? "text-primary scale-110" : "text-muted-foreground hover:bg-muted/50"
             )}
           >
             <div className="relative">
-              <item.icon size={24} />
+              <item.icon size={22} className={cn(pathname === item.href && "stroke-[2.5px]")} />
               {item.badge && (
                 <span className={cn("absolute -top-1 w-2.5 h-2.5 bg-red-500 border-2 border-card rounded-full", isRTL ? "-left-1" : "-right-1")} />
               )}
             </div>
-            <span className="text-[10px]">{item.label}</span>
+            <span className={cn("text-[9px] font-medium", pathname === item.href && "font-bold")}>{item.label}</span>
           </Link>
         ))}
       </nav>
