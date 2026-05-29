@@ -52,6 +52,7 @@ interface ChatRoom {
   buyerRated?: boolean;
   travelerRated?: boolean;
   finalizedUsers?: string[];
+  isFinalized?: boolean;
 }
 
 export default function ChatListPage() {
@@ -68,47 +69,65 @@ export default function ChatListPage() {
   // Determine date locale
   const dateLocale = language === 'ar' ? arSA : language === 'fr' ? fr : enUS;
 
+  /**
+   * Finalize the deal by deducting credits from the traveler and adding to admin.
+   */
   const handleFinalizeDeal = async (chat: ChatRoom) => {
-    if (!user || chat.finalizedUsers?.includes(user.uid)) return;
+    if (!user || chat.isFinalized) return;
 
     try {
-      // Find the traveler in this conversation to deduct subscription credit
       const listingSnap = await getDoc(doc(db, "listings", chat.listingId));
       if (!listingSnap.exists()) return;
       
       const listingData = listingSnap.data();
       let travelerUid = "";
       
+      // Identify who is the traveler
       if (listingData.type === 'traveler') {
         travelerUid = listingData.listerId;
       } else {
-        // For 'buyer' request, the other participant is the traveler
+        // Buyer request: the other participant is the traveler
         travelerUid = chat.participantIds.find(p => p !== listingData.listerId) || "";
       }
 
       if (!travelerUid) return;
 
-      const batch = writeBatch(db);
-      const commissionAmount = 1; // 1 credit per successful deal
-
-      // Deduct from traveler
       const travelerRef = doc(db, "userProfiles", travelerUid);
+      const travelerSnap = await getDoc(travelerRef);
+      if (!travelerSnap.exists()) return;
+
+      const travelerData = travelerSnap.data();
+      const currentCredits = travelerData.walletBalance || 0;
+
+      if (currentCredits < 1) {
+        toast({
+          variant: "destructive",
+          title: t('insufficient_balance'),
+          description: "Traveler needs more credits to complete this transaction."
+        });
+        return;
+      }
+
+      const batch = writeBatch(db);
+      const commissionAmount = 1; // 1 operation credit per successful deal
+
+      // 1. Deduct 1 credit from traveler
       batch.update(travelerRef, {
         successfulDealsCount: increment(1),
         walletBalance: increment(-commissionAmount),
         updatedAt: serverTimestamp()
       });
 
-      // Add to traveler transactions log
+      // Log transaction for traveler
       const travelerTxRef = doc(collection(db, "userProfiles", travelerUid, "transactions"));
       batch.set(travelerTxRef, {
         amount: -commissionAmount,
         type: "payment",
-        description: `Traveler deal commission: ${chat.listingTitle || "Deal"}`,
+        description: t('marketplace_fee') + `: ${chat.listingTitle}`,
         createdAt: serverTimestamp()
       });
 
-      // Transfer commission to admin account (first available admin for MVP)
+      // 2. Transfer 1 credit to admin account
       const adminsQuery = query(collection(db, "userProfiles"), where("isAdmin", "==", true));
       const adminsSnap = await getDocs(adminsQuery);
       if (!adminsSnap.empty) {
@@ -123,26 +142,17 @@ export default function ChatListPage() {
         batch.set(adminTxRef, {
           amount: commissionAmount,
           type: "commission",
-          description: `Commission from traveler ${travelerUid}: ${chat.listingTitle}`,
+          description: t('platform_fee_deal') + ` from traveler ${travelerUid}`,
           createdAt: serverTimestamp()
         });
       }
 
-      const finalizedList = [...(chat.finalizedUsers || []), user.uid];
+      // 3. Mark conversation as finalized
       const convRef = doc(db, "conversations", chat.id);
-      
-      if (finalizedList.length >= 2) {
-        // Clear chat metadata but keep the status if needed, or delete messages
-        const messagesSnap = await getDocs(collection(db, "conversations", chat.id, "messages"));
-        messagesSnap.docs.forEach(doc => batch.delete(doc.ref));
-        batch.delete(convRef);
-      } else {
-        batch.update(convRef, {
-          finalizedUsers: arrayUnion(user.uid),
-          updatedAt: serverTimestamp(),
-          isFinalized: finalizedList.length >= 2
-        });
-      }
+      batch.update(convRef, {
+        isFinalized: true,
+        updatedAt: serverTimestamp()
+      });
 
       await batch.commit();
       toast({ title: t('deal_finalized') });
@@ -165,8 +175,9 @@ export default function ChatListPage() {
         ...doc.data(),
       } as ChatRoom));
       
+      // Auto-finalize if both rated and not already finalized
       chatList.forEach(chat => {
-        if (chat.buyerRated && chat.travelerRated && !chat.finalizedUsers?.includes(user.uid)) {
+        if (chat.buyerRated && chat.travelerRated && !chat.isFinalized) {
           handleFinalizeDeal(chat);
         }
       });
@@ -307,7 +318,8 @@ export default function ChatListPage() {
                 <Card className={cn(
                   "transition-all duration-300 border-none rounded-2xl cursor-pointer bg-card overflow-hidden relative",
                   "hover:shadow-lg hover:bg-muted/30 hover:scale-[1.01]",
-                  isUnread && "ring-2 ring-primary/20"
+                  isUnread && "ring-2 ring-primary/20",
+                  chat.isFinalized && "opacity-75 grayscale-[0.5]"
                 )}>
                   <CardContent className="p-4 sm:p-6 flex items-center gap-3 sm:gap-5">
                     <div className="relative">
@@ -332,7 +344,7 @@ export default function ChatListPage() {
                         {chat.listingTitle}
                       </p>
                       <p className={cn("text-xs sm:text-sm truncate italic", isUnread ? "font-bold text-foreground" : "text-muted-foreground")}>
-                        {chat.lastMessageText === "Conversation started" ? t('conv_started') : chat.lastMessageText}
+                        {chat.isFinalized ? t('deal_finalized') : (chat.lastMessageText === "Conversation started" ? t('conv_started') : chat.lastMessageText)}
                       </p>
                     </div>
 
