@@ -138,10 +138,12 @@ export default function ProfilePage(props: { params: Promise<{ id: string }> }) 
   };
 
   const handleDeleteListing = (listingId: string) => {
-    if (!confirm(t('confirm_delete'))) return;
-    deleteDocumentNonBlocking(doc(db, "listings", listingId));
-    setAllListings(prev => prev.filter(l => l.id !== listingId));
-    toast({ title: t('listing_deleted') });
+    // Confirmation handled by ListingCard
+    try {
+      deleteDocumentNonBlocking(doc(db, "listings", listingId));
+      setAllListings(prev => prev.filter(l => l.id !== listingId));
+      toast({ title: t('listing_deleted') });
+    } catch (err) { console.error(err); }
   };
 
   if (loading) {

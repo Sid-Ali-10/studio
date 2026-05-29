@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -138,7 +139,7 @@ export default function Home() {
   };
 
   const handleDeleteListing = (listingId: string) => {
-    if (!confirm(t('confirm_delete'))) return;
+    // Confirmation handled by ListingCard's AlertDialog
     try {
       deleteDocumentNonBlocking(doc(db, "listings", listingId));
       setListings(prev => prev.filter(l => l.id !== listingId));

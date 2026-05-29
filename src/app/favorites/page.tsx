@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -85,7 +86,7 @@ export default function FavoritesPage() {
   };
 
   const handleDeleteListing = (listingId: string) => {
-    if (!confirm(t('confirm_delete'))) return;
+    // Confirmation handled by ListingCard
     deleteDocumentNonBlocking(doc(db, "listings", listingId));
     toast({ title: t('listing_deleted') });
   };

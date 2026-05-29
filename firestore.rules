@@ -96,7 +96,7 @@ service cloud.firestore {
       match /messages/{messageId} {
         allow get, list: if isAdmin() || isParticipant(get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds);
         allow create: if isParticipant(get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds);
-        allow update, delete: if isAdmin();
+        allow update, delete: if isAdmin() || (resource != null && isOwner(resource.data.senderId));
       }
     }
 
