@@ -4,7 +4,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { db, auth } from '@/lib/firebase';
-import { collection, getDocs, doc, getDoc, setDoc, serverTimestamp, deleteDoc, updateDoc, query, where } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, setDoc, serverTimestamp, deleteDoc, updateDoc, query, where, addDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,7 +29,9 @@ import {
   Flag,
   UserX,
   UserCheck,
-  ExternalLink,
+  Plus,
+  Pencil,
+  CreditCard,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
@@ -40,7 +42,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { type Listing } from '@/components/listings/ListingCard';
 import { ListingDetailView } from '@/components/listings/ListingDetailView';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 
 interface AdminStats {
   totalUsers: number;
@@ -48,6 +50,13 @@ interface AdminStats {
   totalConvos: number;
   totalCommissions: number;
   totalReports: number;
+}
+
+interface SubscriptionPackage {
+  id: string;
+  name: string;
+  credits: number;
+  price: number;
 }
 
 export default function AdminDashboard() {
@@ -59,6 +68,7 @@ export default function AdminDashboard() {
   const [listings, setListings] = useState<any[]>([]);
   const [convos, setConvos] = useState<any[]>([]);
   const [reports, setReports] = useState<any[]>([]);
+  const [subscriptionPackages, setSubscriptionPackages] = useState<SubscriptionPackage[]>([]);
   const [allTransactions, setAllTransactions] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -69,6 +79,10 @@ export default function AdminDashboard() {
   
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+  const [isPackageDialogOpen, setIsPackageDialogOpen] = useState(false);
+  const [currentPackage, setCurrentPackage] = useState<Partial<SubscriptionPackage>>({ name: '', credits: 1, price: 100 });
+  const [savingPackage, setSavingPackage] = useState(false);
 
   const router = useRouter();
   const { toast } = useToast();
@@ -115,6 +129,9 @@ export default function AdminDashboard() {
       if (settingsSnap.exists()) {
         setPlatformCommission(settingsSnap.data().defaultCommission || 1);
       }
+      
+      const packagesSnap = await getDocs(collection(db, 'subscriptionPackages'));
+      setSubscriptionPackages(packagesSnap.docs.map(d => ({ id: d.id, ...d.data() } as SubscriptionPackage)));
     } catch (err) {
       console.error('Failed to fetch settings', err);
     }
@@ -162,7 +179,6 @@ export default function AdminDashboard() {
       const reportsData = reportsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
       setReports(reportsData);
 
-      // Revenue in credits from admin transactions
       const transSnap = await getDocs(collection(db, 'userProfiles', adminUid, 'transactions'));
       const transData = transSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
       setAllTransactions(transData);
@@ -199,6 +215,7 @@ export default function AdminDashboard() {
       if (coll === 'listings') setListings((prev) => prev.filter((l) => l.id !== id));
       if (coll === 'conversations') setConvos((prev) => prev.filter((c) => c.id !== id));
       if (coll === 'reports') setReports((prev) => prev.filter((r) => r.id !== id));
+      if (coll === 'subscriptionPackages') setSubscriptionPackages((prev) => prev.filter((p) => p.id !== id));
 
       toast({ title: 'Success', description: 'Resource removed successfully.' });
     } catch (err: any) {
@@ -208,58 +225,36 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleReportAction = async (reportId: string, action: 'resolved' | 'ignored') => {
-    setProcessingAction(`report-${reportId}`);
+  const handleSavePackage = async () => {
+    if (!currentPackage.name || !currentPackage.credits || !currentPackage.price) {
+      toast({ variant: 'destructive', title: 'Validation Error', description: 'All fields are required.' });
+      return;
+    }
+    setSavingPackage(true);
     try {
-      await updateDoc(doc(db, 'reports', reportId), {
-        status: action,
-        updatedAt: serverTimestamp()
-      });
-      setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: action } : r));
-      toast({ title: 'Report Updated', description: `Report marked as ${action}.` });
+      if (currentPackage.id) {
+        await setDoc(doc(db, 'subscriptionPackages', currentPackage.id), currentPackage, { merge: true });
+        setSubscriptionPackages(prev => prev.map(p => p.id === currentPackage.id ? (currentPackage as SubscriptionPackage) : p));
+      } else {
+        const docRef = await addDoc(collection(db, 'subscriptionPackages'), currentPackage);
+        setSubscriptionPackages(prev => [...prev, { id: docRef.id, ...currentPackage } as SubscriptionPackage]);
+      }
+      toast({ title: 'Success', description: 'Package saved successfully.' });
+      setIsPackageDialogOpen(false);
     } catch (err) {
-      toast({ variant: 'destructive', title: 'Update Failed' });
+      toast({ variant: 'destructive', title: 'Save Failed' });
     } finally {
-      setProcessingAction(null);
+      setSavingPackage(false);
     }
   };
 
-  const handleToggleBan = async (userId: string, currentBanned: boolean, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setProcessingAction(`ban-${userId}`);
-    try {
-      await updateDoc(doc(db, 'userProfiles', userId), {
-        isBanned: !currentBanned,
-        updatedAt: serverTimestamp()
-      });
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, isBanned: !currentBanned } : u));
-      toast({ 
-        title: !currentBanned ? 'User Banned' : 'User Unbanned', 
-        description: `Access for this user has been ${!currentBanned ? 'restricted' : 'restored'}.` 
-      });
-    } catch (err) {
-      toast({ variant: 'destructive', title: 'Action Failed' });
-    } finally {
-      setProcessingAction(null);
+  const handleOpenPackageDialog = (pkg?: SubscriptionPackage) => {
+    if (pkg) {
+      setCurrentPackage(pkg);
+    } else {
+      setCurrentPackage({ name: '', credits: 1, price: 100 });
     }
-  };
-
-  const handleCopyEmail = (email: string, id: string, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    navigator.clipboard.writeText(email);
-    setCopiedId(id);
-    toast({
-      title: 'Email Copied',
-      description: `${email} has been copied to your clipboard.`,
-    });
-    setTimeout(() => setCopiedId(null), 2000);
-  };
-
-  const handleShowListing = (listing: Listing) => {
-    setSelectedListing(listing);
-    setIsDetailOpen(true);
+    setIsPackageDialogOpen(true);
   };
 
   const handleLogout = () => {
@@ -308,7 +303,7 @@ export default function AdminDashboard() {
         </div>
 
         <div className="space-y-6">
-          <Card className="rounded-[2.5rem] border-none shadow-xl bg-primary text-primary-foreground overflow-hidden">
+          <Card className="rounded-[2.5rem] border-none shadow-xl bg-primary text-primary-foreground overflow-hidden text-start">
             <CardContent className="p-8 md:p-12 flex flex-col md:flex-row md:items-center justify-between gap-8">
               <div className="flex items-center gap-8">
                 <div className="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center text-white shrink-0 shadow-inner">
@@ -339,7 +334,7 @@ export default function AdminDashboard() {
                 <div className="w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center">
                   <Users className="text-blue-500" />
                 </div>
-                <div>
+                <div className="text-start">
                   <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Users</p>
                   <p className="text-2xl font-black">{stats.totalUsers}</p>
                 </div>
@@ -350,7 +345,7 @@ export default function AdminDashboard() {
                 <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center">
                   <Package className="text-emerald-600" />
                 </div>
-                <div>
+                <div className="text-start">
                   <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Listings</p>
                   <p className="text-2xl font-black">{stats.totalListings}</p>
                 </div>
@@ -361,7 +356,7 @@ export default function AdminDashboard() {
                 <div className="w-12 h-12 bg-purple-500/10 rounded-2xl flex items-center justify-center">
                   <MessageSquare className="text-purple-500" />
                 </div>
-                <div>
+                <div className="text-start">
                   <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Chats</p>
                   <p className="text-2xl font-black">{stats.totalConvos}</p>
                 </div>
@@ -372,7 +367,7 @@ export default function AdminDashboard() {
                 <div className="w-12 h-12 bg-destructive/10 rounded-2xl flex items-center justify-center">
                   <Flag className="text-destructive" />
                 </div>
-                <div>
+                <div className="text-start">
                   <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Reports</p>
                   <p className="text-2xl font-black">{stats.totalReports}</p>
                 </div>
@@ -388,6 +383,7 @@ export default function AdminDashboard() {
               <TabsTrigger value="users" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Users</TabsTrigger>
               <TabsTrigger value="listings" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Listings</TabsTrigger>
               <TabsTrigger value="convos" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Chats</TabsTrigger>
+              <TabsTrigger value="subs" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Subscriptions</TabsTrigger>
               <TabsTrigger value="revenue" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Commission Log</TabsTrigger>
               <TabsTrigger value="settings" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Settings</TabsTrigger>
             </TabsList>
@@ -397,7 +393,7 @@ export default function AdminDashboard() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
             <Input
               placeholder="Filter current view..."
-              className="pl-10 h-12 rounded-xl transition-all duration-200 focus:ring-primary/20 border-none shadow-sm"
+              className="pl-10 h-12 rounded-xl transition-all duration-200 focus:ring-primary/20 border-none shadow-sm text-start"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -444,7 +440,7 @@ export default function AdminDashboard() {
                         </div>
                       </div>
                       
-                      <div className="space-y-2">
+                      <div className="space-y-2 text-start">
                         <p className="font-black text-lg flex items-center gap-2">
                           {r.type === 'scam' ? '🚨' : '⚠️'} {r.type.toUpperCase()}
                         </p>
@@ -452,12 +448,12 @@ export default function AdminDashboard() {
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                        <div className="space-y-1">
+                        <div className="space-y-1 text-start">
                           <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Reporter</p>
                           <p className="font-medium truncate">{users.find(u => u.id === r.reporterId)?.username || 'Unknown User'}</p>
                         </div>
                         {r.targetUserId && (
-                          <div className="space-y-1">
+                          <div className="space-y-1 text-start">
                             <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Targeted User</p>
                             <div className="flex items-center gap-2">
                               <p className="font-medium truncate">{users.find(u => u.id === r.targetUserId)?.username || 'User'}</p>
@@ -499,7 +495,7 @@ export default function AdminDashboard() {
                       )}>
                         {u.username?.charAt(0).toUpperCase()}
                       </div>
-                      <div className="flex flex-col min-w-0">
+                      <div className="flex flex-col min-w-0 text-start">
                         <div className="font-black text-sm md:text-base flex items-center gap-2 truncate group-hover/user:text-primary transition-colors">
                           {u.username} 
                           {u.isVerified && <CheckCircle2 size={14} className="text-primary" />}
@@ -602,6 +598,40 @@ export default function AdminDashboard() {
             </div>
           </TabsContent>
 
+          <TabsContent value="subs">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold">Subscription Packages</h3>
+                <Button onClick={() => handleOpenPackageDialog()} className="rounded-xl gap-2 h-10 px-6 font-bold">
+                  <Plus size={18} /> Add Package
+                </Button>
+              </div>
+              <div className="grid gap-3">
+                {subscriptionPackages.map((pkg) => (
+                  <Card key={pkg.id} className="rounded-2xl border-none shadow-sm p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-4 text-start">
+                      <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600">
+                        <CreditCard size={24} />
+                      </div>
+                      <div>
+                        <p className="font-black">{pkg.name}</p>
+                        <p className="text-xs text-muted-foreground font-bold">{pkg.credits} Credits • {pkg.price} DA</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="ghost" size="icon" onClick={() => handleOpenPackageDialog(pkg)} className="rounded-full">
+                        <Pencil size={18} />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={(e) => handleDelete('subscriptionPackages', pkg.id, e)} className="rounded-full text-destructive">
+                        <Trash2 size={18} />
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </TabsContent>
+
           <TabsContent value="revenue">
             <div className="grid gap-3">
               {allTransactions
@@ -611,11 +641,11 @@ export default function AdminDashboard() {
                     key={t.id}
                     className="rounded-2xl border-none shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-accent transition-all duration-200"
                   >
-                    <div className="flex items-center gap-4 min-w-0">
+                    <div className="flex items-center gap-4 min-w-0 text-start">
                       <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600 shrink-0">
                         <History size={24} />
                       </div>
-                      <div className="min-w-0 flex-1 text-start">
+                      <div className="min-w-0 flex-1">
                         <p className="font-black text-sm truncate">{t.description}</p>
                         <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
                           {t.createdAt ? format(t.createdAt.toDate(), 'PPPp') : 'Processing'}
@@ -684,6 +714,53 @@ export default function AdminDashboard() {
           <div className="px-6 pb-8 max-h-[70vh] overflow-y-auto">
             {selectedListing && <ListingDetailView listing={selectedListing} />}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isPackageDialogOpen} onOpenChange={setIsPackageDialogOpen}>
+        <DialogContent className="max-w-md rounded-2xl border-none shadow-2xl">
+          <DialogHeader className="text-start">
+            <DialogTitle>{currentPackage.id ? 'Edit Package' : 'Add Subscription Package'}</DialogTitle>
+            <DialogDescription>Define the credits and price for this traveler subscription.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4 text-start">
+            <div className="space-y-2">
+              <Label>Package Name</Label>
+              <Input 
+                value={currentPackage.name} 
+                onChange={(e) => setCurrentPackage({...currentPackage, name: e.target.value})}
+                placeholder="e.g. Starter Pack"
+                className="rounded-xl h-12"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Operations (Credits)</Label>
+                <Input 
+                  type="number"
+                  value={currentPackage.credits} 
+                  onChange={(e) => setCurrentPackage({...currentPackage, credits: Number(e.target.value)})}
+                  placeholder="e.g. 5"
+                  className="rounded-xl h-12"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Price (DA)</Label>
+                <Input 
+                  type="number"
+                  value={currentPackage.price} 
+                  onChange={(e) => setCurrentPackage({...currentPackage, price: Number(e.target.value)})}
+                  placeholder="e.g. 500"
+                  className="rounded-xl h-12"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleSavePackage} disabled={savingPackage} className="w-full h-12 rounded-xl font-bold">
+              {savingPackage ? <Loader2 className="animate-spin" /> : 'Save Package'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

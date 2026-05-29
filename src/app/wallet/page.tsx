@@ -13,7 +13,8 @@ import {
   serverTimestamp, 
   doc, 
   increment, 
-  updateDoc 
+  updateDoc,
+  getDocs
 } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,15 +41,23 @@ interface Transaction {
   createdAt: any;
 }
 
+interface SubscriptionPackage {
+  id: string;
+  name: string;
+  credits: number;
+  price: number;
+}
+
 export default function WalletPage() {
   const { user, profile } = useAuth();
   const { t, isRTL } = useLanguage();
   const { toast } = useToast();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [packages, setPackages] = useState<SubscriptionPackage[]>([]);
   const [loading, setLoading] = useState(true);
-  const [rechargeLoading, setRechargeLoading] = useState<number | null>(null);
+  const [rechargeLoading, setRechargeLoading] = useState<string | null>(null);
   const [isRechargeOpen, setIsRechargeOpen] = useState(false);
-  const [selectedPackage, setSelectedPackage] = useState<{ credits: number, price: number } | null>(null);
+  const [selectedPackage, setSelectedPackage] = useState<SubscriptionPackage | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -58,7 +67,7 @@ export default function WalletPage() {
       orderBy("createdAt", "desc")
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribeTx = onSnapshot(q, (snapshot) => {
       const txs = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -72,27 +81,32 @@ export default function WalletPage() {
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    const unsubscribePackages = onSnapshot(collection(db, "subscriptionPackages"), (snap) => {
+      setPackages(snap.docs.map(d => ({ id: d.id, ...d.data() } as SubscriptionPackage)));
+    });
+
+    return () => {
+      unsubscribeTx();
+      unsubscribePackages();
+    };
   }, [user]);
 
   const handleRecharge = async () => {
     if (!user || !selectedPackage) return;
-    setRechargeLoading(selectedPackage.credits);
+    setRechargeLoading(selectedPackage.id);
 
     try {
       const userRef = doc(db, "userProfiles", user.uid);
       const txRef = collection(db, "userProfiles", user.uid, "transactions");
 
-      // Record the credit addition
       await addDoc(txRef, {
         amount: selectedPackage.credits,
         pricePaid: selectedPackage.price,
         type: "recharge",
-        description: `Purchased ${selectedPackage.credits} operations for ${selectedPackage.price} DA`,
+        description: `Purchased ${selectedPackage.name}: ${selectedPackage.credits} operations for ${selectedPackage.price} DA`,
         createdAt: serverTimestamp()
       });
 
-      // Update user credits
       await updateDoc(userRef, {
         walletBalance: increment(selectedPackage.credits),
         updatedAt: serverTimestamp()
@@ -108,16 +122,9 @@ export default function WalletPage() {
     }
   };
 
-  // Predefined credit packages with actual DA prices
-  const creditPackages = [
-    { credits: 5, price: 500 },
-    { credits: 12, price: 1000 },
-    { credits: 30, price: 2000 }
-  ];
-
   const translateDescription = (desc: string) => {
-    if (desc.startsWith("Purchased")) return t('recharge_desc');
-    if (desc.startsWith("Traveler deal commission") || desc.startsWith("Deduction for successful deal")) {
+    if (desc.includes("Purchased")) return t('recharge_desc');
+    if (desc.includes("Traveler deal commission") || desc.includes("Deduction for successful deal")) {
       return t('marketplace_fee');
     }
     return desc;
@@ -131,13 +138,13 @@ export default function WalletPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="md:col-span-1 border-none shadow-xl bg-primary text-primary-foreground overflow-hidden">
-          <CardHeader className="text-start">
+        <Card className="md:col-span-1 border-none shadow-xl bg-primary text-primary-foreground overflow-hidden text-start">
+          <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CheckCircle2 size={24} /> {t('balance_label')}
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 text-start">
+          <CardContent className="space-y-2">
             <div className="text-5xl font-black">
               {profile?.walletBalance?.toLocaleString() || "0"} <span className="text-xl font-medium">{t('currency_da')}</span>
             </div>
@@ -145,52 +152,56 @@ export default function WalletPage() {
           </CardContent>
         </Card>
 
-        <Card className="md:col-span-2 border-none shadow-md bg-card">
-          <CardHeader className="text-start">
+        <Card className="md:col-span-2 border-none shadow-md bg-card text-start">
+          <CardHeader>
             <CardTitle className="flex items-center gap-2"><ShoppingCart size={20} /> {t('recharge_funds')}</CardTitle>
             <CardDescription>{t('recharge_subtitle')}</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-4">
-            {creditPackages.map((pkg) => (
-              <Dialog key={pkg.credits} open={isRechargeOpen && selectedPackage?.credits === pkg.credits} onOpenChange={(open) => {
-                setIsRechargeOpen(open);
-                if (open) setSelectedPackage(pkg);
-              }}>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="flex-1 min-w-[140px] h-20 rounded-2xl flex flex-col gap-1 hover:border-primary transition-all active:scale-[0.98] bg-muted/30 border-none"
-                  >
-                    <span className="font-black text-lg">{pkg.credits} {t('currency_da')}</span>
-                    <span className="text-xs font-bold text-primary">{pkg.price} {t('price_da')}</span>
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="rounded-2xl border-none shadow-2xl" dir={isRTL ? "rtl" : "ltr"}>
-                  <DialogHeader className="text-start">
-                    <DialogTitle>{t('confirm')} {t('recharge_funds')}</DialogTitle>
-                    <DialogDescription>
-                      You are about to purchase <span className="font-bold">{pkg.credits} operation credits</span> for <span className="font-bold text-primary">{pkg.price} DA</span>. This amount will be processed as a subscription fee.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="p-4 bg-muted/30 rounded-xl space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Package:</span>
-                      <span className="font-bold">{pkg.credits} Credits</span>
-                    </div>
-                    <div className="flex justify-between text-lg font-black text-primary border-t pt-2">
-                      <span>Total:</span>
-                      <span>{pkg.price} DA</span>
-                    </div>
-                  </div>
-                  <DialogFooter className="gap-2">
-                    <Button variant="ghost" className="rounded-xl active:scale-[0.98]" onClick={() => setIsRechargeOpen(false)}>{t('cancel')}</Button>
-                    <Button className="rounded-xl px-8 active:scale-[0.98] font-bold" onClick={handleRecharge} disabled={rechargeLoading !== null}>
-                      {rechargeLoading ? <Loader2 className="animate-spin" /> : t('confirm')}
+            {packages.length === 0 ? (
+              <p className="text-muted-foreground text-sm italic">No subscription packages available currently.</p>
+            ) : (
+              packages.map((pkg) => (
+                <Dialog key={pkg.id} open={isRechargeOpen && selectedPackage?.id === pkg.id} onOpenChange={(open) => {
+                  setIsRechargeOpen(open);
+                  if (open) setSelectedPackage(pkg);
+                }}>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="flex-1 min-w-[140px] h-20 rounded-2xl flex flex-col gap-1 hover:border-primary transition-all active:scale-[0.98] bg-muted/30 border-none"
+                    >
+                      <span className="font-black text-lg">{pkg.credits} {t('currency_da')}</span>
+                      <span className="text-xs font-bold text-primary">{pkg.price} {t('price_da')}</span>
                     </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            ))}
+                  </DialogTrigger>
+                  <DialogContent className="rounded-2xl border-none shadow-2xl" dir={isRTL ? "rtl" : "ltr"}>
+                    <DialogHeader className="text-start">
+                      <DialogTitle>{t('confirm')} {t('recharge_funds')}</DialogTitle>
+                      <DialogDescription>
+                        You are about to purchase <span className="font-bold">{pkg.credits} operation credits</span> for <span className="font-bold text-primary">{pkg.price} DA</span>.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="p-4 bg-muted/30 rounded-xl space-y-2 text-start">
+                      <div className="flex justify-between text-sm">
+                        <span>Package:</span>
+                        <span className="font-bold">{pkg.name}</span>
+                      </div>
+                      <div className="flex justify-between text-lg font-black text-primary border-t pt-2">
+                        <span>Total:</span>
+                        <span>{pkg.price} DA</span>
+                      </div>
+                    </div>
+                    <DialogFooter className="gap-2">
+                      <Button variant="ghost" className="rounded-xl active:scale-[0.98]" onClick={() => setIsRechargeOpen(false)}>{t('cancel')}</Button>
+                      <Button className="rounded-xl px-8 active:scale-[0.98] font-bold" onClick={handleRecharge} disabled={rechargeLoading !== null}>
+                        {rechargeLoading ? <Loader2 className="animate-spin" /> : t('confirm')}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              ))
+            )}
           </CardContent>
         </Card>
       </div>
@@ -207,15 +218,15 @@ export default function WalletPage() {
             ) : (
               transactions.map((tx) => (
                 <Card key={tx.id} className="border-none shadow-sm rounded-2xl overflow-hidden hover:bg-muted/50 transition-colors">
-                  <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4 text-start">
+                  <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-start">
+                    <div className="flex items-center gap-4">
                       <div className={cn(
                         "w-12 h-12 rounded-xl flex items-center justify-center shrink-0",
                         tx.amount > 0 ? "bg-emerald-500/10 text-emerald-600" : "bg-primary/10 text-primary"
                       )}>
                         {tx.amount > 0 ? <Plus size={24} /> : <CheckCircle2 size={24} />}
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <p className="font-bold truncate">{translateDescription(tx.description)}</p>
                         <p className="text-[10px] text-muted-foreground uppercase">{t(`type_${tx.type}`)} • {tx.createdAt ? format(tx.createdAt.toDate(), "PPpp") : "..."}</p>
                       </div>
