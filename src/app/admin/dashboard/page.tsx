@@ -351,7 +351,7 @@ export default function AdminDashboard() {
         </div>
 
         <Tabs defaultValue="reports" className="space-y-6">
-          <div className="w-full overflow-x-auto pb-2 scrollbar-hide">
+          <div className="w-full overflow-x-auto pb-2 scrollbar-hide flex justify-start md:justify-center">
             <TabsList className="inline-flex h-14 bg-card p-1 shadow-sm rounded-2xl whitespace-nowrap">
               <TabsTrigger value="reports" className="rounded-xl px-6 md:px-8">{t('tab_reports')}</TabsTrigger>
               <TabsTrigger value="users" className="rounded-xl px-6 md:px-8">{t('tab_users')}</TabsTrigger>
@@ -361,7 +361,7 @@ export default function AdminDashboard() {
             </TabsList>
           </div>
 
-          <div className="relative max-w-md w-full">
+          <div className="relative max-w-md w-full mx-auto md:mx-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
             <Input
               placeholder={t('filter_view_placeholder')}
