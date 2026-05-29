@@ -4,7 +4,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { db, auth } from '@/lib/firebase';
-import { collection, getDocs, doc, getDoc, setDoc, serverTimestamp, deleteDoc, updateDoc, query, where, addDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, serverTimestamp, deleteDoc, updateDoc, query, where, addDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,9 +21,6 @@ import {
   Eye,
   Banknote,
   History,
-  Settings,
-  RefreshCw,
-  Save,
   Copy,
   Check,
   Flag,
@@ -73,8 +70,6 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const [platformCommission, setPlatformCommission] = useState(1);
-  const [savingSettings, setSavingSettings] = useState(false);
   const [processingAction, setProcessingAction] = useState<string | null>(null);
   
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
@@ -108,7 +103,7 @@ export default function AdminDashboard() {
         if (profileSnap.exists() && profileSnap.data().isAdmin === true) {
           setIsAdminInDb(true);
           fetchData(user.uid);
-          fetchSettings();
+          fetchPackages();
         } else {
           setIsAdminInDb(false);
           setLoading(false);
@@ -123,36 +118,12 @@ export default function AdminDashboard() {
     checkAccess();
   }, [router]);
 
-  const fetchSettings = async () => {
+  const fetchPackages = async () => {
     try {
-      const settingsSnap = await getDoc(doc(db, 'settings', 'config'));
-      if (settingsSnap.exists()) {
-        setPlatformCommission(settingsSnap.data().defaultCommission || 1);
-      }
-      
       const packagesSnap = await getDocs(collection(db, 'subscriptionPackages'));
       setSubscriptionPackages(packagesSnap.docs.map(d => ({ id: d.id, ...d.data() } as SubscriptionPackage)));
     } catch (err) {
-      console.error('Failed to fetch settings', err);
-    }
-  };
-
-  const handleSaveSettings = async () => {
-    setSavingSettings(true);
-    try {
-      await setDoc(
-        doc(db, 'settings', 'config'),
-        {
-          defaultCommission: Number(platformCommission),
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
-      toast({ title: 'Settings Saved', description: 'Global commission per deal updated.' });
-    } catch (err) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not save settings.' });
-    } finally {
-      setSavingSettings(false);
+      console.error('Failed to fetch packages', err);
     }
   };
 
@@ -233,7 +204,7 @@ export default function AdminDashboard() {
     setSavingPackage(true);
     try {
       if (currentPackage.id) {
-        await setDoc(doc(db, 'subscriptionPackages', currentPackage.id), currentPackage, { merge: true });
+        await updateDoc(doc(db, 'subscriptionPackages', currentPackage.id), currentPackage);
         setSubscriptionPackages(prev => prev.map(p => p.id === currentPackage.id ? (currentPackage as SubscriptionPackage) : p));
       } else {
         const docRef = await addDoc(collection(db, 'subscriptionPackages'), currentPackage);
@@ -255,6 +226,49 @@ export default function AdminDashboard() {
       setCurrentPackage({ name: '', credits: 1, price: 100 });
     }
     setIsPackageDialogOpen(true);
+  };
+
+  const handleToggleBan = async (userId: string, currentStatus: boolean, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const newStatus = !currentStatus;
+    setProcessingAction(`ban-${userId}`);
+    try {
+      await updateDoc(doc(db, 'userProfiles', userId), { isBanned: newStatus });
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, isBanned: newStatus } : u));
+      toast({ title: newStatus ? 'User Banned' : 'User Reinstated' });
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Action Failed' });
+    } finally {
+      setProcessingAction(null);
+    }
+  };
+
+  const handleCopyEmail = (email: string, id: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigator.clipboard.writeText(email);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+    toast({ title: 'Copied to clipboard' });
+  };
+
+  const handleShowListing = (listing: any) => {
+    setSelectedListing(listing as Listing);
+    setIsDetailOpen(true);
+  };
+
+  const handleReportAction = async (reportId: string, newStatus: string) => {
+    setProcessingAction(`report-${reportId}`);
+    try {
+      await updateDoc(doc(db, 'reports', reportId), { status: newStatus });
+      setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: newStatus } : r));
+      toast({ title: `Report ${newStatus}` });
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Action Failed' });
+    } finally {
+      setProcessingAction(null);
+    }
   };
 
   const handleLogout = () => {
@@ -310,7 +324,7 @@ export default function AdminDashboard() {
                   <Banknote size={40} />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm opacity-80 uppercase font-black tracking-widest">Total Subscription Commissions</p>
+                  <p className="text-sm opacity-80 uppercase font-black tracking-widest">Total Earned Commissions</p>
                   <p className="text-5xl md:text-6xl font-black tracking-tighter">
                     {stats.totalCommissions.toLocaleString()} <span className="text-2xl font-medium opacity-60">CREDITS</span>
                   </p>
@@ -383,9 +397,8 @@ export default function AdminDashboard() {
               <TabsTrigger value="users" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Users</TabsTrigger>
               <TabsTrigger value="listings" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Listings</TabsTrigger>
               <TabsTrigger value="convos" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Chats</TabsTrigger>
-              <TabsTrigger value="subs" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Subscriptions</TabsTrigger>
+              <TabsTrigger value="subs" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Subscription Packages</TabsTrigger>
               <TabsTrigger value="revenue" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Commission Log</TabsTrigger>
-              <TabsTrigger value="settings" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Settings</TabsTrigger>
             </TabsList>
           </div>
 
@@ -646,7 +659,7 @@ export default function AdminDashboard() {
                         <History size={24} />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="font-black text-sm truncate">{t.description}</p>
+                        <p className="font-bold text-sm truncate">{t.description}</p>
                         <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
                           {t.createdAt ? format(t.createdAt.toDate(), 'PPPp') : 'Processing'}
                         </p>
@@ -658,42 +671,6 @@ export default function AdminDashboard() {
                   </Card>
                 ))}
             </div>
-          </TabsContent>
-
-          <TabsContent value="settings">
-            <Card className="rounded-3xl border-none shadow-sm overflow-hidden text-start">
-              <CardHeader className="bg-muted/30 p-6">
-                <CardTitle className="flex items-center gap-2 text-xl font-black">
-                  <Settings size={20} /> Platform Config
-                </CardTitle>
-                <CardDescription>Adjust global parameters that affect transaction processing.</CardDescription>
-              </CardHeader>
-              <CardContent className="p-6 md:p-8 space-y-6">
-                <div className="max-w-md space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="commission" className="font-bold">Commission per Deal (Credits)</Label>
-                    <div className="relative">
-                      <CheckCircle2 className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-                      <Input
-                        id="commission"
-                        type="number"
-                        className="pl-12 h-14 rounded-xl transition-all duration-200 focus:ring-primary/20 border-none shadow-sm bg-muted/30 font-black text-start"
-                        value={platformCommission}
-                        onChange={(e) => setPlatformCommission(Number(e.target.value))}
-                      />
-                    </div>
-                  </div>
-
-                  <Button
-                    className="w-full h-14 rounded-xl font-black text-lg gap-2 transition-all duration-200 active:scale-[0.98] shadow-lg"
-                    onClick={handleSaveSettings}
-                    disabled={savingSettings}
-                  >
-                    {savingSettings ? <Loader2 className="animate-spin" /> : <><Save size={20} /> Commit Changes</>}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
         </Tabs>
       </div>
