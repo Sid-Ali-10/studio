@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -16,7 +17,7 @@ import {
 } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Wallet, ArrowUpCircle, Banknote, History, Plus, Loader2, Clock } from "lucide-react";
+import { Wallet, ArrowUpCircle, Banknote, History, Plus, Loader2, Clock, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -85,7 +86,7 @@ export default function WalletPage() {
       await addDoc(txRef, {
         amount: selectedAmount,
         type: "recharge",
-        description: "Wallet Recharge",
+        description: "Subscription Top-up",
         createdAt: serverTimestamp()
       });
 
@@ -104,11 +105,11 @@ export default function WalletPage() {
     }
   };
 
-  const rechargeAmounts = [1000, 2000, 5000];
+  const rechargeAmounts = [5, 10, 25]; // Now units of deals
 
   const translateDescription = (desc: string) => {
-    if (desc === "Wallet Recharge") return t('recharge_desc');
-    if (desc.startsWith("Marketplace fee")) {
+    if (desc === "Subscription Top-up") return t('recharge_desc');
+    if (desc.startsWith("Traveler deal commission")) {
       const parts = desc.split(":");
       return `${t('marketplace_fee')}${parts[1] ? ':' + parts[1] : ''}`;
     }
@@ -130,11 +131,11 @@ export default function WalletPage() {
         <Card className="md:col-span-1 border-none shadow-xl bg-primary text-primary-foreground overflow-hidden">
           <CardHeader className="text-start">
             <CardTitle className="flex items-center gap-2">
-              <Wallet size={24} /> {t('balance_label')}
+              <CheckCircle2 size={24} /> {t('balance_label')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-start">
-            <div className="text-4xl font-black">
+            <div className="text-5xl font-black">
               {profile?.walletBalance?.toLocaleString() || "0"} <span className="text-xl font-medium">{t('currency_da')}</span>
             </div>
             <p className="text-primary-foreground/70 text-sm">{t('balance_subtitle')}</p>
@@ -196,7 +197,7 @@ export default function WalletPage() {
                       "w-12 h-12 rounded-xl flex items-center justify-center shrink-0",
                       tx.amount > 0 ? "bg-emerald-500/10 text-emerald-600" : "bg-primary/10 text-primary"
                     )}>
-                      {tx.amount > 0 ? <Plus size={24} /> : <Banknote size={24} />}
+                      {tx.amount > 0 ? <Plus size={24} /> : <CheckCircle2 size={24} />}
                     </div>
                     <div>
                       <p className="font-bold truncate">{translateDescription(tx.description)}</p>

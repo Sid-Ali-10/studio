@@ -72,42 +72,82 @@ export default function ChatListPage() {
     if (!user || chat.finalizedUsers?.includes(user.uid)) return;
 
     try {
-      const batch = writeBatch(db);
-      const fee = 1000;
+      // Find the traveler in this conversation to deduct subscription credit
+      const listingSnap = await getDoc(doc(db, "listings", chat.listingId));
+      if (!listingSnap.exists()) return;
+      
+      const listingData = listingSnap.data();
+      let travelerUid = "";
+      
+      if (listingData.type === 'traveler') {
+        travelerUid = listingData.listerId;
+      } else {
+        // For 'buyer' request, the other participant is the traveler
+        travelerUid = chat.participantIds.find(p => p !== listingData.listerId) || "";
+      }
 
-      const uRef = doc(db, "userProfiles", user.uid);
-      batch.update(uRef, {
+      if (!travelerUid) return;
+
+      const batch = writeBatch(db);
+      const commissionAmount = 1; // 1 credit per successful deal
+
+      // Deduct from traveler
+      const travelerRef = doc(db, "userProfiles", travelerUid);
+      batch.update(travelerRef, {
         successfulDealsCount: increment(1),
-        walletBalance: increment(-fee),
+        walletBalance: increment(-commissionAmount),
         updatedAt: serverTimestamp()
       });
 
-      const txRef = doc(collection(db, "userProfiles", user.uid, "transactions"));
-      batch.set(txRef, {
-        amount: -fee,
+      // Add to traveler transactions log
+      const travelerTxRef = doc(collection(db, "userProfiles", travelerUid, "transactions"));
+      batch.set(travelerTxRef, {
+        amount: -commissionAmount,
         type: "payment",
-        description: `Marketplace fee: ${chat.listingTitle || "Marketplace Deal"}`,
+        description: `Traveler deal commission: ${chat.listingTitle || "Deal"}`,
         createdAt: serverTimestamp()
       });
+
+      // Transfer commission to admin account (first available admin for MVP)
+      const adminsQuery = query(collection(db, "userProfiles"), where("isAdmin", "==", true));
+      const adminsSnap = await getDocs(adminsQuery);
+      if (!adminsSnap.empty) {
+        const adminId = adminsSnap.docs[0].id;
+        const adminRef = doc(db, "userProfiles", adminId);
+        batch.update(adminRef, {
+          walletBalance: increment(commissionAmount),
+          updatedAt: serverTimestamp()
+        });
+
+        const adminTxRef = doc(collection(db, "userProfiles", adminId, "transactions"));
+        batch.set(adminTxRef, {
+          amount: commissionAmount,
+          type: "commission",
+          description: `Commission from traveler ${travelerUid}: ${chat.listingTitle}`,
+          createdAt: serverTimestamp()
+        });
+      }
 
       const finalizedList = [...(chat.finalizedUsers || []), user.uid];
       const convRef = doc(db, "conversations", chat.id);
       
       if (finalizedList.length >= 2) {
+        // Clear chat metadata but keep the status if needed, or delete messages
         const messagesSnap = await getDocs(collection(db, "conversations", chat.id, "messages"));
         messagesSnap.docs.forEach(doc => batch.delete(doc.ref));
         batch.delete(convRef);
       } else {
         batch.update(convRef, {
           finalizedUsers: arrayUnion(user.uid),
-          updatedAt: serverTimestamp()
+          updatedAt: serverTimestamp(),
+          isFinalized: finalizedList.length >= 2
         });
       }
 
       await batch.commit();
       toast({ title: t('deal_finalized') });
     } catch (err) {
-      console.error("Auto-finalization failed:", err);
+      console.error("Deal finalization failed:", err);
     }
   };
 

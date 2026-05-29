@@ -1,9 +1,10 @@
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { db, auth } from '@/lib/firebase';
-import { collection, getDocs, doc, getDoc, setDoc, serverTimestamp, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, setDoc, serverTimestamp, deleteDoc, updateDoc, query, where } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -45,7 +46,7 @@ interface AdminStats {
   totalUsers: number;
   totalListings: number;
   totalConvos: number;
-  totalCommission: number;
+  totalCommissions: number;
   totalReports: number;
 }
 
@@ -53,7 +54,7 @@ export default function AdminDashboard() {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isAdminInDb, setIsAdminInDb] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<AdminStats>({ totalUsers: 0, totalListings: 0, totalConvos: 0, totalCommission: 0, totalReports: 0 });
+  const [stats, setStats] = useState<AdminStats>({ totalUsers: 0, totalListings: 0, totalConvos: 0, totalCommissions: 0, totalReports: 0 });
   const [users, setUsers] = useState<any[]>([]);
   const [listings, setListings] = useState<any[]>([]);
   const [convos, setConvos] = useState<any[]>([]);
@@ -62,7 +63,7 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const [platformCommission, setPlatformCommission] = useState(1000);
+  const [platformCommission, setPlatformCommission] = useState(1);
   const [savingSettings, setSavingSettings] = useState(false);
   const [processingAction, setProcessingAction] = useState<string | null>(null);
   
@@ -112,7 +113,7 @@ export default function AdminDashboard() {
     try {
       const settingsSnap = await getDoc(doc(db, 'settings', 'config'));
       if (settingsSnap.exists()) {
-        setPlatformCommission(settingsSnap.data().defaultCommission || 1000);
+        setPlatformCommission(settingsSnap.data().defaultCommission || 1);
       }
     } catch (err) {
       console.error('Failed to fetch settings', err);
@@ -130,7 +131,7 @@ export default function AdminDashboard() {
         },
         { merge: true }
       );
-      toast({ title: 'Settings Saved', description: 'Global commission updated.' });
+      toast({ title: 'Settings Saved', description: 'Global commission per deal updated.' });
     } catch (err) {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not save settings.' });
     } finally {
@@ -161,6 +162,7 @@ export default function AdminDashboard() {
       const reportsData = reportsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
       setReports(reportsData);
 
+      // Revenue in credits from admin transactions
       const transSnap = await getDocs(collection(db, 'userProfiles', adminUid, 'transactions'));
       const transData = transSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
       setAllTransactions(transData);
@@ -173,7 +175,7 @@ export default function AdminDashboard() {
         totalUsers: usersSnap.size,
         totalListings: listingsSnap.size,
         totalConvos: convosSnap.size,
-        totalCommission: commSum,
+        totalCommissions: commSum,
         totalReports: reportsSnap.size,
       });
     } catch (err: any) {
@@ -294,7 +296,7 @@ export default function AdminDashboard() {
             <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
               <ShieldAlert className="text-primary" /> Admin Center
             </h1>
-            <p className="text-sm text-muted-foreground">Monitor platform activity and manage global settings.</p>
+            <p className="text-sm text-muted-foreground">Monitor platform activity and subscriptions.</p>
           </div>
           <Button
             variant="outline"
@@ -313,9 +315,9 @@ export default function AdminDashboard() {
                   <Banknote size={40} />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm opacity-80 uppercase font-black tracking-widest">Total Platform Commissions</p>
+                  <p className="text-sm opacity-80 uppercase font-black tracking-widest">Total Subscription Commissions</p>
                   <p className="text-5xl md:text-6xl font-black tracking-tighter">
-                    {stats.totalCommission.toLocaleString()} <span className="text-2xl font-medium opacity-60">DA</span>
+                    {stats.totalCommissions.toLocaleString()} <span className="text-2xl font-medium opacity-60">CREDITS</span>
                   </p>
                 </div>
               </div>
@@ -386,7 +388,7 @@ export default function AdminDashboard() {
               <TabsTrigger value="users" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Users</TabsTrigger>
               <TabsTrigger value="listings" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Listings</TabsTrigger>
               <TabsTrigger value="convos" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Chats</TabsTrigger>
-              <TabsTrigger value="revenue" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Revenue Log</TabsTrigger>
+              <TabsTrigger value="revenue" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Commission Log</TabsTrigger>
               <TabsTrigger value="settings" className="rounded-xl px-6 md:px-8 transition-all duration-200 data-[state=active]:shadow-md">Settings</TabsTrigger>
             </TabsList>
           </div>
@@ -621,7 +623,7 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                     <div className="font-black text-emerald-600 text-start sm:text-end shrink-0 text-lg">
-                      +{t.amount.toLocaleString()} DA
+                      +{t.amount.toLocaleString()} CREDITS
                     </div>
                   </Card>
                 ))}
@@ -639,9 +641,9 @@ export default function AdminDashboard() {
               <CardContent className="p-6 md:p-8 space-y-6">
                 <div className="max-w-md space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="commission" className="font-bold">Default Marketplace Fee (DA)</Label>
+                    <Label htmlFor="commission" className="font-bold">Commission per Deal (Credits)</Label>
                     <div className="relative">
-                      <Banknote className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+                      <CheckCircle2 className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                       <Input
                         id="commission"
                         type="number"
