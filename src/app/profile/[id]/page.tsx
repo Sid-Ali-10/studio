@@ -28,8 +28,8 @@ import {
 } from "@/components/ui/select";
 import { deleteDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
-export default function ProfilePage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = use(params);
+export default function ProfilePage(props: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(props.params);
   const id = resolvedParams.id;
   
   const { user: currentUser, profile: myProfile } = useAuth();
@@ -56,7 +56,6 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
 
   const isOwnProfile = currentUser?.uid === id;
 
-  // Real-time favorites sync
   useEffect(() => {
     if (!currentUser) return;
     const favsRef = collection(db, "userProfiles", currentUser.uid, "favorites");

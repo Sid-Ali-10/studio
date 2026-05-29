@@ -16,8 +16,8 @@ import { Loader2, Save, ArrowLeft } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { cn } from "@/lib/utils";
 
-export default function EditListingPage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = use(params);
+export default function EditListingPage(props: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(props.params);
   const id = resolvedParams.id;
   
   const { user } = useAuth();

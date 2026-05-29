@@ -107,8 +107,8 @@ interface ConversationData {
   offerSenderId?: string;
 }
 
-export default function ChatRoomPage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = use(params);
+export default function ChatRoomPage(props: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(props.params);
   const id = resolvedParams.id;
   
   const { user, profile } = useAuth();
@@ -243,7 +243,7 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       unsubscribeMessages?.();
       unsubscribeConv?.();
     };
-  }, [id, user, profile?.isAdmin]);
+  }, [id, user, profile?.isAdmin, t, router]);
 
   const handleMakeOffer = async () => {
     if (!offerPrice || isNaN(Number(offerPrice)) || !activeConvId) return;
@@ -392,7 +392,6 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
       return;
     }
 
-    // Identify traveler to check credits
     let travelerUid = "";
     if (listing?.type === 'traveler') {
       travelerUid = listing.listerId;
@@ -410,9 +409,6 @@ export default function ChatRoomPage({ params }: { params: Promise<{ id: string 
         return;
       }
     } else {
-      // If user is not the traveler, we might still want to check if the traveler has credits?
-      // For MVP, we allow the buyer to rate, but deduction happens at finalization (when both rate).
-      // Or we can check traveler profile directly.
       const travelerSnap = await getDoc(doc(db, "userProfiles", travelerUid));
       if (travelerSnap.exists()) {
         const tProfile = travelerSnap.data();
