@@ -132,28 +132,35 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   ];
 
   return (
-    <div className={cn("flex flex-col min-h-screen pb-20 md:pb-0 transition-all", isRTL ? "md:pr-20" : "md:pl-20")}>
+    <div className={cn("flex flex-col min-h-screen pb-20 md:pb-0 transition-all", isRTL ? "md:pr-28" : "md:pl-28")}>
       <aside className={cn(
-        "hidden md:flex fixed top-0 h-full w-20 flex-col items-center py-8 bg-card border-l border-r z-50",
-        isRTL ? "right-0" : "left-0"
+        "hidden md:flex fixed top-4 bottom-4 w-20 flex-col items-center py-10 bg-card/80 backdrop-blur-lg border shadow-2xl z-50 rounded-[2.5rem]",
+        isRTL ? "right-4" : "left-4"
       )}>
-        <Logo size={40} className="mb-8" />
-        <nav className="flex flex-col gap-6">
+        <Logo size={40} className="mb-8 shrink-0" />
+        <nav className="flex flex-col gap-6 justify-center flex-1">
           {navItems.map((item) => (
             <Link
               key={item.label}
               href={item.href}
               className={cn(
-                "p-3 rounded-xl transition-all relative",
+                "p-3 rounded-2xl transition-all relative group",
                 pathname === item.href 
-                  ? "bg-primary text-primary-foreground shadow-lg" 
-                  : "text-muted-foreground hover:bg-muted"
+                  ? "bg-primary text-primary-foreground shadow-lg scale-110" 
+                  : "text-muted-foreground hover:bg-muted hover:text-primary"
               )}
             >
               <item.icon size={24} />
               {item.badge && (
                 <span className={cn("absolute top-2 w-3 h-3 bg-red-500 border-2 border-card rounded-full", isRTL ? "left-2" : "right-2")} />
               )}
+              {/* Tooltip for desktop */}
+              <span className={cn(
+                "absolute opacity-0 group-hover:opacity-100 transition-opacity bg-primary text-white text-[10px] px-2 py-1 rounded-md whitespace-nowrap pointer-events-none z-50",
+                isRTL ? "right-full mr-4" : "left-full ml-4"
+              )}>
+                {item.label}
+              </span>
             </Link>
           ))}
         </nav>
