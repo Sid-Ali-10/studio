@@ -45,7 +45,8 @@ import {
   Check,
   Ban,
   ShieldCheck,
-  Flag
+  Flag,
+  Link2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -137,6 +138,9 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
   const [isReporting, setIsReporting] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+  
+  const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
+  const [mediaLink, setMediaLink] = useState("");
   
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
   const dateLocale = language === 'ar' ? arSA : language === 'fr' ? fr : enUS;
@@ -263,17 +267,19 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
     }
   };
 
-  const handleSendMessage = async (e?: React.FormEvent, imageUrl?: string) => {
+  const handleSendMessage = async (e?: React.FormEvent, imageUrl?: string, customText?: string) => {
     if (isAdminView) return;
     if (e) e.preventDefault();
     if (editingMessage) { handleSaveEdit(); return; }
-    if ((!newMessage.trim() && !imageUrl) || !user || !activeConvId) return;
+    
+    const textToUse = customText || newMessage;
+    if ((!textToUse.trim() && !imageUrl) || !user || !activeConvId) return;
 
     const otherUserId = participants.find(p => p !== user.uid);
     const msgData: any = {
       conversationId: activeConvId,
       senderId: user.uid,
-      messageText: newMessage,
+      messageText: textToUse,
       imageUrl: imageUrl || null,
       timestamp: serverTimestamp(),
       participantIds: participants
@@ -288,7 +294,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
     }
 
     try {
-      const text = newMessage;
+      const text = textToUse;
       setNewMessage("");
       setReplyingTo(null);
       await addDoc(collection(db, "conversations", activeConvId, "messages"), msgData);
@@ -450,6 +456,54 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
     }
   };
 
+  const handleAddLink = () => {
+    if (!mediaLink.trim()) return;
+    handleSendMessage(undefined, undefined, mediaLink);
+    setIsLinkDialogOpen(false);
+    setMediaLink("");
+  };
+
+  const renderContent = (text: string, isOwn: boolean) => {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const isImage = (url: string) => /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(url);
+    const isVideo = (url: string) => /\.(mp4|webm|ogg)(\?.*)?$/i.test(url);
+    const isYoutube = (url: string) => url.includes('youtube.com/watch') || url.includes('youtu.be/');
+
+    if (!text) return null;
+
+    const parts = text.split(urlRegex);
+    return parts.map((part, i) => {
+      if (part.match(urlRegex)) {
+        if (isImage(part)) return <img key={i} src={part} alt="Media" className="rounded-lg max-w-full h-auto my-2" />;
+        if (isVideo(part)) return <video key={i} src={part} controls className="rounded-lg max-w-full h-auto my-2" />;
+        if (isYoutube(part)) {
+          const videoId = part.includes('v=') ? part.split('v=')[1].split('&')[0] : part.split('/').pop();
+          return (
+            <div key={i} className="aspect-video w-full my-2">
+              <iframe
+                className="w-full h-full rounded-lg"
+                src={`https://www.youtube.com/embed/${videoId}`}
+                allowFullScreen
+              />
+            </div>
+          );
+        }
+        return (
+          <a 
+            key={i} 
+            href={part} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className={cn("underline break-all", isOwn ? "text-white/90" : "text-primary")}
+          >
+            {part}
+          </a>
+        );
+      }
+      return <span key={i}>{part}</span>;
+    });
+  };
+
   if (loading) return <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4"><Loader2 className="animate-spin text-primary" size={40} /><p className="text-muted-foreground">{t('loading_conversations')}</p></div>;
   if (error) return <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center"><AlertCircle size={40} className="text-destructive" /><h2 className="text-xl font-bold">{t('error')}</h2><p>{error}</p><Button onClick={() => router.push("/chat")}>{t('browse_board')}</Button></div>;
 
@@ -528,7 +582,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
               <div className={cn("flex items-end gap-1 w-full relative", isOwn ? "flex-row-reverse" : "flex-row")}>
                 <div className={cn("max-w-[85%] sm:max-w-[75%] p-3 rounded-2xl relative break-words whitespace-pre-wrap shadow-sm", isOwn ? "bg-primary text-white rounded-tr-none" : "bg-card text-foreground rounded-tl-none border")}>
                   {msg.imageUrl && <img src={msg.imageUrl} alt="Chat" className="rounded-lg mb-2 max-w-full h-auto" />}
-                  {msg.messageText && <p className="text-sm">{msg.messageText}{msg.isEdited && <span className="text-[9px] opacity-70 ml-2">({t('edit')})</span>}</p>}
+                  {msg.messageText && <div className="text-sm">{renderContent(msg.messageText, isOwn)}</div>}
                   <span className={cn("text-[9px] mt-1 block opacity-60", isOwn ? "text-right" : "text-left")}>{msg.timestamp ? format(msg.timestamp.toDate(), "HH:mm", { locale: dateLocale }) : ""}</span>
                 </div>
                 {!isAdminView && (
@@ -549,13 +603,43 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
       </div>
 
       <div className={cn("pt-4 border-t space-y-2", isAdminView && "opacity-50 pointer-events-none")}>
-        <form className="flex items-center gap-2" onSubmit={handleSendMessage}>
-          <input type="file" id="image-upload" className="hidden" accept="image/*" disabled={uploading || isAdminView} onChange={handleImageUpload} />
-          <label htmlFor="image-upload" className="flex items-center justify-center w-11 h-11 rounded-full bg-muted cursor-pointer shrink-0">{uploading ? <Loader2 size={20} className="animate-spin" /> : <ImageIcon size={20} />}</label>
-          <Input placeholder={isAdminView ? "Admin: Read-Only" : t('type_message')} className="flex-1 h-11 rounded-full px-5 bg-muted border-none text-start" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} disabled={isAdminView} />
-          <Button type="submit" size="icon" className="w-11 h-11 rounded-full shadow-md" disabled={(!newMessage.trim() && !uploading) || isAdminView}>{editingMessage ? <CheckCircle2 size={20} /> : <Send size={20} className={cn(isRTL && "rotate-180")} />}</Button>
-        </form>
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1 shrink-0">
+            <input type="file" id="image-upload" className="hidden" accept="image/*" disabled={uploading || isAdminView} onChange={handleImageUpload} />
+            <label htmlFor="image-upload" className="flex items-center justify-center w-11 h-11 rounded-full bg-muted cursor-pointer shrink-0 transition-all active:scale-95">{uploading ? <Loader2 size={20} className="animate-spin" /> : <ImageIcon size={20} />}</label>
+            <Button type="button" variant="ghost" size="icon" className="w-11 h-11 rounded-full bg-muted shrink-0 transition-all active:scale-95" onClick={() => setIsLinkDialogOpen(true)} disabled={isAdminView}>
+              <Link2 size={20} />
+            </Button>
+          </div>
+          <form className="flex-1 flex gap-2" onSubmit={handleSendMessage}>
+            <Input placeholder={isAdminView ? "Admin: Read-Only" : t('type_message')} className="flex-1 h-11 rounded-full px-5 bg-muted border-none text-start" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} disabled={isAdminView} />
+            <Button type="submit" size="icon" className="w-11 h-11 rounded-full shadow-md shrink-0" disabled={(!newMessage.trim() && !uploading) || isAdminView}>{editingMessage ? <CheckCircle2 size={20} /> : <Send size={20} className={cn(isRTL && "rotate-180")} />}</Button>
+          </form>
+        </div>
       </div>
+
+      <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
+        <DialogContent className="max-w-md rounded-2xl shadow-2xl border-none">
+          <DialogHeader className="text-start">
+            <DialogTitle>{t('insert_link_title')}</DialogTitle>
+            <DialogDescription>{t('insert_link_desc')}</DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input 
+              placeholder={t('link_placeholder')} 
+              className="rounded-xl h-12 text-start" 
+              value={mediaLink} 
+              onChange={(e) => setMediaLink(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddLink()}
+            />
+          </div>
+          <DialogFooter>
+            <Button className="w-full h-12 rounded-xl font-bold" onClick={handleAddLink} disabled={!mediaLink.trim()}>
+              {t('add_link')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isReportOpen} onOpenChange={setIsReportOpen}>
         <DialogContent className="max-w-md rounded-2xl shadow-2xl border-none">
