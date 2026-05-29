@@ -31,7 +31,7 @@ import { type Listing } from "@/components/listings/ListingCard";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/LanguageContext";
-import { updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { arrayUnion } from "firebase/firestore";
 
 interface ChatRoom {
@@ -77,7 +77,9 @@ export default function ChatListPage() {
         ...doc.data(),
       } as ChatRoom));
       
+      // Filter out chats that the user has "hidden/deleted"
       const filteredList = chatList.filter(chat => !chat.deletedBy?.includes(user.uid));
+      
       const sortedList = filteredList.sort((a, b) => {
         const timeA = a.lastMessageTimestamp?.toMillis() || 0;
         const timeB = b.lastMessageTimestamp?.toMillis() || 0;
@@ -99,9 +101,14 @@ export default function ChatListPage() {
     if (!user || !confirm(t('confirm_delete'))) return;
     try {
       const chatRef = doc(db, "conversations", chatId);
-      updateDocumentNonBlocking(chatRef, { deletedBy: arrayUnion(user.uid) });
+      // Soft-delete: add user to deletedBy array
+      updateDocumentNonBlocking(chatRef, { 
+        deletedBy: arrayUnion(user.uid) 
+      });
       toast({ title: t('conv_removed') });
-    } catch (err) { toast({ variant: "destructive", title: t('failed') }); }
+    } catch (err) { 
+      toast({ variant: "destructive", title: t('failed') }); 
+    }
   };
 
   const filteredChats = useMemo(() => {
@@ -151,10 +158,34 @@ export default function ChatListPage() {
             return (
               <Link key={chat.id} href={`/chat/${chat.id}`} className="block group">
                 <Card className={cn("transition-all duration-300 border-none rounded-2xl cursor-pointer bg-card hover:shadow-lg", isUnread && "ring-2 ring-primary/20", chat.isFinalized && "opacity-75")}>
-                  <CardContent className="p-4 sm:p-6 flex items-center gap-4">
-                    <div className="relative"><div className="w-12 h-12 sm:w-16 sm:h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary font-bold text-lg sm:text-2xl">{otherUserName.charAt(0).toUpperCase()}</div>{isUnread && <div className="absolute -top-1 -start-1 w-4 h-4 bg-primary rounded-full border-2 border-white animate-pulse" />}</div>
-                    <div className="flex-1 min-w-0 text-start"><div className="flex items-center justify-between mb-0.5"><h3 className={cn("font-bold text-sm sm:text-lg truncate", isUnread ? "text-primary" : "group-hover:text-primary")}>{otherUserName}</h3><span className="text-[10px] text-muted-foreground hidden sm:block">{chat.lastMessageTimestamp ? formatDistanceToNow(chat.lastMessageTimestamp.toDate(), { addSuffix: true, locale: dateLocale }) : "..."}</span></div><p className="text-xs sm:text-sm truncate font-semibold text-foreground/80">{chat.listingTitle}</p></div>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all"><Button variant="secondary" size="icon" className="h-9 w-9 rounded-full" onClick={(e) => handleShowListing(chat.listingId, e)}><Info size={18} /></Button><Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-destructive" onClick={(e) => handleDeleteConversation(chat.id, e)}><Trash2 size={18} /></Button></div>
+                  <CardContent className="p-4 sm:p-6 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                      <div className="relative shrink-0">
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary font-bold text-lg sm:text-2xl">
+                          {otherUserName.charAt(0).toUpperCase()}
+                        </div>
+                        {isUnread && <div className="absolute -top-1 -start-1 w-4 h-4 bg-primary rounded-full border-2 border-white animate-pulse" />}
+                      </div>
+                      <div className="flex-1 min-w-0 text-start">
+                        <div className="flex items-center justify-between mb-0.5">
+                          <h3 className={cn("font-bold text-sm sm:text-lg truncate", isUnread ? "text-primary" : "group-hover:text-primary")}>
+                            {otherUserName}
+                          </h3>
+                          <span className="text-[10px] text-muted-foreground hidden sm:block">
+                            {chat.lastMessageTimestamp ? formatDistanceToNow(chat.lastMessageTimestamp.toDate(), { addSuffix: true, locale: dateLocale }) : "..."}
+                          </span>
+                        </div>
+                        <p className="text-xs sm:text-sm truncate font-semibold text-foreground/80">{chat.listingTitle}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+                      <Button variant="secondary" size="icon" className="h-9 w-9 rounded-full" onClick={(e) => handleShowListing(chat.listingId, e)}>
+                        <Info size={18} />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-destructive" onClick={(e) => handleDeleteConversation(chat.id, e)}>
+                        <Trash2 size={18} />
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               </Link>

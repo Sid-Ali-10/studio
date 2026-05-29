@@ -179,11 +179,13 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
             setConvData(data);
             setParticipants(data.participantIds);
             
+            // Mark as read if user is a participant and has unread messages
             if (data.unreadBy?.includes(user.uid) && data.participantIds.includes(user.uid)) {
               updateDoc(convRef, { unreadBy: arrayRemove(user.uid) });
             }
           } else {
-            router.push("/chat");
+            // If the document is actually deleted from DB
+            router.push(profile?.isAdmin ? "/admin/dashboard" : "/chat");
           }
         }, (err) => {
           if (err.code !== 'permission-denied') console.error("Chat listener error:", err);
@@ -310,7 +312,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
         lastMessageTimestamp: serverTimestamp(),
         updatedAt: serverTimestamp(),
         unreadBy: arrayUnion(otherUserId),
-        deletedBy: [] 
+        deletedBy: [] // Reset deletedBy when a new message arrives
       });
     } catch (err) {
       toast({ variant: "destructive", title: t('failed') });
@@ -351,20 +353,24 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
     if (!confirm(t('confirm_delete'))) return;
 
     try {
-      const deletedByList = [...(convData.deletedBy || []), user.uid];
       const convRef = doc(db, "conversations", activeConvId);
 
-      if (deletedByList.length >= convData.participantIds.length || profile?.isAdmin) {
+      if (profile?.isAdmin) {
+        // Admin deletes everything permanently
         const batch = writeBatch(db);
         const messagesSnap = await getDocs(collection(db, "conversations", activeConvId, "messages"));
         messagesSnap.docs.forEach(doc => batch.delete(doc.ref));
         batch.delete(convRef);
         await batch.commit();
+        router.push("/admin/dashboard");
       } else {
-        await updateDoc(convRef, { deletedBy: arrayUnion(user.uid) });
+        // Participant just hides the conversation for themselves
+        await updateDoc(convRef, { 
+          deletedBy: arrayUnion(user.uid) 
+        });
+        router.push("/chat");
       }
       
-      router.push(profile?.isAdmin ? "/admin/dashboard" : "/chat");
       toast({ title: t('conv_removed') });
     } catch (err) {
       toast({ variant: "destructive", title: t('failed') });
@@ -533,19 +539,19 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
         <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center font-bold text-primary">{otherUser?.username?.charAt(0).toUpperCase() || "U"}</div>
         <div className="flex-1 min-w-0 text-start">
           <h2 className="font-bold truncate text-sm sm:text-base">{otherUser?.username || "Private User"}</h2>
-          <button onClick={() => setIsDetailsOpen(true)} className="text-[10px] sm:text-xs text-muted-foreground truncate italic hover:text-primary flex items-center gap-1">{listing?.title || t('listing_details')} <Info size={10} /></button>
+          <button onClick={() => setIsDetailsOpen(true)} className="text-[10px] sm:text-xs text-muted-foreground truncate italic hover:text-primary flex items-center gap-1">{listing?.title || t('listing_details')} <span className={cn(isRTL ? "mr-1" : "ml-1")}><Info size={10} /></span></button>
         </div>
         <div className="flex items-center gap-2">
-          {!isAdminView && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="rounded-full"><MoreHorizontal size={20} /></Button></DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="rounded-xl p-2 w-48 shadow-xl border-none">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="rounded-full"><MoreHorizontal size={20} /></Button></DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="rounded-xl p-2 w-48 shadow-xl border-none">
+              {!isAdminView && (
                 <DropdownMenuItem className="gap-2 rounded-lg text-destructive" onClick={() => setIsReportOpen(true)}><Flag size={14} /> {t('report_problem')}</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="gap-2 rounded-lg text-destructive" onClick={handleDeleteConversation}><Trash2 size={14} /> {t('delete_chat')}</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="gap-2 rounded-lg text-destructive" onClick={handleDeleteConversation}><Trash2 size={14} /> {t('delete_chat')}</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           {!convData?.isFinalized && !isAdminView && (
             <div className="flex gap-1">
               {convData?.agreedPrice ? (
