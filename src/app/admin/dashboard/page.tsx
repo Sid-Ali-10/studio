@@ -28,6 +28,9 @@ import {
   RefreshCw,
   TrendingUp,
   ShoppingBag,
+  ExternalLink,
+  Ban,
+  User as UserIcon,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
@@ -141,7 +144,6 @@ export default function AdminDashboard() {
   const fetchStaticData = async () => {
     setLoading(true);
     try {
-      // Fetch with limit to match security rules if necessary
       const usersSnap = await getDocs(query(collection(db, 'userProfiles'), limit(50)));
       const listingsSnap = await getDocs(query(collection(db, 'listings'), limit(50)));
       const convosSnap = await getDocs(query(collection(db, 'conversations'), limit(50)));
@@ -228,9 +230,11 @@ export default function AdminDashboard() {
     setIsPackageDialogOpen(true);
   };
 
-  const handleToggleBan = async (userId: string, currentStatus: boolean, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleToggleBan = async (userId: string, currentStatus: boolean, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     const newStatus = !currentStatus;
     setProcessingAction(`ban-${userId}`);
     try {
@@ -366,24 +370,60 @@ export default function AdminDashboard() {
             <div className="grid gap-4">
               {reports.length === 0 ? (
                 <p className="text-center py-12 text-muted-foreground">No reports found.</p>
-              ) : reports.map((r) => (
-                <Card key={r.id} className="rounded-2xl border-none shadow-sm overflow-hidden p-4 md:p-6 space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-2">
-                      <Badge variant={r.status === 'pending' ? 'destructive' : 'secondary'} className="rounded-lg">{r.status.toUpperCase()}</Badge>
-                      <span className="text-[10px] text-muted-foreground">{r.createdAt ? format(r.createdAt.toDate(), 'PPpp') : 'Recent'}</span>
+              ) : reports.map((r) => {
+                const targetUser = users.find(u => u.id === r.targetUserId);
+                return (
+                  <Card key={r.id} className="rounded-2xl border-none shadow-sm overflow-hidden p-4 md:p-6 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-2">
+                        <Badge variant={r.status === 'pending' ? 'destructive' : 'secondary'} className="rounded-lg">{r.status.toUpperCase()}</Badge>
+                        <Badge variant="outline" className="rounded-lg border-primary/20 text-primary flex gap-1 items-center">
+                          <ShieldAlert size={10} /> ADMIN ONLY VIEW
+                        </Badge>
+                        <span className="text-[10px] text-muted-foreground">{r.createdAt ? format(r.createdAt.toDate(), 'PPpp') : 'Recent'}</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="icon" className="rounded-full h-9 w-9" onClick={() => handleDelete('reports', r.id)}><Trash2 size={16} /></Button>
+                        <Button variant="secondary" size="sm" className="rounded-xl h-9 gap-2 font-bold" onClick={() => updateDoc(doc(db, 'reports', r.id), { status: 'resolved' })}><CheckCircle2 size={14} /> Resolve</Button>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button variant="ghost" size="icon" className="rounded-full" onClick={() => handleDelete('reports', r.id)}><Trash2 size={16} /></Button>
-                      <Button variant="secondary" size="sm" className="rounded-xl h-9 gap-2 font-bold" onClick={() => updateDoc(doc(db, 'reports', r.id), { status: 'resolved' })}><CheckCircle2 size={14} /> Resolve</Button>
+                    
+                    <div className="space-y-4">
+                      <div className="space-y-2 text-start">
+                        <p className="font-black text-lg flex items-center gap-2">
+                          <Flag size={20} className="text-destructive" /> {r.type.toUpperCase()}
+                        </p>
+                        <p className="text-sm bg-muted/50 p-4 rounded-xl italic leading-relaxed border-l-4 border-destructive/30">"{r.reason}"</p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2 pt-2">
+                        {r.conversationId && (
+                          <Button variant="outline" size="sm" className="rounded-xl h-9 gap-2 border-primary/20 hover:bg-primary/5" onClick={() => router.push(`/chat/${r.conversationId}`)}>
+                            <MessageSquare size={14} /> View Conversation
+                          </Button>
+                        )}
+                        {r.targetUserId && (
+                          <>
+                            <Button variant="outline" size="sm" className="rounded-xl h-9 gap-2 border-primary/20 hover:bg-primary/5" onClick={() => router.push(`/profile/${r.targetUserId}`)}>
+                              <UserIcon size={14} /> View Profile
+                            </Button>
+                            <Button 
+                              variant={targetUser?.isBanned ? "secondary" : "destructive"} 
+                              size="sm" 
+                              className="rounded-xl h-9 gap-2" 
+                              onClick={() => handleToggleBan(r.targetUserId, !!targetUser?.isBanned)}
+                              disabled={processingAction === `ban-${r.targetUserId}`}
+                            >
+                              {targetUser?.isBanned ? <UserCheck size={14} /> : <Ban size={14} />}
+                              {targetUser?.isBanned ? "Unban User" : "Ban Permanently"}
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <div className="space-y-2 text-start">
-                    <p className="font-black text-lg">{r.type.toUpperCase()}</p>
-                    <p className="text-sm bg-muted/50 p-4 rounded-xl italic leading-relaxed">"{r.reason}"</p>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
             </div>
           </TabsContent>
 
