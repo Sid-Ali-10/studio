@@ -18,7 +18,9 @@ import {
   deleteDoc,
   arrayUnion,
   arrayRemove,
-  orderBy
+  orderBy,
+  where,
+  increment
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useAuth } from "@/context/AuthContext";
@@ -128,7 +130,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
   const [listing, setListing] = useState<Listing | null>(null);
   const [convData, setConvData] = useState<ConversationData | null>(null);
   
-  const [currentCommission, setCurrentCommission] = useState(1);
+  const [currentCommission] = useState(1); // 1 Operation credit
   
   const [isRatingOpen, setIsRatingOpen] = useState(false);
   const [ratingStars, setRatingStars] = useState(5);
@@ -174,11 +176,6 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
         const conversationId = id;
         const convRef = doc(db, "conversations", conversationId);
         
-        const settingsSnap = await getDoc(doc(db, "settings", "config"));
-        if (settingsSnap.exists()) {
-          setCurrentCommission(settingsSnap.data().defaultCommission || 1);
-        }
-
         unsubscribeConv = onSnapshot(convRef, (snap) => {
           if (snap.exists()) {
             const data = snap.data() as ConversationData;
@@ -385,30 +382,24 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
   };
 
   const handleRateDeal = async () => {
-    if (isAdminView || !activeConvId || !user || !convData) return;
+    if (isAdminView || !activeConvId || !user || !convData || !listing) return;
     
-    if (!convData.agreedPrice) {
-      toast({ variant: "destructive", title: t('incomplete_deal') });
-      return;
-    }
-
+    // Determine the traveler UID
     let travelerUid = "";
-    if (listing?.type === 'traveler') {
+    if (listing.type === 'traveler') {
       travelerUid = listing.listerId;
     } else {
-      travelerUid = participants.find(p => p !== listing?.listerId) || "";
+      travelerUid = participants.find(p => p !== listing.listerId) || "";
     }
 
-    if (travelerUid === user.uid) {
-      const currentBalance = profile?.walletBalance || 0;
-      if (currentBalance < currentCommission) {
-        toast({
-          variant: "destructive",
-          title: t('insufficient_balance'),
-        });
-        return;
-      }
-    } else {
+    if (!travelerUid) return;
+
+    // Check if both parties have rated or about to rate
+    const isOtherPartyRated = isLister ? convData.buyerRated : convData.travelerRated;
+    const isFinalizingNow = !!isOtherPartyRated;
+
+    // Check traveler balance if we are about to finalize
+    if (isFinalizingNow) {
       const travelerSnap = await getDoc(doc(db, "userProfiles", travelerUid));
       if (travelerSnap.exists()) {
         const tProfile = travelerSnap.data();
@@ -416,7 +407,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
           toast({
             variant: "destructive",
             title: t('insufficient_balance'),
-            description: "The traveler needs more credits to complete this deal."
+            description: travelerUid === user.uid ? "You need more operation credits to complete this deal." : "The traveler needs more credits to complete this deal."
           });
           return;
         }
@@ -425,23 +416,77 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
 
     setRatingLoading(true);
     try {
-      const updateObj: any = isLister 
-        ? { travelerRated: true, travelerRating: ratingStars } 
-        : { buyerRated: true, buyerRating: ratingStars };
+      const batch = writeBatch(db);
+      const convRef = doc(db, "conversations", activeConvId);
 
-      await updateDoc(doc(db, "conversations", activeConvId), updateObj);
+      // 1. Record the rating
+      const updateObj: any = isLister 
+        ? { travelerRated: true, travelerRating: ratingStars, updatedAt: serverTimestamp() } 
+        : { buyerRated: true, buyerRating: ratingStars, updatedAt: serverTimestamp() };
       
-      await addDoc(collection(db, "ratings"), {
+      batch.update(convRef, updateObj);
+
+      const ratingRef = doc(collection(db, "ratings"));
+      batch.set(ratingRef, {
         raterId: user.uid,
         ratedUserId: otherUser?.id,
-        listingId: listing?.id,
+        listingId: listing.id,
         stars: ratingStars,
         createdAt: serverTimestamp()
       });
 
+      // 2. Finalize logic if this is the second rating
+      if (isFinalizingNow && !convData.isFinalized) {
+        // DEDUCT 1 OP FROM TRAVELER ONLY
+        const travelerRef = doc(db, "userProfiles", travelerUid);
+        batch.update(travelerRef, {
+          walletBalance: increment(-currentCommission),
+          successfulDealsCount: increment(1),
+          updatedAt: serverTimestamp()
+        });
+
+        // Log transaction for traveler
+        const travelerTxRef = doc(collection(db, "userProfiles", travelerUid, "transactions"));
+        batch.set(travelerTxRef, {
+          amount: -currentCommission,
+          type: "payment",
+          description: t('marketplace_fee') + `: ${listing.title}`,
+          createdAt: serverTimestamp()
+        });
+
+        // Log transaction for Buyer (0 amount just for record if desired, but prompt says "nothing from buyer")
+        // We do nothing for buyer balance.
+
+        // Transfer 1 OP to Admin
+        const adminsQuery = query(collection(db, "userProfiles"), where("isAdmin", "==", true));
+        const adminsSnap = await getDocs(adminsQuery);
+        if (!adminsSnap.empty) {
+          const adminId = adminsSnap.docs[0].id;
+          const adminRef = doc(db, "userProfiles", adminId);
+          batch.update(adminRef, {
+            walletBalance: increment(currentCommission),
+            updatedAt: serverTimestamp()
+          });
+
+          const adminTxRef = doc(collection(db, "userProfiles", adminId, "transactions"));
+          batch.set(adminTxRef, {
+            amount: currentCommission,
+            type: "commission",
+            description: t('platform_fee_deal') + ` from ${travelerUid}`,
+            createdAt: serverTimestamp()
+          });
+        }
+
+        // Mark conversation as finalized
+        batch.update(convRef, { isFinalized: true });
+      }
+
+      await batch.commit();
       toast({ title: t('rating_saved') });
+      if (isFinalizingNow) toast({ title: t('deal_finalized') });
       setIsRatingOpen(false);
     } catch (err) {
+      console.error("Finalization failed:", err);
       toast({ variant: "destructive", title: t('error') });
     } finally {
       setRatingLoading(false);

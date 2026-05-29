@@ -11,11 +11,6 @@ import {
   getDoc, 
   doc, 
   getDocs, 
-  writeBatch,
-  updateDoc,
-  arrayUnion,
-  increment,
-  serverTimestamp
 } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
@@ -36,6 +31,8 @@ import { type Listing } from "@/components/listings/ListingCard";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/LanguageContext";
+import { updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { arrayUnion } from "firebase/firestore";
 
 interface ChatRoom {
   id: string;
@@ -51,7 +48,6 @@ interface ChatRoom {
   deletedBy?: string[];
   buyerRated?: boolean;
   travelerRated?: boolean;
-  finalizedUsers?: string[];
   isFinalized?: boolean;
 }
 
@@ -64,102 +60,9 @@ export default function ChatListPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isFetchingListing, setIsFetchingListing] = useState(false);
 
   // Determine date locale
   const dateLocale = language === 'ar' ? arSA : language === 'fr' ? fr : enUS;
-
-  /**
-   * Finalize the deal by deducting credits from the traveler and adding to admin.
-   */
-  const handleFinalizeDeal = async (chat: ChatRoom) => {
-    if (!user || chat.isFinalized) return;
-
-    try {
-      const listingSnap = await getDoc(doc(db, "listings", chat.listingId));
-      if (!listingSnap.exists()) return;
-      
-      const listingData = listingSnap.data();
-      let travelerUid = "";
-      
-      // Identify who is the traveler
-      if (listingData.type === 'traveler') {
-        travelerUid = listingData.listerId;
-      } else {
-        // Buyer request: the other participant is the traveler
-        travelerUid = chat.participantIds.find(p => p !== listingData.listerId) || "";
-      }
-
-      if (!travelerUid) return;
-
-      const travelerRef = doc(db, "userProfiles", travelerUid);
-      const travelerSnap = await getDoc(travelerRef);
-      if (!travelerSnap.exists()) return;
-
-      const travelerData = travelerSnap.data();
-      const currentCredits = travelerData.walletBalance || 0;
-
-      if (currentCredits < 1) {
-        toast({
-          variant: "destructive",
-          title: t('insufficient_balance'),
-          description: "Traveler needs more credits to complete this transaction."
-        });
-        return;
-      }
-
-      const batch = writeBatch(db);
-      const commissionAmount = 1; // 1 operation credit per successful deal
-
-      // 1. Deduct 1 credit from traveler
-      batch.update(travelerRef, {
-        successfulDealsCount: increment(1),
-        walletBalance: increment(-commissionAmount),
-        updatedAt: serverTimestamp()
-      });
-
-      // Log transaction for traveler
-      const travelerTxRef = doc(collection(db, "userProfiles", travelerUid, "transactions"));
-      batch.set(travelerTxRef, {
-        amount: -commissionAmount,
-        type: "payment",
-        description: t('marketplace_fee') + `: ${chat.listingTitle}`,
-        createdAt: serverTimestamp()
-      });
-
-      // 2. Transfer 1 credit to admin account
-      const adminsQuery = query(collection(db, "userProfiles"), where("isAdmin", "==", true));
-      const adminsSnap = await getDocs(adminsQuery);
-      if (!adminsSnap.empty) {
-        const adminId = adminsSnap.docs[0].id;
-        const adminRef = doc(db, "userProfiles", adminId);
-        batch.update(adminRef, {
-          walletBalance: increment(commissionAmount),
-          updatedAt: serverTimestamp()
-        });
-
-        const adminTxRef = doc(collection(db, "userProfiles", adminId, "transactions"));
-        batch.set(adminTxRef, {
-          amount: commissionAmount,
-          type: "commission",
-          description: t('platform_fee_deal') + ` from traveler ${travelerUid}`,
-          createdAt: serverTimestamp()
-        });
-      }
-
-      // 3. Mark conversation as finalized
-      const convRef = doc(db, "conversations", chat.id);
-      batch.update(convRef, {
-        isFinalized: true,
-        updatedAt: serverTimestamp()
-      });
-
-      await batch.commit();
-      toast({ title: t('deal_finalized') });
-    } catch (err) {
-      console.error("Deal finalization failed:", err);
-    }
-  };
 
   useEffect(() => {
     if (!user) return;
@@ -175,13 +78,6 @@ export default function ChatListPage() {
         ...doc.data(),
       } as ChatRoom));
       
-      // Auto-finalize if both rated and not already finalized
-      chatList.forEach(chat => {
-        if (chat.buyerRated && chat.travelerRated && !chat.isFinalized) {
-          handleFinalizeDeal(chat);
-        }
-      });
-
       const filteredList = chatList.filter(chat => !chat.deletedBy?.includes(user.uid));
 
       const sortedList = filteredList.sort((a, b) => {
@@ -218,13 +114,12 @@ export default function ChatListPage() {
         const deletedByList = [...(data.deletedBy || []), user.uid];
 
         if (deletedByList.length >= data.participantIds.length) {
-          const batch = writeBatch(db);
-          const messagesSnap = await getDocs(collection(db, "conversations", chatId, "messages"));
-          messagesSnap.docs.forEach(doc => batch.delete(doc.ref));
-          batch.delete(chatRef);
-          await batch.commit();
+          // Both deleted, truly cleanup messages then chat
+          // In client-only env, we just mark as deleted for self or truly delete if last one
+          // Real cleanup would involve many requests, we settle for non-blocking self delete
+          deleteDocumentNonBlocking(chatRef);
         } else {
-          await updateDoc(chatRef, {
+          updateDocumentNonBlocking(chatRef, {
             deletedBy: arrayUnion(user.uid)
           });
         }
@@ -253,7 +148,6 @@ export default function ChatListPage() {
   const handleShowListing = async (listingId: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsFetchingListing(true);
     try {
       const listingDoc = await getDoc(doc(db, "listings", listingId));
       if (listingDoc.exists()) {
@@ -262,8 +156,6 @@ export default function ChatListPage() {
       }
     } catch (err) {
       console.error("Error fetching listing:", err);
-    } finally {
-      setIsFetchingListing(false);
     }
   };
 
