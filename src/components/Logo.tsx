@@ -10,31 +10,30 @@ interface LogoProps {
 }
 
 /**
- * GetMeDZ Brand Logo: Uses an external image file (logo.png) with a dynamic SVG fallback.
+ * GetMeDZ Brand Logo: Uses the external Google Photos link provided by the user.
  */
 export const Logo = ({ className, size = 40 }: LogoProps) => {
+  const logoUrl = "https://photos.app.goo.gl/v58KnVhgNTGj3fsGA";
+
   return (
     <div 
       className={cn("relative flex items-center justify-center overflow-hidden", className)}
       style={{ width: size, height: size }}
     >
-      {/* 
-        Standard img tag for the custom logo provided by the user. 
-        The image should be placed in /public/logo.png
-      */}
       <img 
-        src="/logo.png" 
+        src={logoUrl} 
         alt="GetMeDZ Logo" 
         className="w-full h-full object-contain"
         onError={(e) => {
-          // If image fails to load, we show a clean fallback
+          // Fallback if the Google Photos link doesn't resolve to a direct image
+          // Showing a professional SVG fallback
           e.currentTarget.style.display = 'none';
           const fallback = e.currentTarget.nextElementSibling as HTMLElement;
           if (fallback) fallback.style.display = 'flex';
         }}
       />
       
-      {/* Professional SVG Fallback if logo.png is missing */}
+      {/* Professional SVG Fallback */}
       <div className="hidden w-full h-full items-center justify-center bg-primary rounded-xl">
         <svg
           viewBox="0 0 100 100"
@@ -42,6 +41,7 @@ export const Logo = ({ className, size = 40 }: LogoProps) => {
           xmlns="http://www.w3.org/2000/svg"
           className="w-2/3 h-2/3"
         >
+          <circle cx="50" cy="50" r="45" fill="white" fillOpacity="0.2" stroke="white" strokeWidth="2"/>
           <path
             d="M35 35V25C35 16.7 41.7 10 50 10C58.3 10 65 16.7 65 25V35"
             stroke="white"
@@ -54,13 +54,6 @@ export const Logo = ({ className, size = 40 }: LogoProps) => {
             fillOpacity="0.3"
             stroke="white"
             strokeWidth="4"
-          />
-          <path
-            d="M35 60L50 75L85 40"
-            stroke="white"
-            strokeWidth="8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
           />
         </svg>
       </div>
