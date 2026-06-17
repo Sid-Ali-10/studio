@@ -15,9 +15,9 @@ import {
   increment, 
   updateDoc
 } from "firebase/firestore";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Wallet, Clock, Plus, Loader2, CheckCircle2, ShoppingCart } from "lucide-react";
+import { Clock, Plus, Loader2, CheckCircle2, Sparkles, ShoppingBag } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -31,6 +31,7 @@ import {
   DialogFooter,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 
 interface Transaction {
   id: string;
@@ -79,7 +80,9 @@ export default function WalletPage() {
     });
 
     const unsubscribePackages = onSnapshot(collection(db, "subscriptionPackages"), (snap) => {
-      setPackages(snap.docs.map(d => ({ id: d.id, ...d.data() } as SubscriptionPackage)));
+      const pkgs = snap.docs.map(d => ({ id: d.id, ...d.data() } as SubscriptionPackage));
+      // Sort packages by price
+      setPackages(pkgs.sort((a, b) => a.price - b.price));
     });
 
     return () => {
@@ -95,7 +98,6 @@ export default function WalletPage() {
     try {
       const userRef = doc(db, "userProfiles", user.uid);
       
-      // 1. Log to User's private transactions (Allowed by rules)
       await addDoc(collection(db, "userProfiles", user.uid, "transactions"), {
         amount: selectedPackage.credits,
         pricePaid: selectedPackage.price,
@@ -104,7 +106,6 @@ export default function WalletPage() {
         createdAt: serverTimestamp()
       });
 
-      // 2. Log to Global Revenue collection (Allowed for create by anyone)
       await addDoc(collection(db, "revenue"), {
         amount: selectedPackage.price,
         buyerId: user.uid,
@@ -114,7 +115,6 @@ export default function WalletPage() {
         createdAt: serverTimestamp()
       });
 
-      // 3. Update User Balance (Allowed by rules)
       await updateDoc(userRef, {
         walletBalance: increment(selectedPackage.credits),
         updatedAt: serverTimestamp()
@@ -140,82 +140,89 @@ export default function WalletPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
+    <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in duration-500 pb-20">
       <div className="space-y-1 text-start">
         <h1 className="text-3xl font-bold tracking-tight">{t('wallet_title')}</h1>
         <p className="text-muted-foreground">{t('wallet_subtitle')}</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="md:col-span-1 border-none shadow-xl bg-primary text-primary-foreground overflow-hidden text-start">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle2 size={24} /> {t('balance_label')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="text-5xl font-black">
-              {profile?.walletBalance?.toLocaleString() || "0"} <span className="text-xl font-medium">{t('currency_da')}</span>
-            </div>
-            <p className="text-primary-foreground/70 text-sm">{t('balance_subtitle')}</p>
-          </CardContent>
-        </Card>
+      {/* Balance Card - Matching image header */}
+      <Card className="rounded-[2rem] border-none shadow-sm bg-card p-8">
+        <div className="flex justify-between items-start">
+          <div className="space-y-1 text-start">
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t('balance_label')}</p>
+            <p className="text-5xl font-black">{profile?.walletBalance || 0}</p>
+          </div>
+          <div className="w-14 h-14 bg-red-50 dark:bg-red-950/20 rounded-[1.25rem] flex items-center justify-center text-red-500">
+            <Sparkles size={28} />
+          </div>
+        </div>
+      </Card>
 
-        <Card className="md:col-span-2 border-none shadow-md bg-card text-start">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><ShoppingCart size={20} /> {t('recharge_funds')}</CardTitle>
-            <CardDescription>{t('recharge_subtitle')}</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-4">
-            {packages.length === 0 ? (
-              <p className="text-muted-foreground text-sm italic">No subscription packages available currently.</p>
-            ) : (
-              packages.map((pkg) => (
-                <Dialog key={pkg.id} open={isRechargeOpen && selectedPackage?.id === pkg.id} onOpenChange={(open) => {
-                  setIsRechargeOpen(open);
-                  if (open) setSelectedPackage(pkg);
-                }}>
-                  <DialogTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="flex-1 min-w-[140px] h-20 rounded-2xl flex flex-col gap-1 hover:border-primary transition-all active:scale-[0.98] bg-muted/30 border-none"
-                    >
-                      <span className="font-black text-lg">{pkg.credits} {t('currency_da')}</span>
-                      <span className="text-xs font-bold text-primary">{pkg.price} {t('price_da')}</span>
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="rounded-2xl border-none shadow-2xl" dir={isRTL ? "rtl" : "ltr"}>
-                    <DialogHeader className="text-start">
-                      <DialogTitle>{t('confirm')} {t('recharge_funds')}</DialogTitle>
-                      <DialogDescription>
-                        You are about to purchase <span className="font-bold">{pkg.credits} operation credits</span> for <span className="font-bold text-primary">{pkg.price} DA</span>.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="p-4 bg-muted/30 rounded-xl space-y-2 text-start">
-                      <div className="flex justify-between text-sm">
-                        <span>Package:</span>
-                        <span className="font-bold">{pkg.name}</span>
-                      </div>
-                      <div className="flex justify-between text-lg font-black text-primary border-t pt-2">
-                        <span>Total:</span>
-                        <span>{pkg.price} DA</span>
-                      </div>
+      {/* Subscription Packages List - Matching image list style */}
+      <div className="space-y-4">
+        {packages.length === 0 ? (
+          <div className="flex justify-center py-12">
+            {loading ? <Loader2 className="animate-spin text-primary" size={32} /> : <p className="text-muted-foreground italic">No packages available.</p>}
+          </div>
+        ) : (
+          packages.map((pkg) => (
+            <Dialog key={pkg.id} open={isRechargeOpen && selectedPackage?.id === pkg.id} onOpenChange={(open) => {
+              setIsRechargeOpen(open);
+              if (open) setSelectedPackage(pkg);
+            }}>
+              <DialogTrigger asChild>
+                <Card className="rounded-[2rem] border-none shadow-sm bg-card p-6 flex items-center justify-between cursor-pointer hover:shadow-md transition-all active:scale-[0.99] group">
+                  <div className="space-y-1 text-start">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-xl group-hover:text-primary transition-colors">{pkg.name}</h3>
+                      {pkg.credits === 5 && (
+                        <Badge className="bg-orange-100 text-orange-600 border-none text-[8px] h-4 uppercase font-black px-2">
+                          {t('populaire')}
+                        </Badge>
+                      )}
                     </div>
-                    <DialogFooter className="gap-2">
-                      <Button variant="ghost" className="rounded-xl active:scale-[0.98]" onClick={() => setIsRechargeOpen(false)}>{t('cancel')}</Button>
-                      <Button className="rounded-xl px-8 active:scale-[0.98] font-bold" onClick={handleRecharge} disabled={rechargeLoading !== null}>
-                        {rechargeLoading ? <Loader2 className="animate-spin" /> : t('confirm')}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              ))
-            )}
-          </CardContent>
-        </Card>
+                    <p className="text-sm text-muted-foreground">
+                      {pkg.credits} {pkg.credits === 1 ? t('currency_da_single') : t('currency_da')}
+                    </p>
+                  </div>
+                  <div className="text-end">
+                    <p className="text-2xl font-black">{pkg.price.toLocaleString()}</p>
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tighter">DA</p>
+                  </div>
+                </Card>
+              </DialogTrigger>
+              <DialogContent className="rounded-2xl border-none shadow-2xl" dir={isRTL ? "rtl" : "ltr"}>
+                <DialogHeader className="text-start">
+                  <DialogTitle>{t('confirm')} {t('recharge_funds')}</DialogTitle>
+                  <DialogDescription>
+                    You are about to purchase <span className="font-bold">{pkg.credits} {pkg.credits === 1 ? t('currency_da_single') : t('currency_da')}</span> for <span className="font-bold text-primary">{pkg.price} DA</span>.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="p-4 bg-muted/30 rounded-xl space-y-2 text-start">
+                  <div className="flex justify-between text-sm">
+                    <span>Package:</span>
+                    <span className="font-bold">{pkg.name}</span>
+                  </div>
+                  <div className="flex justify-between text-lg font-black text-primary border-t pt-2">
+                    <span>Total:</span>
+                    <span>{pkg.price} DA</span>
+                  </div>
+                </div>
+                <DialogFooter className="gap-2">
+                  <Button variant="ghost" className="rounded-xl active:scale-[0.98]" onClick={() => setIsRechargeOpen(false)}>{t('cancel')}</Button>
+                  <Button className="rounded-xl px-8 active:scale-[0.98] font-bold" onClick={handleRecharge} disabled={rechargeLoading !== null}>
+                    {rechargeLoading ? <Loader2 className="animate-spin" /> : t('confirm')}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          ))
+        )}
       </div>
 
-      <div className="space-y-4">
+      {/* Transaction History - Kept as requested */}
+      <div className="space-y-4 pt-4 border-t">
         <h2 className="text-xl font-bold flex items-center gap-2 text-start"><Clock size={20} /> {t('transaction_history')}</h2>
         
         {loading ? (
@@ -236,7 +243,7 @@ export default function WalletPage() {
                         {tx.amount > 0 ? <Plus size={24} /> : <CheckCircle2 size={24} />}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-bold truncate">{translateDescription(tx.description)}</p>
+                        <p className="font-bold truncate text-sm">{translateDescription(tx.description)}</p>
                         <p className="text-[10px] text-muted-foreground uppercase">{t(`type_${tx.type}`)} • {tx.createdAt ? format(tx.createdAt.toDate(), "PPpp") : "..."}</p>
                       </div>
                     </div>
