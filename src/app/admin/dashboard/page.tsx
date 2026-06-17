@@ -31,6 +31,7 @@ import {
   ExternalLink,
   Ban,
   User as UserIcon,
+  Sparkles,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
@@ -43,8 +44,7 @@ import { cn } from '@/lib/utils';
 import { type Listing } from '@/components/listings/ListingCard';
 import { ListingDetailView } from '@/components/listings/ListingDetailView';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+import { Switch } from '@/components/ui/switch';
 import { useLanguage } from '@/context/LanguageContext';
 
 interface AdminStats {
@@ -59,6 +59,7 @@ interface SubscriptionPackage {
   name: string;
   credits: number;
   price: number;
+  isPopular?: boolean;
 }
 
 export default function AdminDashboard() {
@@ -77,7 +78,7 @@ export default function AdminDashboard() {
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isPackageDialogOpen, setIsPackageDialogOpen] = useState(false);
-  const [currentPackage, setCurrentPackage] = useState<Partial<SubscriptionPackage>>({ name: '', credits: 1, price: 100 });
+  const [currentPackage, setCurrentPackage] = useState<Partial<SubscriptionPackage>>({ name: '', credits: 1, price: 100, isPopular: false });
   const [savingPackage, setSavingPackage] = useState(false);
 
   const router = useRouter();
@@ -172,6 +173,7 @@ export default function AdminDashboard() {
       }
       setIsPackageDialogOpen(false);
       fetchData();
+      toast({ title: t('success') });
     } catch (err) { toast({ variant: 'destructive', title: t('failed') }); }
     finally { setSavingPackage(false); }
   };
@@ -239,10 +241,18 @@ export default function AdminDashboard() {
           </TabsContent>
 
           <TabsContent value="subs" className="space-y-4 text-start">
-            <div className="flex items-center justify-between"><h3 className="text-lg font-bold">{t('tab_subs')}</h3><Button onClick={() => { setCurrentPackage({ name: '', credits: 1, price: 100 }); setIsPackageDialogOpen(true); }} className="rounded-xl gap-2"><Plus size={18} /> {t('add_package')}</Button></div>
+            <div className="flex items-center justify-between"><h3 className="text-lg font-bold">{t('tab_subs')}</h3><Button onClick={() => { setCurrentPackage({ name: '', credits: 1, price: 100, isPopular: false }); setIsPackageDialogOpen(true); }} className="rounded-xl gap-2"><Plus size={18} /> {t('add_package')}</Button></div>
             {subscriptionPackages.map(pkg => (
               <Card key={pkg.id} className="rounded-2xl p-4 flex items-center justify-between">
-                <div className="flex items-center gap-4"><div className="w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-600"><CreditCard size={24} /></div><div><p className="font-black">{pkg.name}</p><p className="text-xs text-muted-foreground font-bold">{pkg.credits} {t('currency_da')} • {pkg.price} {t('price_da')}</p></div></div>
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-600">
+                    <CreditCard size={24} />
+                  </div>
+                  <div>
+                    <p className="font-black flex items-center gap-2">{pkg.name} {pkg.isPopular && <Sparkles size={14} className="text-primary" />}</p>
+                    <p className="text-xs text-muted-foreground font-bold">{pkg.credits} {t('currency_da')} • {pkg.price} {t('price_da')}</p>
+                  </div>
+                </div>
                 <div className="flex gap-2"><Button variant="ghost" size="icon" onClick={() => { setCurrentPackage(pkg); setIsPackageDialogOpen(true); }}><Pencil size={18} /></Button><Button variant="ghost" size="icon" onClick={() => handleDelete('subscriptionPackages', pkg.id)} className="text-destructive"><Trash2 size={18} /></Button></div>
               </Card>
             ))}
@@ -265,7 +275,30 @@ export default function AdminDashboard() {
 
       <Dialog open={isPackageDialogOpen} onOpenChange={setIsPackageDialogOpen}><DialogContent className="max-w-md rounded-2xl border-none shadow-2xl">
         <DialogHeader className="text-start"><DialogTitle>{currentPackage.id ? t('edit_package') : t('add_package')}</DialogTitle></DialogHeader>
-        <div className="space-y-4 py-4 text-start"><div className="space-y-2"><Label>{t('package_name')}</Label><Input value={currentPackage.name} onChange={(e) => setCurrentPackage({...currentPackage, name: e.target.value})} className="rounded-xl" /></div><div className="grid grid-cols-2 gap-4"><div className="space-y-2"><Label>{t('credits_label')}</Label><Input type="number" value={currentPackage.credits} onChange={(e) => setCurrentPackage({...currentPackage, credits: Number(e.target.value)})} className="rounded-xl" /></div><div className="space-y-2"><Label>{t('price_da_label')}</Label><Input type="number" value={currentPackage.price} onChange={(e) => setCurrentPackage({...currentPackage, price: Number(e.target.value)})} className="rounded-xl" /></div></div></div>
+        <div className="space-y-4 py-4 text-start">
+          <div className="space-y-2">
+            <Label>{t('package_name')}</Label>
+            <Input value={currentPackage.name} onChange={(e) => setCurrentPackage({...currentPackage, name: e.target.value})} className="rounded-xl" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>{t('credits_label')}</Label>
+              <Input type="number" value={currentPackage.credits} onChange={(e) => setCurrentPackage({...currentPackage, credits: Number(e.target.value)})} className="rounded-xl" />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('price_da_label')}</Label>
+              <Input type="number" value={currentPackage.price} onChange={(e) => setCurrentPackage({...currentPackage, price: Number(e.target.value)})} className="rounded-xl" />
+            </div>
+          </div>
+          <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl mt-2">
+            <Label htmlFor="popular-switch" className="font-bold cursor-pointer">{t('mark_as_popular')}</Label>
+            <Switch 
+              id="popular-switch" 
+              checked={currentPackage.isPopular} 
+              onCheckedChange={(checked) => setCurrentPackage({...currentPackage, isPopular: checked})} 
+            />
+          </div>
+        </div>
         <DialogFooter><Button onClick={handleSavePackage} disabled={savingPackage} className="w-full rounded-xl">{savingPackage ? <Loader2 className="animate-spin" /> : t('save_package')}</Button></DialogFooter>
       </DialogContent></Dialog>
     </div>

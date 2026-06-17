@@ -46,6 +46,7 @@ interface SubscriptionPackage {
   name: string;
   credits: number;
   price: number;
+  isPopular?: boolean;
 }
 
 export default function WalletPage() {
@@ -170,7 +171,7 @@ export default function WalletPage() {
           </div>
         ) : (
           packages.map((pkg) => {
-            const isPopular = pkg.credits === 5;
+            const isPopular = pkg.isPopular;
             return (
               <Dialog key={pkg.id} open={isRechargeOpen && selectedPackage?.id === pkg.id} onOpenChange={(open) => {
                 setIsRechargeOpen(open);

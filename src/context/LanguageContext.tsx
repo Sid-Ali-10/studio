@@ -74,7 +74,7 @@ export const translations: Translations = {
   create_listing_title: { en: "Create Listing", ar: "إنشاء إعلان", fr: "Créer une annonce" },
   create_listing_desc: { en: "Reach out to our community", ar: "تواصل مع مجتمعنا", fr: "Contactez notre communauté" },
   edit_post_title: { en: "Edit Post", ar: "تعديل المنشور", fr: "Modifier la publication" },
-  edit_post_desc_traveler: { en: "Update your traveler details.", ar: "تحديث تفاصيل المسافر الخاصة بك.", fr: "Mettez à jour vos informations de voyageur." },
+  edit_post_desc_traveler: { en: "Update your traveler details.", ar: "تحديث تفاصيل المسافر الخاصة بك.", fr: "Metteز à jour vos informations de voyageur." },
   edit_post_desc_buyer: { en: "Update your buyer details.", ar: "تحديث تفاصيل المشتري الخاصة بك.", fr: "Mettez à jour vos informations d'acheteur." },
   tab_traveler: { en: "Traveler", ar: "مسافر", fr: "Voyageur" },
   tab_buyer: { en: "Buyer", ar: "مشتري", fr: "Acheteur" },
@@ -207,12 +207,12 @@ export const translations: Translations = {
   tab_listings: { en: "Listings", ar: "الإعلانات", fr: "Annonces" },
   tab_subs: { en: "Subscription Packages", ar: "باقات الاشتراكات", fr: "Forfaits d'abonnement" },
   tab_revenue: { en: "Revenue Log", ar: "سجل الإيرادات", fr: "Journal des revenus" },
-  filter_view_placeholder: { en: "Filter current view...", ar: "تصفية العرض الحالي...", fr: "Filtrer la vue actuelle..." },
+  filter_view_placeholder: { en: "Filter current view...", ar: "تصفية العرض الحالي...", fr: "Filتر la vue actuelle..." },
   no_reports_found: { en: "No reports found.", ar: "لا توجد بلاغات.", fr: "Aucun rapport trouvé." },
   view_conversation: { en: "View Conversation", ar: "عرض المحادثة", fr: "عرض المحادثة" },
   view_profile: { en: "View Profile", ar: "عرض الملف الشخصي", fr: "عرض الملف الشخصي" },
   ban_permanently: { en: "Ban Permanently", ar: "حظر نهائي", fr: "Bannir définitivement" },
-  unban_user: { en: "Unban User", ar: "إلغاء الحظر", fr: "Déبannir l'utilisateur" },
+  unban_user: { en: "Unban User", ar: "إلغاء الحظر", fr: "Débannir l'utilisateur" },
   no_users_found: { en: "No users found.", ar: "لم يتم العثور على مستخدمين.", fr: "Aucun utilisateur trouvé." },
   no_listings_found: { en: "No listings found.", ar: "لم يتم العثور على إعلانات.", fr: "Aucune annonce trouvée." },
   add_package: { en: "Add Package", ar: "إضافة باقة", fr: "Ajouter un forfait" },
@@ -228,6 +228,7 @@ export const translations: Translations = {
   save_package: { en: "Save Package", ar: "حفظ الباقة", fr: "Enregistrer le forfait" },
   purchase_history: { en: "Purchase History", ar: "سجل المشتريات", fr: "Historique des achats" },
   status_label: { en: "Status", ar: "الحالة", fr: "Statut" },
+  mark_as_popular: { en: "Mark as Popular", ar: "تمييز كباقة شائعة", fr: "Marquer comme populaire" },
 };
 
 interface LanguageContextType {

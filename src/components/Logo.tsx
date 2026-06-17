@@ -19,22 +19,22 @@ export const Logo = ({ className, size = 40 }: LogoProps) => {
       style={{ width: size, height: size }}
     >
       {/* 
-        We use a standard img tag for the custom logo provided by the user. 
-        The user should place their logo.png in the /public folder.
+        Standard img tag for the custom logo provided by the user. 
+        The image should be placed in /public/logo.png
       */}
       <img 
         src="/logo.png" 
         alt="GetMeDZ Logo" 
         className="w-full h-full object-contain"
         onError={(e) => {
-          // If image fails to load, we show a clean SVG fallback
+          // If image fails to load, we show a clean fallback
           e.currentTarget.style.display = 'none';
           const fallback = e.currentTarget.nextElementSibling as HTMLElement;
           if (fallback) fallback.style.display = 'flex';
         }}
       />
       
-      {/* Professional SVG Fallback */}
+      {/* Professional SVG Fallback if logo.png is missing */}
       <div className="hidden w-full h-full items-center justify-center bg-primary rounded-xl">
         <svg
           viewBox="0 0 100 100"
