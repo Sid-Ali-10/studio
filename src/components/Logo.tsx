@@ -1,4 +1,6 @@
 
+"use client";
+
 import React from "react";
 import { cn } from "@/lib/utils";
 
@@ -8,49 +10,60 @@ interface LogoProps {
 }
 
 /**
- * GetMeDZ Brand Logo: Azure blue shopping bag with a Teal airplane.
+ * GetMeDZ Brand Logo: Uses an external image file (logo.png) with a dynamic SVG fallback.
  */
 export const Logo = ({ className, size = 40 }: LogoProps) => {
   return (
     <div 
-      className={cn("relative flex items-center justify-center", className)}
+      className={cn("relative flex items-center justify-center overflow-hidden", className)}
       style={{ width: size, height: size }}
     >
-      <svg
-        viewBox="0 0 100 100"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="w-full h-full drop-shadow-md"
-      >
-        {/* Shopping Bag Handles (Navy) */}
-        <path
-          d="M35 35V25C35 16.7 41.7 10 50 10C58.3 10 65 16.7 65 25V35"
-          stroke="#1E3A8A"
-          strokeWidth="8"
-          strokeLinecap="round"
-        />
-        
-        {/* Shopping Bag Body (Azure Blue) */}
-        <path
-          d="M20 35H80V80C80 85.5 75.5 90 70 90H30C24.5 90 20 85.5 20 80V35Z"
-          fill="#3B82F6"
-        />
-        
-        {/* Stylized Airplane (Teal) */}
-        <path
-          d="M35 60L50 75L85 40L80 35L50 65L40 55L35 60Z"
-          fill="#10B981"
-        />
-        
-        {/* Airplane Wing Detail */}
-        <path
-          d="M55 55L70 45M45 65L30 75"
-          stroke="white"
-          strokeWidth="3"
-          strokeLinecap="round"
-          opacity="0.5"
-        />
-      </svg>
+      {/* 
+        We use a standard img tag for the custom logo provided by the user. 
+        The user should place their logo.png in the /public folder.
+      */}
+      <img 
+        src="/logo.png" 
+        alt="GetMeDZ Logo" 
+        className="w-full h-full object-contain"
+        onError={(e) => {
+          // If image fails to load, we show a clean SVG fallback
+          e.currentTarget.style.display = 'none';
+          const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+          if (fallback) fallback.style.display = 'flex';
+        }}
+      />
+      
+      {/* Professional SVG Fallback */}
+      <div className="hidden w-full h-full items-center justify-center bg-primary rounded-xl">
+        <svg
+          viewBox="0 0 100 100"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          className="w-2/3 h-2/3"
+        >
+          <path
+            d="M35 35V25C35 16.7 41.7 10 50 10C58.3 10 65 16.7 65 25V35"
+            stroke="white"
+            strokeWidth="8"
+            strokeLinecap="round"
+          />
+          <path
+            d="M20 35H80V80C80 85.5 75.5 90 70 90H30C24.5 90 20 85.5 20 80V35Z"
+            fill="white"
+            fillOpacity="0.3"
+            stroke="white"
+            strokeWidth="4"
+          />
+          <path
+            d="M35 60L50 75L85 40"
+            stroke="white"
+            strokeWidth="8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
     </div>
   );
 };
