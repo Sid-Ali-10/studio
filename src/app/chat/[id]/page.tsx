@@ -13,7 +13,6 @@ import {
   addDoc, 
   serverTimestamp, 
   updateDoc, 
-  writeBatch,
   deleteDoc,
   arrayUnion,
   arrayRemove,
@@ -35,7 +34,9 @@ import {
   Info,
   ShieldCheck,
   Flag,
-  Smile
+  Smile,
+  Image as ImageIcon,
+  Link as LinkIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -54,8 +55,9 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { type Listing } from "@/components/listings/ListingCard";
 import { ListingDetailView } from "@/components/listings/ListingDetailView";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useLanguage } from "@/context/LanguageContext";
 
 interface Message {
@@ -103,6 +105,8 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
   const [listing, setListing] = useState<Listing | null>(null);
   const [convData, setConvData] = useState<ConversationData | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isMediaDialogOpen, setIsMediaDialogOpen] = useState(false);
+  const [mediaUrlInput, setMediaUrlInput] = useState("");
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   
@@ -149,12 +153,10 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
             setConvData(data);
             setActiveConvId(id);
             
-            // Mark as read
             if (data.unreadBy?.includes(user.uid)) {
               updateDoc(convRef, { unreadBy: arrayRemove(user.uid) });
             }
 
-            // Fetch other user if not already fetched
             if (!otherUser) {
               const otherUserId = data.participantIds.find(p => p !== user.uid);
               if (otherUserId) {
@@ -163,15 +165,17 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
               }
             }
 
-            // Fetch listing if not already fetched
             if (!listing) {
               const lDoc = await getDoc(doc(db, "listings", data.listingId));
               if (lDoc.exists()) setListing({ id: lDoc.id, ...lDoc.data() } as Listing);
             }
 
-            // Messages listener
             if (!unsubscribeMessages) {
-              const messagesQuery = query(collection(db, "conversations", id, "messages"), orderBy("timestamp", "asc"), limit(200));
+              const messagesQuery = query(
+                collection(db, "conversations", id, "messages"), 
+                orderBy("timestamp", "asc"), 
+                limit(100)
+              );
               unsubscribeMessages = onSnapshot(messagesQuery, (snapshot) => {
                 if (!isMounted) return;
                 setMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message)));
@@ -179,7 +183,6 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
               });
             }
           } else {
-            // Document might be newly created, wait a bit
             setTimeout(() => {
               if (isMounted && !convData && loading) {
                 setError(t('conv_not_found'));
@@ -206,12 +209,12 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
     };
   }, [id, user, t]);
 
-  const handleSendMessage = async (e?: React.FormEvent) => {
+  const handleSendMessage = async (e?: React.FormEvent, customImageUrl?: string) => {
     if (isAdminView || !user || !activeConvId) return;
     if (e) e.preventDefault();
     if (editingMessage) { handleSaveEdit(); return; }
     
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() && !customImageUrl) return;
 
     const otherUserId = convData?.participantIds.find(p => p !== user.uid);
     const msgData: any = {
@@ -221,6 +224,10 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
       timestamp: serverTimestamp(),
       participantIds: convData?.participantIds
     };
+
+    if (customImageUrl) {
+      msgData.imageUrl = customImageUrl;
+    }
 
     if (replyingTo) {
       msgData.replyTo = {
@@ -235,7 +242,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
       setReplyingTo(null);
       await addDoc(collection(db, "conversations", activeConvId, "messages"), msgData);
       await updateDoc(doc(db, "conversations", activeConvId), {
-        lastMessageText: newMessage,
+        lastMessageText: customImageUrl ? "📷 Image" : newMessage,
         lastMessageTimestamp: serverTimestamp(),
         updatedAt: serverTimestamp(),
         unreadBy: arrayUnion(otherUserId),
@@ -281,6 +288,14 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
       await updateDoc(msgRef, { reactions: updated });
     } catch (err) {
       toast({ variant: "destructive", title: t('error') });
+    }
+  };
+
+  const handleInsertMediaLink = () => {
+    if (mediaUrlInput.trim()) {
+      handleSendMessage(undefined, mediaUrlInput.trim());
+      setMediaUrlInput("");
+      setIsMediaDialogOpen(false);
     }
   };
 
@@ -336,6 +351,11 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
                     <div className={cn("text-[10px] mb-2 p-2 rounded-lg border-s-4 bg-black/5 flex flex-col", isOwn ? "border-white/40" : "border-primary/40")}>
                       <span className="font-bold opacity-70">{msg.replyTo.senderName}</span>
                       <span className="truncate opacity-80">{msg.replyTo.text}</span>
+                    </div>
+                  )}
+                  {msg.imageUrl && (
+                    <div className="mb-2 rounded-xl overflow-hidden border bg-muted">
+                      <img src={msg.imageUrl} alt="Attached" className="max-w-full h-auto object-contain max-h-60" onError={(e) => (e.currentTarget.style.display = 'none')} />
                     </div>
                   )}
                   <div className="text-sm">{msg.messageText}</div>
@@ -395,6 +415,9 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
           </div>
         )}
         <div className="flex items-end gap-2 bg-muted/30 p-2 rounded-[2rem]">
+          <Button type="button" variant="ghost" size="icon" className="w-10 h-10 rounded-full shrink-0 mb-0.5" onClick={() => setIsMediaDialogOpen(true)}>
+            <ImageIcon size={20} className="text-muted-foreground" />
+          </Button>
           <form className="flex-1 flex items-end gap-2" onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}>
             <Textarea 
               ref={textareaRef}
@@ -415,6 +438,24 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
         <DialogContent className="max-w-2xl rounded-2xl p-0 overflow-hidden border-none shadow-2xl">
           <div className="p-6">{listing && <ListingDetailView listing={listing} />}</div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isMediaDialogOpen} onOpenChange={setIsMediaDialogOpen}>
+        <DialogContent className="max-w-md rounded-2xl border-none shadow-2xl">
+          <DialogHeader className="text-start">
+            <DialogTitle>{t('insert_link_title')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4 text-start">
+            <div className="space-y-2">
+              <Label>{t('link_placeholder')}</Label>
+              <Input value={mediaUrlInput} onChange={(e) => setMediaUrlInput(e.target.value)} placeholder="https://..." className="rounded-xl h-12" />
+              <p className="text-[10px] text-muted-foreground">{t('insert_link_desc')}</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleInsertMediaLink} className="w-full h-12 rounded-xl font-bold">{t('add_link')}</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
