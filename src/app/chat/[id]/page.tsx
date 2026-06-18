@@ -463,9 +463,9 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
     }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (customerE: React.ChangeEvent<HTMLInputElement>) => {
     if (isAdminView) return;
-    const file = e.target.files?.[0];
+    const file = customerE.target.files?.[0];
     if (!file || !user) return;
     setUploading(true);
     try {
@@ -623,7 +623,6 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
       <div className="flex-1 overflow-y-auto py-4 space-y-4 px-1">
         {messages.map((msg) => {
           const isOwn = !!user && msg.senderId === user.uid;
-          const canDelete = isOwn || profile?.isAdmin === true;
           const reactions = msg.reactions || {};
 
           return (
@@ -686,7 +685,8 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
                       <DropdownMenuItem className="gap-2 rounded-lg" onClick={() => setReplyingTo(msg)}><Reply size={14} /> {t('reply')}</DropdownMenuItem>
                       {isOwn && <DropdownMenuItem className="gap-2 rounded-lg" onClick={() => handleEditInit(msg)}><Pencil size={14} /> {t('edit')}</DropdownMenuItem>}
                       
-                      {canDelete && (
+                      {/* CRITICAL: ONLY THE SENDER OR ADMIN CAN SEE DELETE */}
+                      {(msg.senderId === user?.uid || profile?.isAdmin) && (
                         <>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem className="gap-2 text-destructive rounded-lg" onClick={() => handleDeleteMessage(msg)}><Trash2 size={14} /> {t('delete')}</DropdownMenuItem>
@@ -721,7 +721,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
             </Button>
           </div>
           <form className="flex-1 flex gap-2" onSubmit={handleSendMessage}>
-            <Input placeholder={isAdminView ? "Admin: Read-Only" : t('type_message')} className="flex-1 h-11 rounded-full px-5 bg-muted border-none text-start" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} disabled={isAdminView} />
+            <Input placeholder={isAdminView ? "Admin: Read-Only" : t('type_message')} className="flex-1 h-11 rounded-full px-5 bg-muted border-none text-start" value={newMessage} onChange={(customerE) => setNewMessage(customerE.target.value)} disabled={isAdminView} />
             <Button type="submit" size="icon" className="w-11 h-11 rounded-full shadow-md shrink-0" disabled={(!newMessage.trim() && !uploading) || isAdminView}>{editingMessage ? <CheckCircle2 size={20} /> : <Send size={20} className={cn(isRTL && "rotate-180")} />}</Button>
           </form>
         </div>
@@ -738,8 +738,8 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
               placeholder={t('link_placeholder')} 
               className="rounded-xl h-12 text-start" 
               value={mediaLink} 
-              onChange={(e) => setMediaLink(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAddLink()}
+              onChange={(customerE) => setMediaLink(customerE.target.value)}
+              onKeyDown={(customerE) => customerE.key === 'Enter' && handleAddLink()}
             />
           </div>
           <DialogFooter>
@@ -755,7 +755,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
           <DialogHeader className="text-start"><DialogTitle className="flex items-center gap-2"><Flag className="text-destructive" /> {t('report_issue_title')}</DialogTitle><DialogDescription>{t('report_issue_desc')}</DialogDescription></DialogHeader>
           <div className="space-y-4 py-4 text-start">
             <div className="space-y-2"><Label>{t('issue_type')}</Label><Select value={reportType} onValueChange={setReportType}><SelectTrigger className="rounded-xl h-12"><SelectValue placeholder="..." /></SelectTrigger><SelectContent className="rounded-xl"><SelectItem value="fraud">Fraud</SelectItem><SelectItem value="harassment">Harassment</SelectItem><SelectItem value="scam">Scam</SelectItem><SelectItem value="other">Other</SelectItem></SelectContent></Select></div>
-            <div className="space-y-2"><Label>{t('issue_details')}</Label><Textarea placeholder="..." className="rounded-xl min-h-[100px] resize-none text-start" value={reportReason} onChange={(e) => setReportReason(e.target.value)} /></div>
+            <div className="space-y-2"><Label>{t('issue_details')}</Label><Textarea placeholder="..." className="rounded-xl min-h-[100px] resize-none text-start" value={reportReason} onChange={(customerE) => setReportReason(customerE.target.value)} /></div>
           </div>
           <DialogFooter><Button className="w-full h-12 rounded-xl font-bold bg-destructive hover:bg-destructive/90 shadow-lg" onClick={handleReportIssue} disabled={isReporting || !reportReason.trim()}>{isReporting ? <Loader2 className="animate-spin" /> : t('send_report')}</Button></DialogFooter>
         </DialogContent>
@@ -764,7 +764,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
       <Dialog open={isOfferDialogOpen} onOpenChange={setIsOfferDialogOpen}>
         <DialogContent className="max-w-md rounded-2xl shadow-2xl border-none">
           <DialogHeader className="text-start"><DialogTitle>{t('make_price_offer')}</DialogTitle><DialogDescription>{t('price_offer_desc')}</DialogDescription></DialogHeader>
-          <div className="space-y-4 py-4"><div className="relative"><Banknote className="absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} /><Input type="number" placeholder={t('budget')} className="ps-10 h-12 rounded-xl text-start" value={offerPrice} onChange={(e) => setOfferPrice(e.target.value)} /></div></div>
+          <div className="space-y-4 py-4"><div className="relative"><Banknote className="absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} /><Input type="number" placeholder={t('budget')} className="ps-10 h-12 rounded-xl text-start" value={offerPrice} onChange={(customerE) => setOfferPrice(customerE.target.value)} /></div></div>
           <DialogFooter><Button className="w-full h-12 rounded-xl font-bold shadow-lg" onClick={handleMakeOffer}>{t('price_offer')}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
@@ -783,3 +783,4 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
     </div>
   );
 }
+
