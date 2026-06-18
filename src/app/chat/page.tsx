@@ -14,7 +14,7 @@ import {
 } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
-import { MessageSquare, Loader2, Info, Search, Trash2, AlertCircle } from "lucide-react";
+import { MessageSquare, Loader2, Info, Search, Trash2, AlertCircle, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { enUS, arSA, fr } from "date-fns/locale";
@@ -65,8 +65,10 @@ export default function ChatListPage() {
   useEffect(() => {
     if (!user) return;
 
+    setLoading(true);
     let isMounted = true;
-    // CRITICAL: Must include limit(50) to satisfy security rules: request.query.limit <= 50
+    
+    // CRITICAL: Security Rules require limit <= 50
     const q = query(
       collection(db, "conversations"),
       where("participantIds", "array-contains", user.uid),
@@ -80,7 +82,6 @@ export default function ChatListPage() {
         ...doc.data(),
       } as ChatRoom));
       
-      // Filter out chats that the user has "hidden/deleted"
       const filteredList = chatList.filter(chat => !chat.deletedBy?.includes(user.uid));
       
       const sortedList = filteredList.sort((a, b) => {
@@ -93,14 +94,10 @@ export default function ChatListPage() {
       setLoading(false);
       setError(null);
     }, (err) => {
-      console.error("Error fetching conversations:", err);
+      console.error("Chat list error:", err);
       if (isMounted) {
         setLoading(false);
-        if (err.code === 'permission-denied') {
-          setError(t('access_restricted'));
-        } else {
-          setError(t('error'));
-        }
+        setError(err.code === 'permission-denied' ? t('access_restricted') : t('error'));
       }
     });
 
@@ -143,29 +140,51 @@ export default function ChatListPage() {
     } catch (err) { console.error("Error fetching listing:", err); }
   };
 
-  if (loading) return <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4"><Loader2 className="animate-spin text-primary" size={40} /><p className="text-muted-foreground">{t('loading_conversations')}</p></div>;
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+      <Loader2 className="animate-spin text-primary" size={40} />
+      <p className="text-muted-foreground font-bold">{t('loading_conversations')}</p>
+    </div>
+  );
 
   if (error) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-6">
-      <AlertCircle size={48} className="text-destructive opacity-50" />
+      <AlertCircle size={64} className="text-destructive opacity-30" />
       <h2 className="text-xl font-bold">{t('error')}</h2>
       <p className="text-muted-foreground max-w-xs">{error}</p>
-      <Button variant="outline" onClick={() => window.location.reload()} className="rounded-xl">{t('refresh') || 'Retry'}</Button>
+      <Button variant="outline" onClick={() => window.location.reload()} className="rounded-xl gap-2 h-12 px-8">
+        <RefreshCw size={18} /> {t('refresh') || 'Retry'}
+      </Button>
     </div>
   );
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto px-4 pb-12">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div className="space-y-1 text-start"><h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t('messages')}</h1><p className="text-sm text-muted-foreground">{t('messages_subtitle')}</p></div>
-        <div className="relative w-full md:w-80"><Search className="absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} /><Input placeholder={t('search_chats_placeholder')} className="ps-10 h-11 rounded-2xl bg-card border-none shadow-sm text-start" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
+        <div className="space-y-1 text-start">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t('messages')}</h1>
+          <p className="text-sm text-muted-foreground">{t('messages_subtitle')}</p>
+        </div>
+        <div className="relative w-full md:w-80">
+          <Search className="absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
+          <Input 
+            placeholder={t('search_chats_placeholder')} 
+            className="ps-10 h-11 rounded-2xl bg-card border-none shadow-sm text-start" 
+            value={searchTerm} 
+            onChange={(e) => setSearchTerm(e.target.value)} 
+          />
+        </div>
       </div>
 
       {chats.length === 0 ? (
         <Card className="border-none shadow-sm bg-card rounded-3xl py-16 text-center">
           <CardContent className="space-y-4">
-            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto"><MessageSquare className="text-muted-foreground" /></div>
-            <h3 className="text-lg font-bold">{t('no_chats')}</h3><p className="text-muted-foreground">{t('no_chats_desc')}</p><Link href="/"><Button className="rounded-xl">{t('browse_board')}</Button></Link>
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto">
+              <MessageSquare className="text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-bold">{t('no_chats')}</h3>
+            <p className="text-muted-foreground">{t('no_chats_desc')}</p>
+            <Link href="/"><Button className="rounded-xl h-12 px-8">{t('browse_board')}</Button></Link>
           </CardContent>
         </Card>
       ) : (
@@ -176,14 +195,18 @@ export default function ChatListPage() {
             const isUnread = chat.unreadBy?.includes(user?.uid || "");
             return (
               <Link key={chat.id} href={`/chat/${chat.id}`} className="block group">
-                <Card className={cn("transition-all duration-300 border-none rounded-2xl cursor-pointer bg-card hover:shadow-lg", isUnread && "ring-2 ring-primary/20", chat.isFinalized && "opacity-75")}>
+                <Card className={cn(
+                  "transition-all duration-300 border-none rounded-2xl cursor-pointer bg-card hover:shadow-lg", 
+                  isUnread && "ring-2 ring-primary/20", 
+                  chat.isFinalized && "opacity-75"
+                )}>
                   <CardContent className="p-4 sm:p-6 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-4 flex-1 min-w-0">
                       <div className="relative shrink-0">
                         <div className="w-12 h-12 sm:w-16 sm:h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary font-bold text-lg sm:text-2xl">
                           {otherUserName.charAt(0).toUpperCase()}
                         </div>
-                        {isUnread && <div className="absolute -top-1 -start-1 w-4 h-4 bg-primary rounded-full border-2 border-white animate-pulse" />}
+                        {isUnread && <div className="absolute -top-1 -start-1 w-4 h-4 bg-primary rounded-full border-2 border-card" />}
                       </div>
                       <div className="flex-1 min-w-0 text-start">
                         <div className="flex items-center justify-between mb-0.5">
@@ -195,6 +218,7 @@ export default function ChatListPage() {
                           </span>
                         </div>
                         <p className="text-xs sm:text-sm truncate font-semibold text-foreground/80">{chat.listingTitle}</p>
+                        <p className="text-[10px] text-muted-foreground truncate opacity-70 mt-1">{chat.lastMessageText}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all shrink-0">
@@ -214,7 +238,14 @@ export default function ChatListPage() {
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl rounded-2xl p-0 overflow-hidden border-none shadow-2xl"><DialogHeader className="p-6 pb-2"><DialogTitle className="text-2xl font-bold">{t('listing_details')}</DialogTitle></DialogHeader><div className="px-6 pb-8 max-h-[70vh] overflow-y-auto">{selectedListing && <ListingDetailView listing={selectedListing} />}</div></DialogContent>
+        <DialogContent className="max-w-2xl rounded-2xl p-0 overflow-hidden border-none shadow-2xl">
+          <DialogHeader className="p-6 pb-2">
+            <DialogTitle className="text-2xl font-bold">{t('listing_details')}</DialogTitle>
+          </DialogHeader>
+          <div className="px-6 pb-8 max-h-[70vh] overflow-y-auto">
+            {selectedListing && <ListingDetailView listing={selectedListing} />}
+          </div>
+        </DialogContent>
       </Dialog>
     </div>
   );
