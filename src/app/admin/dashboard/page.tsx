@@ -4,7 +4,8 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { db, auth } from '@/lib/firebase';
-import { collection, getDocs, doc, getDoc, deleteDoc, updateDoc, addDoc, onSnapshot, query, limit } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, updateDoc, addDoc, onSnapshot, query, limit } from 'firebase/firestore';
+import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -74,7 +75,6 @@ export default function AdminDashboard() {
   const [subscriptionPackages, setSubscriptionPackages] = useState<SubscriptionPackage[]>([]);
   const [revenueHistory, setRevenueHistory] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [processingAction, setProcessingAction] = useState<string | null>(null);
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isPackageDialogOpen, setIsPackageDialogOpen] = useState(false);
@@ -144,14 +144,26 @@ export default function AdminDashboard() {
     });
   };
 
-  const handleDelete = async (coll: string, id: string, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
+  const handleDelete = (coll: string, id: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (!confirm(t('confirm_delete'))) return;
+    
     try {
-      await deleteDoc(doc(db, coll, id));
+      const docRef = doc(db, coll, id);
+      deleteDocumentNonBlocking(docRef);
+      
+      // Optimistic state updates
+      if (coll === 'reports') setReports(prev => prev.filter(item => item.id !== id));
+      if (coll === 'listings') setListings(prev => prev.filter(item => item.id !== id));
+      if (coll === 'subscriptionPackages') setSubscriptionPackages(prev => prev.filter(item => item.id !== id));
+      
       toast({ title: t('success') });
-      fetchData();
-    } catch (err) { toast({ variant: 'destructive', title: t('failed') }); }
+    } catch (err) { 
+      toast({ variant: 'destructive', title: t('failed') }); 
+    }
   };
 
   const handleToggleBan = async (userId: string, currentStatus: boolean, e?: React.MouseEvent) => {
@@ -211,7 +223,7 @@ export default function AdminDashboard() {
               const targetUser = users.find(u => u.id === r.targetUserId);
               return (
                 <Card key={r.id} className="rounded-2xl p-6 space-y-4 text-start">
-                  <div className="flex justify-between items-start"><div className="flex gap-2"><Badge variant={r.status === 'pending' ? 'destructive' : 'secondary'}>{r.status?.toUpperCase() || 'PENDING'}</Badge><Badge variant="outline" className="text-primary border-primary/20"><ShieldAlert size={10} className="mr-1" /> {t('admin_only_view')}</Badge></div><div className="flex gap-2"><Button variant="ghost" size="icon" onClick={() => handleDelete('reports', r.id)}><Trash2 size={16} /></Button><Button size="sm" className="rounded-xl gap-2 font-bold" onClick={() => updateDoc(doc(db, 'reports', r.id), { status: 'resolved' })}><CheckCircle2 size={14} /> {t('resolve')}</Button></div></div>
+                  <div className="flex justify-between items-start"><div className="flex gap-2"><Badge variant={r.status === 'pending' ? 'destructive' : 'secondary'}>{r.status?.toUpperCase() || 'PENDING'}</Badge><Badge variant="outline" className="text-primary border-primary/20"><ShieldAlert size={10} className="mr-1" /> {t('admin_only_view')}</Badge></div><div className="flex gap-2"><Button variant="ghost" size="icon" onClick={(e) => handleDelete('reports', r.id, e)}><Trash2 size={16} /></Button><Button size="sm" className="rounded-xl gap-2 font-bold" onClick={() => updateDoc(doc(db, 'reports', r.id), { status: 'resolved' })}><CheckCircle2 size={14} /> {t('resolve')}</Button></div></div>
                   <div className="space-y-2"><p className="font-black text-lg flex items-center gap-2"><Flag size={20} className="text-destructive" /> {r.type?.toUpperCase()}</p><p className="text-sm bg-muted/50 p-4 rounded-xl italic leading-relaxed border-l-4 border-destructive/30">"{r.reason}"</p></div>
                   <div className="flex gap-2">{r.conversationId && <Button variant="outline" size="sm" className="rounded-xl" onClick={() => router.push(`/chat/${r.conversationId}`)}><MessageSquare size={14} className="mr-2" /> {t('view_conversation')}</Button>}{r.targetUserId && <><Button variant="outline" size="sm" className="rounded-xl" onClick={() => router.push(`/profile/${r.targetUserId}`)}><UserIcon size={14} className="mr-2" /> {t('view_profile')}</Button><Button variant={targetUser?.isBanned ? "secondary" : "destructive"} size="sm" className="rounded-xl" onClick={() => handleToggleBan(r.targetUserId, !!targetUser?.isBanned)}>{targetUser?.isBanned ? <UserCheck size={14} className="mr-2" /> : <Ban size={14} className="mr-2" />}{targetUser?.isBanned ? t('unban_user') : t('ban_permanently')}</Button></>}</div>
                 </Card>
@@ -253,7 +265,7 @@ export default function AdminDashboard() {
                     <p className="text-xs text-muted-foreground font-bold">{pkg.credits} {t('currency_da')} • {pkg.price} {t('price_da')}</p>
                   </div>
                 </div>
-                <div className="flex gap-2"><Button variant="ghost" size="icon" onClick={() => { setCurrentPackage(pkg); setIsPackageDialogOpen(true); }}><Pencil size={18} /></Button><Button variant="ghost" size="icon" onClick={() => handleDelete('subscriptionPackages', pkg.id)} className="text-destructive"><Trash2 size={18} /></Button></div>
+                <div className="flex gap-2"><Button variant="ghost" size="icon" onClick={() => { setCurrentPackage(pkg); setIsPackageDialogOpen(true); }}><Pencil size={18} /></Button><Button variant="ghost" size="icon" onClick={(e) => handleDelete('subscriptionPackages', pkg.id, e)} className="text-destructive"><Trash2 size={18} /></Button></div>
               </Card>
             ))}
           </TabsContent>
