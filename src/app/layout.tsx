@@ -12,8 +12,8 @@ export const metadata: Metadata = {
   title: 'GetMeDZ - P2P Marketplace for Travelers & Buyers',
   description: 'Connect with travelers and get items from abroad to Algeria.',
   icons: {
-    // استخدام logo.jpg كأيقونة للمتصفح (Favicon)
-    icon: '/logo.jpg',
+    // استخدام logo.png كأيقونة للمتصفح (Favicon)
+    icon: '/logo.png',
   },
 };
 
