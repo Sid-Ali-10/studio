@@ -74,7 +74,7 @@ export const translations: Translations = {
   create_listing_title: { en: "Create Listing", ar: "إنشاء إعلان", fr: "Créer une annonce" },
   create_listing_desc: { en: "Reach out to our community", ar: "تواصل مع مجتمعنا", fr: "Contactez notre communauté" },
   edit_post_title: { en: "Edit Post", ar: "تعديل المنشور", fr: "Modifier la publication" },
-  edit_post_desc_traveler: { en: "Update your traveler details.", ar: "تحديث تفاصيل المسافر الخاصة بك.", fr: "Metteز à jour vos informations de voyageur." },
+  edit_post_desc_traveler: { en: "Update your traveler details.", ar: "تحديث تفاصيل المسافر الخاصة بك.", fr: "Metteز à jour vos informations de voyageور." },
   edit_post_desc_buyer: { en: "Update your buyer details.", ar: "تحديث تفاصيل المشتري الخاصة بك.", fr: "Mettez à jour vos informations d'acheteur." },
   tab_traveler: { en: "Traveler", ar: "مسافر", fr: "Voyageur" },
   tab_buyer: { en: "Buyer", ar: "مشتري", fr: "Acheteur" },
@@ -185,6 +185,9 @@ export const translations: Translations = {
   insert_link_desc: { en: "Paste a direct link to an image, video, or YouTube video.", ar: "ألحق رابطاً مباشراً لصورة أو فيديو أو يوتيوب.", fr: "Collez un lien direct vers une image, une vidéo ou YouTube." },
   link_placeholder: { en: "https://...", ar: "رابط...", fr: "https://..." },
   add_link: { en: "Add Link", ar: "إضافة الرابط", fr: "Ajouter" },
+  react: { en: "React", ar: "تفاعل", fr: "Réagir" },
+  edited: { en: "edited", ar: "معدل", fr: "modifié" },
+  you: { en: "You", ar: "أنت", fr: "Vous" },
   
   // Filters
   search_placeholder: { en: "Search by title or description...", ar: "البحث عن طريق العنوان أو الوصف...", fr: "Recherche par titre ou description..." },

@@ -20,7 +20,8 @@ import {
   arrayRemove,
   orderBy,
   where,
-  increment
+  increment,
+  deleteField
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useAuth } from "@/context/AuthContext";
@@ -46,7 +47,8 @@ import {
   Ban,
   ShieldCheck,
   Flag,
-  Link2
+  Link2,
+  Smile
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -66,6 +68,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -88,6 +93,7 @@ interface Message {
     text: string;
     senderName: string;
   };
+  reactions?: Record<string, string[]>; // emoji: [uids]
 }
 
 interface ConversationData {
@@ -105,6 +111,8 @@ interface ConversationData {
   offeredPrice?: number;
   offerSenderId?: string;
 }
+
+const COMMON_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
 
 export default function ChatRoomPage(props: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(props.params);
@@ -179,12 +187,10 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
             setConvData(data);
             setParticipants(data.participantIds);
             
-            // Mark as read if user is a participant and has unread messages
             if (data.unreadBy?.includes(user.uid) && data.participantIds.includes(user.uid)) {
               updateDoc(convRef, { unreadBy: arrayRemove(user.uid) });
             }
           } else {
-            // If the document is actually deleted from DB
             router.push(profile?.isAdmin ? "/admin/dashboard" : "/chat");
           }
         }, (err) => {
@@ -240,6 +246,30 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
       unsubscribeMessages?.();
     };
   }, [id, user, router, t]);
+
+  const handleToggleReaction = async (message: Message, emoji: string) => {
+    if (isAdminView || !activeConvId || !user) return;
+    try {
+      const msgRef = doc(db, "conversations", activeConvId, "messages", message.id);
+      const currentReactions = message.reactions || {};
+      const uids = currentReactions[emoji] || [];
+      
+      const newUids = uids.includes(user.uid) 
+        ? uids.filter(uid => uid !== user.uid)
+        : [...uids, user.uid];
+      
+      const updatedReactions = { ...currentReactions };
+      if (newUids.length > 0) {
+        updatedReactions[emoji] = newUids;
+      } else {
+        delete updatedReactions[emoji];
+      }
+
+      await updateDoc(msgRef, { reactions: updatedReactions });
+    } catch (err) {
+      toast({ variant: "destructive", title: t('error') });
+    }
+  };
 
   const handleMakeOffer = async () => {
     if (!offerPrice || isNaN(Number(offerPrice)) || !activeConvId) return;
@@ -301,7 +331,6 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
       setReplyingTo(null);
       await addDoc(collection(db, "conversations", activeConvId, "messages"), msgData);
 
-      // Create a cleaner preview for the list view
       const isUrl = /^(https?:\/\/[^\s]+)$/.test(text.trim());
       let previewText = text;
       if (imageUrl) previewText = "📷 Image";
@@ -312,7 +341,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
         lastMessageTimestamp: serverTimestamp(),
         updatedAt: serverTimestamp(),
         unreadBy: arrayUnion(otherUserId),
-        deletedBy: [] // Reset deletedBy when a new message arrives
+        deletedBy: []
       });
     } catch (err) {
       toast({ variant: "destructive", title: t('failed') });
@@ -340,7 +369,6 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
 
   const handleDeleteMessage = async (msg: Message) => {
     if (!activeConvId || !user) return;
-    // Security check: Only owner or admin can delete
     if (msg.senderId !== user.uid && !profile?.isAdmin) {
       toast({ variant: "destructive", title: t('error'), description: "Access Denied" });
       return;
@@ -362,7 +390,6 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
       const convRef = doc(db, "conversations", activeConvId);
 
       if (profile?.isAdmin) {
-        // Admin deletes everything permanently
         const batch = writeBatch(db);
         const messagesSnap = await getDocs(collection(db, "conversations", activeConvId, "messages"));
         messagesSnap.docs.forEach(doc => batch.delete(doc.ref));
@@ -370,7 +397,6 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
         await batch.commit();
         router.push("/admin/dashboard");
       } else {
-        // Participant just hides the conversation for themselves
         await updateDoc(convRef, { 
           deletedBy: arrayUnion(user.uid) 
         });
@@ -597,11 +623,12 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
         {messages.map((msg) => {
           const isOwn = msg.senderId === user?.uid;
           const canDelete = isOwn || profile?.isAdmin;
+          const reactions = msg.reactions || {};
 
           return (
             <div key={msg.id} className={cn("flex flex-col group", isOwn ? "items-end" : "items-start")}>
               <div className={cn("flex items-end gap-1 w-full relative", isOwn ? "flex-row-reverse" : "flex-row")}>
-                <div className={cn("max-w-[85%] sm:max-w-[75%] p-3 rounded-2xl relative break-words whitespace-pre-wrap shadow-sm", isOwn ? "bg-primary text-white rounded-tr-none" : "bg-card text-foreground rounded-tl-none border")}>
+                <div className={cn("max-w-[85%] sm:max-w-[75%] p-3 rounded-2xl relative break-words shadow-sm", isOwn ? "bg-primary text-white rounded-tr-none" : "bg-card text-foreground rounded-tl-none border")}>
                   {msg.replyTo && (
                     <div className={cn("text-[10px] mb-2 p-2 rounded-lg border-s-4 bg-black/5 flex flex-col", isOwn ? "border-white/40" : "border-primary/40")}>
                       <span className="font-bold opacity-70">{msg.replyTo.senderName}</span>
@@ -610,14 +637,54 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
                   )}
                   {msg.imageUrl && <img src={msg.imageUrl} alt="Chat" className="rounded-lg mb-2 max-w-full h-auto" />}
                   {msg.messageText && <div className="text-sm">{renderContent(msg.messageText, isOwn)}</div>}
-                  <span className={cn("text-[9px] mt-1 block opacity-60", isOwn ? "text-right" : "text-left")}>{msg.timestamp ? format(msg.timestamp.toDate(), "HH:mm", { locale: dateLocale }) : ""}</span>
+                  
+                  <div className={cn("flex items-center justify-between mt-1", isOwn ? "flex-row-reverse" : "flex-row")}>
+                    <span className="text-[9px] opacity-60">{msg.timestamp ? format(msg.timestamp.toDate(), "HH:mm", { locale: dateLocale }) : ""}</span>
+                    {msg.isEdited && <span className="text-[8px] opacity-40 italic">{t('edited')}</span>}
+                  </div>
+
+                  {Object.keys(reactions).length > 0 && (
+                    <div className={cn("absolute -bottom-3 flex flex-wrap gap-1", isOwn ? "right-0" : "left-0")}>
+                      {Object.entries(reactions).map(([emoji, uids]) => (
+                        <button 
+                          key={emoji} 
+                          onClick={() => handleToggleReaction(msg, emoji)}
+                          className={cn(
+                            "flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] border shadow-sm transition-all",
+                            uids.includes(user?.uid || "") ? "bg-primary/10 border-primary/30 text-primary scale-110 z-10" : "bg-card border-muted-foreground/20 text-muted-foreground"
+                          )}
+                        >
+                          <span>{emoji}</span>
+                          <span className="font-bold">{uids.length}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
+
                 {!isAdminView && (
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-all"><MoreHorizontal size={14} /></Button></DropdownMenuTrigger>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-all"><MoreHorizontal size={14} /></Button>
+                    </DropdownMenuTrigger>
                     <DropdownMenuContent className="rounded-xl p-2 w-48 shadow-xl border-none">
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger className="gap-2 rounded-lg"><Smile size={14} /> {t('react')}</DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="rounded-xl p-1 flex gap-1">
+                          {COMMON_EMOJIS.map(emoji => (
+                            <button 
+                              key={emoji} 
+                              className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded-lg transition-all active:scale-125"
+                              onClick={() => handleToggleReaction(msg, emoji)}
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
                       <DropdownMenuItem className="gap-2 rounded-lg" onClick={() => setReplyingTo(msg)}><Reply size={14} /> {t('reply')}</DropdownMenuItem>
                       {isOwn && <DropdownMenuItem className="gap-2 rounded-lg" onClick={() => handleEditInit(msg)}><Pencil size={14} /> {t('edit')}</DropdownMenuItem>}
+                      <DropdownMenuSeparator />
                       {canDelete && (
                         <DropdownMenuItem className="gap-2 text-destructive rounded-lg" onClick={() => handleDeleteMessage(msg)}><Trash2 size={14} /> {t('delete')}</DropdownMenuItem>
                       )}
