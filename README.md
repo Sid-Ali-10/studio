@@ -13,12 +13,22 @@ The app works like **Binance P2P**, but for physical goods and parcels. The plat
 2. **Secure In‑App Chat**  
    - Private chat for price negotiation, product details, and delivery location agreement.  
    - No external contact info shared unless both parties agree.
+   - **New:** Support for replies and emoji reactions.
 
 3. **User Profile & Ratings**  
    - Shows name, star rating, number of successful deals, and verification badge.
 
 4. **Sign‑in**  
-   - Only via **Google** or **Apple** (no email/password).
+   - Email/Password authentication with verification.
+
+## Technical Stack
+
+- **Programming Languages:** TypeScript, TSX, CSS (Tailwind).
+- **Frameworks:** Next.js 15 (App Router), React 19.
+- **Styling:** Tailwind CSS, ShadCN UI.
+- **Backend:** Firebase (Authentication, Firestore, Storage).
+- **AI Integration:** Genkit with Gemini 2.5 Flash.
+- **Icons:** Lucide React.
 
 ## Goal
 
