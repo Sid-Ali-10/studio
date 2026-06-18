@@ -338,10 +338,16 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
     }
   };
 
-  const handleDeleteMessage = async (messageId: string) => {
-    if (!activeConvId) return;
+  const handleDeleteMessage = async (msg: Message) => {
+    if (!activeConvId || !user) return;
+    // Security check: Only owner or admin can delete
+    if (msg.senderId !== user.uid && !profile?.isAdmin) {
+      toast({ variant: "destructive", title: t('error'), description: "Access Denied" });
+      return;
+    }
+
     try {
-      await deleteDoc(doc(db, "conversations", activeConvId, "messages", messageId));
+      await deleteDoc(doc(db, "conversations", activeConvId, "messages", msg.id));
       toast({ title: t('msg_deleted') });
     } catch (err) {
       toast({ variant: "destructive", title: t('failed') });
@@ -590,10 +596,18 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
       <div className="flex-1 overflow-y-auto py-4 space-y-4 px-1">
         {messages.map((msg) => {
           const isOwn = msg.senderId === user?.uid;
+          const canDelete = isOwn || profile?.isAdmin;
+
           return (
             <div key={msg.id} className={cn("flex flex-col group", isOwn ? "items-end" : "items-start")}>
               <div className={cn("flex items-end gap-1 w-full relative", isOwn ? "flex-row-reverse" : "flex-row")}>
                 <div className={cn("max-w-[85%] sm:max-w-[75%] p-3 rounded-2xl relative break-words whitespace-pre-wrap shadow-sm", isOwn ? "bg-primary text-white rounded-tr-none" : "bg-card text-foreground rounded-tl-none border")}>
+                  {msg.replyTo && (
+                    <div className={cn("text-[10px] mb-2 p-2 rounded-lg border-s-4 bg-black/5 flex flex-col", isOwn ? "border-white/40" : "border-primary/40")}>
+                      <span className="font-bold opacity-70">{msg.replyTo.senderName}</span>
+                      <span className="truncate opacity-80">{msg.replyTo.text}</span>
+                    </div>
+                  )}
                   {msg.imageUrl && <img src={msg.imageUrl} alt="Chat" className="rounded-lg mb-2 max-w-full h-auto" />}
                   {msg.messageText && <div className="text-sm">{renderContent(msg.messageText, isOwn)}</div>}
                   <span className={cn("text-[9px] mt-1 block opacity-60", isOwn ? "text-right" : "text-left")}>{msg.timestamp ? format(msg.timestamp.toDate(), "HH:mm", { locale: dateLocale }) : ""}</span>
@@ -604,7 +618,9 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
                     <DropdownMenuContent className="rounded-xl p-2 w-48 shadow-xl border-none">
                       <DropdownMenuItem className="gap-2 rounded-lg" onClick={() => setReplyingTo(msg)}><Reply size={14} /> {t('reply')}</DropdownMenuItem>
                       {isOwn && <DropdownMenuItem className="gap-2 rounded-lg" onClick={() => handleEditInit(msg)}><Pencil size={14} /> {t('edit')}</DropdownMenuItem>}
-                      <DropdownMenuItem className="gap-2 text-destructive rounded-lg" onClick={() => handleDeleteMessage(msg.id)}><Trash2 size={14} /> {t('delete')}</DropdownMenuItem>
+                      {canDelete && (
+                        <DropdownMenuItem className="gap-2 text-destructive rounded-lg" onClick={() => handleDeleteMessage(msg)}><Trash2 size={14} /> {t('delete')}</DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
@@ -616,6 +632,15 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
       </div>
 
       <div className={cn("pt-4 border-t space-y-2", isAdminView && "opacity-50 pointer-events-none")}>
+        {replyingTo && (
+          <div className="mx-2 p-3 bg-muted/50 rounded-xl flex items-center justify-between border-s-4 border-primary animate-in slide-in-from-bottom-2">
+            <div className="flex flex-col min-w-0">
+              <span className="text-[10px] font-bold text-primary">{t('replying_to')} {replyingTo.senderId === user?.uid ? t('you') : (otherUser?.username || "User")}</span>
+              <span className="text-xs truncate text-muted-foreground">{replyingTo.messageText || "Image"}</span>
+            </div>
+            <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => setReplyingTo(null)}><X size={14} /></Button>
+          </div>
+        )}
         <div className="flex items-center gap-2">
           <div className="flex gap-1 shrink-0">
             <input type="file" id="image-upload" className="hidden" accept="image/*" disabled={uploading || isAdminView} onChange={handleImageUpload} />
