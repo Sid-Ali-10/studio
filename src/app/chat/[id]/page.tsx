@@ -369,6 +369,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
 
   const handleDeleteMessage = async (msg: Message) => {
     if (!activeConvId || !user) return;
+    // Strict check: only sender or admin can delete
     if (msg.senderId !== user.uid && !profile?.isAdmin) {
       toast({ variant: "destructive", title: t('error'), description: "Access Denied" });
       return;
@@ -621,8 +622,8 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
 
       <div className="flex-1 overflow-y-auto py-4 space-y-4 px-1">
         {messages.map((msg) => {
-          const isOwn = msg.senderId === user?.uid;
-          const canDelete = isOwn || profile?.isAdmin;
+          const isOwn = !!user && msg.senderId === user.uid;
+          const canDelete = isOwn || profile?.isAdmin === true;
           const reactions = msg.reactions || {};
 
           return (
@@ -684,9 +685,12 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
                       </DropdownMenuSub>
                       <DropdownMenuItem className="gap-2 rounded-lg" onClick={() => setReplyingTo(msg)}><Reply size={14} /> {t('reply')}</DropdownMenuItem>
                       {isOwn && <DropdownMenuItem className="gap-2 rounded-lg" onClick={() => handleEditInit(msg)}><Pencil size={14} /> {t('edit')}</DropdownMenuItem>}
-                      <DropdownMenuSeparator />
+                      
                       {canDelete && (
-                        <DropdownMenuItem className="gap-2 text-destructive rounded-lg" onClick={() => handleDeleteMessage(msg)}><Trash2 size={14} /> {t('delete')}</DropdownMenuItem>
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="gap-2 text-destructive rounded-lg" onClick={() => handleDeleteMessage(msg)}><Trash2 size={14} /> {t('delete')}</DropdownMenuItem>
+                        </>
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>
