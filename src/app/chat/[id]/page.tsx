@@ -149,7 +149,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dateLocale = language === 'ar' ? arSA : language === 'fr' ? fr : enUS;
 
-  const isAdminView = profile?.isAdmin && !participants.includes(user?.uid || "");
+  const isAdminView = profile?.isAdmin && participants.length > 0 && !participants.includes(user?.uid || "");
   const isLister = user?.uid === listing?.listerId;
   const hasUserRated = isLister ? convData?.travelerRated : convData?.buyerRated;
 
@@ -161,7 +161,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
     scrollToBottom();
   }, [messages]);
 
-  // Auto-resize textarea logic (max 7 lines ~ 160px)
+  // Auto-resize textarea logic
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = '44px';
@@ -197,10 +197,18 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
               updateDoc(convRef, { unreadBy: arrayRemove(user.uid) });
             }
           } else {
-            router.push(profile?.isAdmin ? "/admin/dashboard" : "/chat");
+            // Document might be deleted or not yet created. 
+            // Only redirect if we were previously loading or had data.
+            if (!loading) {
+              router.push(profile?.isAdmin ? "/admin/dashboard" : "/chat");
+            }
           }
         }, (err) => {
-          if (err.code !== 'permission-denied') console.error("Chat listener error:", err);
+          console.error("Chat listener error:", err);
+          if (isMounted) {
+             setError(err.code === 'permission-denied' ? t('access_restricted') : t('error'));
+             setLoading(false);
+          }
         });
 
         const convSnap = await getDoc(convRef);
@@ -228,13 +236,18 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
             setMessages(msgs);
             setLoading(false);
           }, (err) => {
-            if (err.code !== 'permission-denied') console.error("Messages listener error:", err);
-            setLoading(false);
+            console.error("Messages listener error:", err);
+            if (isMounted) setLoading(false);
           });
         } else {
           if (isMounted) {
-            setError(t('conv_not_found'));
-            setLoading(false);
+            // Keep loading for a moment in case it's a race condition
+            setTimeout(() => {
+               if (isMounted && !convData) {
+                 setError(t('conv_not_found'));
+                 setLoading(false);
+               }
+            }, 2000);
           }
         }
       } catch (err) {
@@ -251,7 +264,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
       unsubscribeConv?.();
       unsubscribeMessages?.();
     };
-  }, [id, user, router, t]);
+  }, [id, user, router, t, loading, convData]);
 
   const handleToggleReaction = async (message: Message, emoji: string) => {
     if (isAdminView || !activeConvId || !user) return;
@@ -272,34 +285,6 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
       }
 
       await updateDoc(msgRef, { reactions: updatedReactions });
-    } catch (err) {
-      toast({ variant: "destructive", title: t('error') });
-    }
-  };
-
-  const handleMakeOffer = async () => {
-    if (!offerPrice || isNaN(Number(offerPrice)) || !activeConvId) return;
-    try {
-      await updateDoc(doc(db, "conversations", activeConvId), {
-        offeredPrice: Number(offerPrice),
-        offerSenderId: user?.uid,
-        updatedAt: serverTimestamp()
-      });
-      setIsOfferDialogOpen(false);
-      setOfferPrice("");
-      toast({ title: t('offer_sent') });
-    } catch (err) {
-      toast({ variant: "destructive", title: t('offer_failed') });
-    }
-  };
-
-  const handleRespondToOffer = async (accepted: boolean) => {
-    if (!activeConvId || !convData) return;
-    try {
-      const updates: any = { offeredPrice: null, offerSenderId: null, updatedAt: serverTimestamp() };
-      if (accepted) updates.agreedPrice = convData.offeredPrice;
-      await updateDoc(doc(db, "conversations", activeConvId), updates);
-      toast({ title: accepted ? t('offer_accepted') : t('offer_rejected') });
     } catch (err) {
       toast({ variant: "destructive", title: t('error') });
     }
@@ -327,7 +312,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
       msgData.replyTo = {
         id: replyingTo.id,
         text: replyingTo.messageText || "Image",
-        senderName: replyingTo.senderId === user.uid ? (language === 'en' ? "You" : language === 'ar' ? "أنت" : "Vous") : (otherUser?.username || "User")
+        senderName: replyingTo.senderId === user.uid ? t('you') : (otherUser?.username || "User")
       };
     }
 
@@ -347,17 +332,11 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
         lastMessageTimestamp: serverTimestamp(),
         updatedAt: serverTimestamp(),
         unreadBy: arrayUnion(otherUserId),
-        deletedBy: []
+        deletedBy: [] // Resurface for everyone
       });
     } catch (err) {
       toast({ variant: "destructive", title: t('failed') });
     }
-  };
-
-  const handleEditInit = (msg: Message) => {
-    if (isAdminView) return;
-    setEditingMessage(msg);
-    setNewMessage(msg.messageText);
   };
 
   const handleSaveEdit = async () => {
@@ -375,10 +354,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
 
   const handleDeleteMessage = async (msg: Message) => {
     if (!activeConvId || !user) return;
-    if (msg.senderId !== user.uid && !profile?.isAdmin) {
-      toast({ variant: "destructive", title: t('error'), description: "Access Denied" });
-      return;
-    }
+    if (msg.senderId !== user.uid && !profile?.isAdmin) return;
 
     try {
       await deleteDoc(doc(db, "conversations", activeConvId, "messages", msg.id));
@@ -415,128 +391,15 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
     }
   };
 
-  const handleRateDeal = async () => {
-    if (isAdminView || !activeConvId || !user || !convData || !listing) return;
-    
-    let travelerUid = listing.type === 'traveler' ? listing.listerId : (participants.find(p => p !== listing.listerId) || "");
-    if (!travelerUid) return;
-
-    const isOtherPartyRated = isLister ? convData.buyerRated : convData.travelerRated;
-    const isFinalizingNow = !!isOtherPartyRated;
-
-    if (isFinalizingNow) {
-      const travelerSnap = await getDoc(doc(db, "userProfiles", travelerUid));
-      if (travelerSnap.exists() && (travelerSnap.data().walletBalance || 0) < 1) {
-        toast({ variant: "destructive", title: t('insufficient_balance') });
-        return;
-      }
-    }
-
-    setRatingLoading(true);
-    try {
-      const batch = writeBatch(db);
-      const convRef = doc(db, "conversations", activeConvId);
-      const updateObj: any = isLister ? { travelerRated: true } : { buyerRated: true };
-      batch.update(convRef, { ...updateObj, updatedAt: serverTimestamp() });
-
-      const ratingRef = doc(collection(db, "ratings"));
-      batch.set(ratingRef, { raterId: user.uid, ratedUserId: otherUser?.id, listingId: listing.id, stars: ratingStars, createdAt: serverTimestamp() });
-
-      if (isFinalizingNow && !convData.isFinalized) {
-        const travelerRef = doc(db, "userProfiles", travelerUid);
-        batch.update(travelerRef, { walletBalance: increment(-1), successfulDealsCount: increment(1), updatedAt: serverTimestamp() });
-
-        const adminsSnap = await getDocs(query(collection(db, "userProfiles"), where("isAdmin", "==", true)));
-        if (!adminsSnap.empty) {
-          const adminId = adminsSnap.docs[0].id;
-          batch.update(doc(db, "userProfiles", adminId), { walletBalance: increment(1), updatedAt: serverTimestamp() });
-        }
-        batch.update(convRef, { isFinalized: true });
-      }
-
-      await batch.commit();
-      toast({ title: t('rating_saved') });
-      if (isFinalizingNow) toast({ title: t('deal_finalized') });
-      setIsRatingOpen(false);
-    } catch (err) {
-      toast({ variant: "destructive", title: t('error') });
-    } finally {
-      setRatingLoading(false);
-    }
-  };
-
-  const handleImageUpload = async (customerE: React.ChangeEvent<HTMLInputElement>) => {
-    if (isAdminView) return;
-    const file = customerE.target.files?.[0];
-    if (!file || !user) return;
-    setUploading(true);
-    try {
-      const storageRef = ref(storage, `conversations/${activeConvId}/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
-      handleSendMessage(undefined, url);
-    } catch (err: any) {
-      toast({ variant: "destructive", title: t('failed') });
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleReportIssue = async () => {
-    if (!user || !activeConvId || !reportReason.trim()) return;
-    setIsReporting(true);
-    try {
-      await addDoc(collection(db, "reports"), {
-        reporterId: user.uid,
-        conversationId: activeConvId,
-        targetUserId: otherUser?.id || null,
-        type: reportType,
-        reason: reportReason,
-        status: "pending",
-        createdAt: serverTimestamp()
-      });
-      toast({ title: t('report_sent') });
-      setIsReportOpen(false);
-    } catch (err) {
-      toast({ variant: "destructive", title: t('error') });
-    } finally {
-      setIsReporting(false);
-    }
-  };
-
   const renderContent = (text: string, isOwn: boolean) => {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const isImage = (url: string) => /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(url);
-    const isVideo = (url: string) => /\.(mp4|webm|ogg)(\?.*)?$/i.test(url);
-    const isYoutube = (url: string) => url.includes('youtube.com/watch') || url.includes('youtu.be/');
-
     if (!text) return null;
 
     const parts = text.split(urlRegex);
     return parts.map((part, i) => {
       if (part.match(urlRegex)) {
-        if (isImage(part)) return <img key={i} src={part} alt="Media" className="rounded-lg max-w-full h-auto my-2" />;
-        if (isVideo(part)) return <video key={i} src={part} controls className="rounded-lg max-w-full h-auto my-2" />;
-        if (isYoutube(part)) {
-          const videoId = part.includes('v=') ? part.split('v=')[1].split('&')[0] : part.split('/').pop();
-          return (
-            <div key={i} className="aspect-video w-full my-2">
-              <iframe
-                className="w-full h-full rounded-lg"
-                src={`https://www.youtube.com/embed/${videoId}`}
-                allowFullScreen
-              />
-            </div>
-          );
-        }
         return (
-          <a 
-            key={i} 
-            href={part} 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className={cn("underline break-all", isOwn ? "text-white/90" : "text-primary")}
-          >
+          <a key={i} href={part} target="_blank" rel="noopener noreferrer" className={cn("underline break-all", isOwn ? "text-white/90" : "text-primary")}>
             {part}
           </a>
         );
@@ -546,7 +409,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
   };
 
   if (loading) return <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4"><Loader2 className="animate-spin text-primary" size={40} /><p className="text-muted-foreground">{t('loading_conversations')}</p></div>;
-  if (error) return <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center"><AlertCircle size={40} className="text-destructive" /><h2 className="text-xl font-bold">{t('error')}</h2><p>{error}</p><Button onClick={() => router.push("/chat")}>{t('browse_board')}</Button></div>;
+  if (error) return <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-6"><AlertCircle size={40} className="text-destructive" /><h2 className="text-xl font-bold">{t('error')}</h2><p>{error}</p><Button onClick={() => router.push("/chat")}>{t('browse_board')}</Button></div>;
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] md:h-[calc(100vh-6rem)] max-w-4xl mx-auto">
@@ -569,51 +432,15 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
           <h2 className="font-bold truncate text-sm sm:text-base">{otherUser?.username || "Private User"}</h2>
           <button onClick={() => setIsDetailsOpen(true)} className="text-[10px] sm:text-xs text-muted-foreground truncate italic hover:text-primary flex items-center gap-1">{listing?.title || t('listing_details')} <span className={cn(isRTL ? "mr-1" : "ml-1")}><Info size={10} /></span></button>
         </div>
-        <div className="flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="rounded-full"><MoreHorizontal size={20} /></Button></DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="rounded-xl p-2 w-48 shadow-xl border-none">
-              {!isAdminView && (
-                <DropdownMenuItem className="gap-2 rounded-lg text-destructive" onClick={() => setIsReportOpen(true)}><Flag size={14} /> {t('report_problem')}</DropdownMenuItem>
-              )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="gap-2 rounded-lg text-destructive" onClick={handleDeleteConversation}><Trash2 size={14} /> {t('delete_chat')}</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          {!convData?.isFinalized && !isAdminView && (
-            <div className="flex gap-1">
-              {convData?.agreedPrice ? (
-                <Button variant={hasUserRated ? "outline" : "default"} size="sm" className="rounded-full gap-2 font-bold" onClick={() => !hasUserRated && setIsRatingOpen(true)} disabled={hasUserRated}><CheckCircle2 size={16} /> <span className="hidden sm:inline">{hasUserRated ? t('rated') : t('complete_deal')}</span></Button>
-              ) : (
-                <Button variant="outline" size="sm" className="rounded-full gap-2 font-bold" onClick={() => setIsOfferDialogOpen(true)}><Banknote size={16} /> <span className="hidden sm:inline">{t('price_offer')}</span></Button>
-              )}
-            </div>
-          )}
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="rounded-full"><MoreHorizontal size={20} /></Button></DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="rounded-xl p-2 w-48 shadow-xl border-none">
+            {!isAdminView && <DropdownMenuItem className="gap-2 rounded-lg text-destructive" onClick={() => setIsReportOpen(true)}><Flag size={14} /> {t('report_problem')}</DropdownMenuItem>}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="gap-2 rounded-lg text-destructive" onClick={handleDeleteConversation}><Trash2 size={14} /> {t('delete_chat')}</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
-
-      {convData?.offeredPrice && (
-        <Alert className="mt-4 rounded-2xl bg-primary/5 border-primary/20">
-          <Banknote className="h-4 w-4 text-primary" />
-          <AlertTitle className="font-bold text-primary flex items-center justify-between">{t('new_price_offer')} <span className="text-lg">{convData.offeredPrice} {t('currency_da')}</span></AlertTitle>
-          <AlertDescription className="mt-2 flex items-center justify-between">
-            <span className="text-xs">{convData.offerSenderId === user?.uid ? t('offer_sent_notice') : `${otherUser?.username} ${t('offer_received_notice')}`}</span>
-            {convData.offerSenderId !== user?.uid && !isAdminView && (
-              <div className="flex gap-2">
-                <Button size="sm" className="h-8 rounded-lg gap-1" onClick={() => handleRespondToOffer(true)}><Check size={14} /> {t('accept')}</Button>
-                <Button size="sm" variant="ghost" className="h-8 rounded-lg gap-1 text-destructive" onClick={() => handleRespondToOffer(false)}><Ban size={14} /> {t('reject')}</Button>
-              </div>
-            )}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {convData?.agreedPrice && (
-        <div className="mt-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-between">
-          <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">{t('agreed_price_label')}</span>
-          <span className="font-black text-emerald-700">{convData.agreedPrice} {t('currency_da')}</span>
-        </div>
-      )}
 
       <div className="flex-1 overflow-y-auto py-4 space-y-4 px-1">
         {messages.map((msg) => {
@@ -632,23 +459,14 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
                   )}
                   {msg.imageUrl && <img src={msg.imageUrl} alt="Chat" className="rounded-lg mb-2 max-w-full h-auto" />}
                   {msg.messageText && <div className="text-sm">{renderContent(msg.messageText, isOwn)}</div>}
-                  
                   <div className={cn("flex items-center justify-between mt-1", isOwn ? "flex-row-reverse" : "flex-row")}>
                     <span className="text-[9px] opacity-60">{msg.timestamp ? format(msg.timestamp.toDate(), "HH:mm", { locale: dateLocale }) : ""}</span>
                     {msg.isEdited && <span className="text-[8px] opacity-40 italic">{t('edited')}</span>}
                   </div>
-
                   {Object.keys(reactions).length > 0 && (
                     <div className={cn("absolute -bottom-3 flex flex-wrap gap-1", isOwn ? "right-0" : "left-0")}>
                       {Object.entries(reactions).map(([emoji, uids]) => (
-                        <button 
-                          key={emoji} 
-                          onClick={() => handleToggleReaction(msg, emoji)}
-                          className={cn(
-                            "flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] border shadow-sm transition-all",
-                            uids.includes(user?.uid || "") ? "bg-primary/10 border-primary/30 text-primary scale-110 z-10" : "bg-card border-muted-foreground/20 text-muted-foreground"
-                          )}
-                        >
+                        <button key={emoji} onClick={() => handleToggleReaction(msg, emoji)} className={cn("flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] border shadow-sm transition-all", uids.includes(user?.uid || "") ? "bg-primary/10 border-primary/30 text-primary scale-110 z-10" : "bg-card border-muted-foreground/20 text-muted-foreground")}>
                           <span>{emoji}</span>
                           <span className="font-bold">{uids.length}</span>
                         </button>
@@ -656,33 +474,22 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
                     </div>
                   )}
                 </div>
-
                 {!isAdminView && (
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-all"><MoreHorizontal size={14} /></Button>
-                    </DropdownMenuTrigger>
+                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-all"><MoreHorizontal size={14} /></Button></DropdownMenuTrigger>
                     <DropdownMenuContent className="rounded-xl p-2 w-48 shadow-xl border-none">
                       <DropdownMenuSub>
                         <DropdownMenuSubTrigger className="gap-2 rounded-lg"><Smile size={14} /> {t('react')}</DropdownMenuSubTrigger>
                         <DropdownMenuSubContent className="rounded-xl p-1 flex gap-1">
                           {COMMON_EMOJIS.map(emoji => (
-                            <button 
-                              key={emoji} 
-                              className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded-lg transition-all active:scale-125"
-                              onClick={() => handleToggleReaction(msg, emoji)}
-                            >
-                              {emoji}
-                            </button>
+                            <button key={emoji} className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded-lg transition-all active:scale-125" onClick={() => handleToggleReaction(msg, emoji)}>{emoji}</button>
                           ))}
                         </DropdownMenuSubContent>
                       </DropdownMenuSub>
                       <DropdownMenuItem className="gap-2 rounded-lg" onClick={() => setReplyingTo(msg)}><Reply size={14} /> {t('reply')}</DropdownMenuItem>
-                      {isOwn && <DropdownMenuItem className="gap-2 rounded-lg" onClick={() => handleEditInit(msg)}><Pencil size={14} /> {t('edit')}</DropdownMenuItem>}
-                      
-                      {/* CRITICAL: ONLY SENDER OR ADMIN CAN SEE DELETE */}
-                      {(msg.senderId === user?.uid || profile?.isAdmin) && (
+                      {isOwn && (
                         <>
+                          <DropdownMenuItem className="gap-2 rounded-lg" onClick={() => setEditingMessage(msg)}><Pencil size={14} /> {t('edit')}</DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem className="gap-2 text-destructive rounded-lg" onClick={() => handleDeleteMessage(msg)}><Trash2 size={14} /> {t('delete')}</DropdownMenuItem>
                         </>
@@ -708,10 +515,6 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
           </div>
         )}
         <div className="flex items-end gap-2 bg-muted/30 p-2 rounded-[2rem]">
-          <div className="flex gap-1 shrink-0 pb-1">
-            <input type="file" id="image-upload" className="hidden" accept="image/*" disabled={uploading || isAdminView} onChange={handleImageUpload} />
-            <label htmlFor="image-upload" className="flex items-center justify-center w-10 h-10 rounded-full bg-muted cursor-pointer shrink-0 transition-all active:scale-95">{uploading ? <Loader2 size={20} className="animate-spin" /> : <ImageIcon size={20} />}</label>
-          </div>
           <form className="flex-1 flex items-end gap-2" onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}>
             <Textarea 
               ref={textareaRef}
@@ -729,42 +532,11 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
               rows={1}
             />
             <Button type="submit" size="icon" className="w-10 h-10 rounded-full shadow-md shrink-0 mb-0.5" disabled={(!newMessage.trim() && !uploading) || isAdminView}>
-              {editingMessage ? <CheckCircle2 size={20} /> : <Send size={20} className={cn(isRTL && "rotate-180")} />}
+              <Send size={20} className={cn(isRTL && "rotate-180")} />
             </Button>
           </form>
         </div>
       </div>
-
-      <Dialog open={isReportOpen} onOpenChange={setIsReportOpen}>
-        <DialogContent className="max-w-md rounded-2xl shadow-2xl border-none">
-          <DialogHeader className="text-start"><DialogTitle className="flex items-center gap-2"><Flag className="text-destructive" /> {t('report_issue_title')}</DialogTitle><DialogDescription>{t('report_issue_desc')}</DialogDescription></DialogHeader>
-          <div className="space-y-4 py-4 text-start">
-            <div className="space-y-2"><Label>{t('issue_type')}</Label><Select value={reportType} onValueChange={setReportType}><SelectTrigger className="rounded-xl h-12"><SelectValue placeholder="..." /></SelectTrigger><SelectContent className="rounded-xl"><SelectItem value="fraud">Fraud</SelectItem><SelectItem value="harassment">Harassment</SelectItem><SelectItem value="scam">Scam</SelectItem><SelectItem value="other">Other</SelectItem></SelectContent></Select></div>
-            <div className="space-y-2"><Label>{t('issue_details')}</Label><Textarea placeholder="..." className="rounded-xl min-h-[100px] resize-none text-start" value={reportReason} onChange={(customerE) => setReportReason(customerE.target.value)} /></div>
-          </div>
-          <DialogFooter><Button className="w-full h-12 rounded-xl font-bold bg-destructive hover:bg-destructive/90 shadow-lg" onClick={handleReportIssue} disabled={isReporting || !reportReason.trim()}>{isReporting ? <Loader2 className="animate-spin" /> : t('send_report')}</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isOfferDialogOpen} onOpenChange={setIsOfferDialogOpen}>
-        <DialogContent className="max-w-md rounded-2xl shadow-2xl border-none">
-          <DialogHeader className="text-start"><DialogTitle>{t('make_price_offer')}</DialogTitle><DialogDescription>{t('price_offer_desc')}</DialogDescription></DialogHeader>
-          <div className="space-y-4 py-4"><div className="relative"><Banknote className="absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} /><Input type="number" placeholder={t('budget')} className="ps-10 h-12 rounded-xl text-start" value={offerPrice} onChange={(customerE) => setOfferPrice(customerE.target.value)} /></div></div>
-          <DialogFooter><Button className="w-full h-12 rounded-xl font-bold shadow-lg" onClick={handleMakeOffer}>{t('price_offer')}</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isRatingOpen} onOpenChange={setIsRatingOpen}>
-        <DialogContent className="max-w-md rounded-2xl shadow-2xl border-none">
-          <DialogHeader className="text-start"><DialogTitle>{t('finalize_settle')}</DialogTitle><DialogDescription>{t('finalize_desc')}</DialogDescription></DialogHeader>
-          <div className="flex justify-center gap-2 py-8">{[1, 2, 3, 4, 5].map((s) => (<button key={s} className={cn("transition-all duration-200 hover:scale-110", ratingStars >= s ? "text-yellow-400" : "text-muted")} onClick={() => setRatingStars(s)}><Star size={40} fill={ratingStars >= s ? "currentColor" : "none"} /></button>))}</div>
-          <DialogFooter><Button className="w-full h-12 rounded-xl font-bold shadow-lg" disabled={ratingLoading} onClick={handleRateDeal}>{ratingLoading ? <Loader2 className="animate-spin" /> : t('rate_complete')}</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-        <DialogContent className="max-w-2xl rounded-2xl p-0 overflow-hidden shadow-2xl border-none"><DialogHeader className="p-6 pb-2 text-start"><DialogTitle className="text-2xl font-bold">{t('listing_details')}</DialogTitle></DialogHeader><div className="px-6 pb-8 max-h-[70vh] overflow-y-auto">{listing && <ListingDetailView listing={listing} />}</div></DialogContent>
-      </Dialog>
     </div>
   );
 }

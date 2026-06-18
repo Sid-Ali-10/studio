@@ -10,11 +10,11 @@ import {
   onSnapshot, 
   getDoc, 
   doc, 
-  getDocs, 
+  limit,
 } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
-import { MessageSquare, Loader2, Info, Search, Trash2 } from "lucide-react";
+import { MessageSquare, Loader2, Info, Search, Trash2, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { enUS, arSA, fr } from "date-fns/locale";
@@ -55,6 +55,7 @@ export default function ChatListPage() {
   const { toast } = useToast();
   const [chats, setChats] = useState<ChatRoom[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -65,9 +66,11 @@ export default function ChatListPage() {
     if (!user) return;
 
     let isMounted = true;
+    // CRITICAL: Must include limit(50) to satisfy security rules: request.query.limit <= 50
     const q = query(
       collection(db, "conversations"),
-      where("participantIds", "array-contains", user.uid)
+      where("participantIds", "array-contains", user.uid),
+      limit(50)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -88,20 +91,27 @@ export default function ChatListPage() {
 
       setChats(sortedList);
       setLoading(false);
-    }, (error) => {
-      if (error.code !== 'permission-denied') console.error("Error fetching conversations:", error);
-      if (isMounted) setLoading(false);
+      setError(null);
+    }, (err) => {
+      console.error("Error fetching conversations:", err);
+      if (isMounted) {
+        setLoading(false);
+        if (err.code === 'permission-denied') {
+          setError(t('access_restricted'));
+        } else {
+          setError(t('error'));
+        }
+      }
     });
 
     return () => { isMounted = false; unsubscribe(); };
-  }, [user]);
+  }, [user, t]);
 
   const handleDeleteConversation = async (chatId: string, e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
     if (!user || !confirm(t('confirm_delete'))) return;
     try {
       const chatRef = doc(db, "conversations", chatId);
-      // Soft-delete: add user to deletedBy array
       updateDocumentNonBlocking(chatRef, { 
         deletedBy: arrayUnion(user.uid) 
       });
@@ -134,6 +144,15 @@ export default function ChatListPage() {
   };
 
   if (loading) return <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4"><Loader2 className="animate-spin text-primary" size={40} /><p className="text-muted-foreground">{t('loading_conversations')}</p></div>;
+
+  if (error) return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-6">
+      <AlertCircle size={48} className="text-destructive opacity-50" />
+      <h2 className="text-xl font-bold">{t('error')}</h2>
+      <p className="text-muted-foreground max-w-xs">{error}</p>
+      <Button variant="outline" onClick={() => window.location.reload()} className="rounded-xl">{t('refresh') || 'Retry'}</Button>
+    </div>
+  );
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto px-4 pb-12">
