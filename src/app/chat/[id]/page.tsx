@@ -20,8 +20,7 @@ import {
   arrayRemove,
   orderBy,
   where,
-  increment,
-  deleteField
+  increment
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useAuth } from "@/context/AuthContext";
@@ -147,6 +146,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dateLocale = language === 'ar' ? arSA : language === 'fr' ? fr : enUS;
 
   const isAdminView = profile?.isAdmin && !participants.includes(user?.uid || "");
@@ -160,6 +160,16 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Auto-resize textarea logic (max 7 lines ~ 160px)
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = '44px';
+      const scrollHeight = textareaRef.current.scrollHeight;
+      const finalHeight = Math.min(Math.max(scrollHeight, 44), 160);
+      textareaRef.current.style.height = `${finalHeight}px`;
+    }
+  }, [newMessage]);
 
   useEffect(() => {
     if (!user || !id) return;
@@ -365,7 +375,6 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
 
   const handleDeleteMessage = async (msg: Message) => {
     if (!activeConvId || !user) return;
-    // Strict check: only sender or admin can delete
     if (msg.senderId !== user.uid && !profile?.isAdmin) {
       toast({ variant: "destructive", title: t('error'), description: "Access Denied" });
       return;
@@ -436,9 +445,6 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
       if (isFinalizingNow && !convData.isFinalized) {
         const travelerRef = doc(db, "userProfiles", travelerUid);
         batch.update(travelerRef, { walletBalance: increment(-1), successfulDealsCount: increment(1), updatedAt: serverTimestamp() });
-
-        const travelerTxRef = doc(collection(db, "userProfiles", travelerUid, "transactions"));
-        batch.set(travelerTxRef, { amount: -1, type: "payment", description: t('marketplace_fee') + `: ${listing.title}`, createdAt: serverTimestamp() });
 
         const adminsSnap = await getDocs(query(collection(db, "userProfiles"), where("isAdmin", "==", true)));
         if (!adminsSnap.empty) {
@@ -674,7 +680,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
                       <DropdownMenuItem className="gap-2 rounded-lg" onClick={() => setReplyingTo(msg)}><Reply size={14} /> {t('reply')}</DropdownMenuItem>
                       {isOwn && <DropdownMenuItem className="gap-2 rounded-lg" onClick={() => handleEditInit(msg)}><Pencil size={14} /> {t('edit')}</DropdownMenuItem>}
                       
-                      {/* CRITICAL: ONLY THE SENDER OR ADMIN CAN SEE DELETE */}
+                      {/* CRITICAL: ONLY SENDER OR ADMIN CAN SEE DELETE */}
                       {(msg.senderId === user?.uid || profile?.isAdmin) && (
                         <>
                           <DropdownMenuSeparator />
@@ -701,15 +707,16 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
             <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => setReplyingTo(null)}><X size={14} /></Button>
           </div>
         )}
-        <div className="flex items-start gap-2 bg-muted/30 p-2 rounded-[2rem]">
-          <div className="flex gap-1 shrink-0 pt-1">
+        <div className="flex items-end gap-2 bg-muted/30 p-2 rounded-[2rem]">
+          <div className="flex gap-1 shrink-0 pb-1">
             <input type="file" id="image-upload" className="hidden" accept="image/*" disabled={uploading || isAdminView} onChange={handleImageUpload} />
             <label htmlFor="image-upload" className="flex items-center justify-center w-10 h-10 rounded-full bg-muted cursor-pointer shrink-0 transition-all active:scale-95">{uploading ? <Loader2 size={20} className="animate-spin" /> : <ImageIcon size={20} />}</label>
           </div>
           <form className="flex-1 flex items-end gap-2" onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}>
             <Textarea 
+              ref={textareaRef}
               placeholder={isAdminView ? "Admin: Read-Only" : t('type_message')} 
-              className="flex-1 min-h-[44px] max-h-[120px] rounded-2xl px-5 py-3 bg-transparent border-none text-start resize-none shadow-none focus-visible:ring-0" 
+              className="flex-1 min-h-[44px] max-h-[160px] rounded-2xl px-5 py-3 bg-transparent border-none text-start resize-none shadow-none focus-visible:ring-0 overflow-y-auto" 
               value={newMessage} 
               onChange={(e) => setNewMessage(e.target.value)} 
               disabled={isAdminView}
@@ -719,6 +726,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
                   handleSendMessage();
                 }
               }}
+              rows={1}
             />
             <Button type="submit" size="icon" className="w-10 h-10 rounded-full shadow-md shrink-0 mb-0.5" disabled={(!newMessage.trim() && !uploading) || isAdminView}>
               {editingMessage ? <CheckCircle2 size={20} /> : <Send size={20} className={cn(isRTL && "rotate-180")} />}
@@ -760,4 +768,3 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
     </div>
   );
 }
-
