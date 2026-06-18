@@ -47,7 +47,6 @@ import {
   Ban,
   ShieldCheck,
   Flag,
-  Link2,
   Smile
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -146,9 +145,6 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
   const [isReporting, setIsReporting] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
-  
-  const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
-  const [mediaLink, setMediaLink] = useState("");
   
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
   const dateLocale = language === 'ar' ? arSA : language === 'fr' ? fr : enUS;
@@ -502,13 +498,6 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
     }
   };
 
-  const handleAddLink = () => {
-    if (!mediaLink.trim()) return;
-    handleSendMessage(undefined, undefined, mediaLink);
-    setIsLinkDialogOpen(false);
-    setMediaLink("");
-  };
-
   const renderContent = (text: string, isOwn: boolean) => {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     const isImage = (url: string) => /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(url);
@@ -716,9 +705,6 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
           <div className="flex gap-1 shrink-0">
             <input type="file" id="image-upload" className="hidden" accept="image/*" disabled={uploading || isAdminView} onChange={handleImageUpload} />
             <label htmlFor="image-upload" className="flex items-center justify-center w-11 h-11 rounded-full bg-muted cursor-pointer shrink-0 transition-all active:scale-95">{uploading ? <Loader2 size={20} className="animate-spin" /> : <ImageIcon size={20} />}</label>
-            <Button type="button" variant="ghost" size="icon" className="w-11 h-11 rounded-full bg-muted shrink-0 transition-all active:scale-95" onClick={() => setIsLinkDialogOpen(true)} disabled={isAdminView}>
-              <Link2 size={20} />
-            </Button>
           </div>
           <form className="flex-1 flex gap-2" onSubmit={handleSendMessage}>
             <Input placeholder={isAdminView ? "Admin: Read-Only" : t('type_message')} className="flex-1 h-11 rounded-full px-5 bg-muted border-none text-start" value={newMessage} onChange={(customerE) => setNewMessage(customerE.target.value)} disabled={isAdminView} />
@@ -726,29 +712,6 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
           </form>
         </div>
       </div>
-
-      <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
-        <DialogContent className="max-w-md rounded-2xl shadow-2xl border-none">
-          <DialogHeader className="text-start">
-            <DialogTitle>{t('insert_link_title')}</DialogTitle>
-            <DialogDescription>{t('insert_link_desc')}</DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Input 
-              placeholder={t('link_placeholder')} 
-              className="rounded-xl h-12 text-start" 
-              value={mediaLink} 
-              onChange={(customerE) => setMediaLink(customerE.target.value)}
-              onKeyDown={(customerE) => customerE.key === 'Enter' && handleAddLink()}
-            />
-          </div>
-          <DialogFooter>
-            <Button className="w-full h-12 rounded-xl font-bold" onClick={handleAddLink} disabled={!mediaLink.trim()}>
-              {t('add_link')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={isReportOpen} onOpenChange={setIsReportOpen}>
         <DialogContent className="max-w-md rounded-2xl shadow-2xl border-none">
@@ -783,4 +746,3 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
     </div>
   );
 }
-
