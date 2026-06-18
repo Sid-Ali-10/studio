@@ -701,14 +701,28 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
             <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => setReplyingTo(null)}><X size={14} /></Button>
           </div>
         )}
-        <div className="flex items-center gap-2">
-          <div className="flex gap-1 shrink-0">
+        <div className="flex items-start gap-2 bg-muted/30 p-2 rounded-[2rem]">
+          <div className="flex gap-1 shrink-0 pt-1">
             <input type="file" id="image-upload" className="hidden" accept="image/*" disabled={uploading || isAdminView} onChange={handleImageUpload} />
-            <label htmlFor="image-upload" className="flex items-center justify-center w-11 h-11 rounded-full bg-muted cursor-pointer shrink-0 transition-all active:scale-95">{uploading ? <Loader2 size={20} className="animate-spin" /> : <ImageIcon size={20} />}</label>
+            <label htmlFor="image-upload" className="flex items-center justify-center w-10 h-10 rounded-full bg-muted cursor-pointer shrink-0 transition-all active:scale-95">{uploading ? <Loader2 size={20} className="animate-spin" /> : <ImageIcon size={20} />}</label>
           </div>
-          <form className="flex-1 flex gap-2" onSubmit={handleSendMessage}>
-            <Input placeholder={isAdminView ? "Admin: Read-Only" : t('type_message')} className="flex-1 h-11 rounded-full px-5 bg-muted border-none text-start" value={newMessage} onChange={(customerE) => setNewMessage(customerE.target.value)} disabled={isAdminView} />
-            <Button type="submit" size="icon" className="w-11 h-11 rounded-full shadow-md shrink-0" disabled={(!newMessage.trim() && !uploading) || isAdminView}>{editingMessage ? <CheckCircle2 size={20} /> : <Send size={20} className={cn(isRTL && "rotate-180")} />}</Button>
+          <form className="flex-1 flex items-end gap-2" onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}>
+            <Textarea 
+              placeholder={isAdminView ? "Admin: Read-Only" : t('type_message')} 
+              className="flex-1 min-h-[44px] max-h-[120px] rounded-2xl px-5 py-3 bg-transparent border-none text-start resize-none shadow-none focus-visible:ring-0" 
+              value={newMessage} 
+              onChange={(e) => setNewMessage(e.target.value)} 
+              disabled={isAdminView}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
+            />
+            <Button type="submit" size="icon" className="w-10 h-10 rounded-full shadow-md shrink-0 mb-0.5" disabled={(!newMessage.trim() && !uploading) || isAdminView}>
+              {editingMessage ? <CheckCircle2 size={20} /> : <Send size={20} className={cn(isRTL && "rotate-180")} />}
+            </Button>
           </form>
         </div>
       </div>
@@ -746,3 +760,4 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
     </div>
   );
 }
+
