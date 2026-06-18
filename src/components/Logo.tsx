@@ -4,7 +4,7 @@
 import React from "react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-// استيراد الصورة المحلية كما طلب المستخدم
+// استيراد الصورة المحلية من نفس المجلد
 import logoImg from "./logo.jpg";
 
 interface LogoProps {
@@ -13,12 +13,15 @@ interface LogoProps {
 }
 
 /**
- * GetMeDZ Brand Logo: يستخدم الصورة المحلية logo.jpg
+ * GetMeDZ Brand Logo: يعرض الصورة المحلية مع حواف دائرية ناعمة
  */
 export const Logo = ({ className, size = 40 }: LogoProps) => {
   return (
     <div 
-      className={cn("relative flex items-center justify-center overflow-hidden rounded-xl", className)}
+      className={cn(
+        "relative flex items-center justify-center overflow-hidden rounded-2xl shadow-sm", 
+        className
+      )}
       style={{ width: size, height: size }}
     >
       <Image
@@ -26,7 +29,7 @@ export const Logo = ({ className, size = 40 }: LogoProps) => {
         alt="GetMeDZ Logo"
         width={size}
         height={size}
-        className="object-contain"
+        className="object-cover"
         priority
       />
     </div>
