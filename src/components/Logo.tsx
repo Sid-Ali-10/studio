@@ -13,13 +13,13 @@ interface LogoProps {
 }
 
 /**
- * مكون الشعار: يعرض صورة logo.png مع زوايا دائرية ناعمة (rounded-2xl)
+ * مكون الشعار: يعرض صورة logo.png بشكل دائري كامل (rounded-full)
  */
 export const Logo = ({ className, size = 40 }: LogoProps) => {
   return (
     <div 
       className={cn(
-        "relative flex items-center justify-center overflow-hidden rounded-2xl shadow-sm bg-white", 
+        "relative flex items-center justify-center overflow-hidden rounded-full shadow-md bg-white border border-border", 
         className
       )}
       style={{ width: size, height: size }}
