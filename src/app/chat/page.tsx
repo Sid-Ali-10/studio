@@ -218,7 +218,6 @@ export default function ChatListPage() {
                           </span>
                         </div>
                         <p className="text-xs sm:text-sm truncate font-semibold text-foreground/80">{chat.listingTitle}</p>
-                        <p className="text-[10px] text-muted-foreground truncate opacity-70 mt-1">{chat.lastMessageText}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all shrink-0">

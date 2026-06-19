@@ -35,7 +35,7 @@ import {
   ShieldCheck,
   Flag,
   Smile,
-  Image as ImageIcon,
+  ImageIcon,
   ExternalLink,
   Play,
   FileText
@@ -286,10 +286,12 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
     if (!newMessage.trim() && !customImageUrl) return;
 
     const otherUserId = convData?.participantIds.find(p => p !== user.uid);
+    const finalMessageText = customImageUrl ? (newMessage ? `${newMessage}\n${customImageUrl}` : customImageUrl) : newMessage;
+    
     const msgData: any = {
       conversationId: activeConvId,
       senderId: user.uid,
-      messageText: customImageUrl ? (newMessage ? `${newMessage}\n${customImageUrl}` : customImageUrl) : newMessage,
+      messageText: finalMessageText,
       timestamp: serverTimestamp(),
       participantIds: convData?.participantIds
     };
@@ -311,7 +313,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
       setReplyingTo(null);
       await addDoc(collection(db, "conversations", activeConvId, "messages"), msgData);
       await updateDoc(doc(db, "conversations", activeConvId), {
-        lastMessageText: customImageUrl ? "📷 Media" : newMessage,
+        lastMessageText: finalMessageText,
         lastMessageTimestamp: serverTimestamp(),
         updatedAt: serverTimestamp(),
         unreadBy: arrayUnion(otherUserId),
@@ -534,4 +536,3 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
     </div>
   );
 }
-
