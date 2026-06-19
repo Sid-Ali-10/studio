@@ -36,7 +36,9 @@ import {
   Flag,
   Smile,
   Image as ImageIcon,
-  Link as LinkIcon
+  ExternalLink,
+  Play,
+  FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -56,7 +58,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { type Listing } from "@/components/listings/ListingCard";
 import { ListingDetailView } from "@/components/listings/ListingDetailView";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -86,6 +87,74 @@ interface ConversationData {
 }
 
 const COMMON_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
+
+/**
+ * مكوّن عرض معاينة الروابط داخل الرسالة
+ */
+const LinkPreview = ({ text }: { text: string }) => {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const urls = text.match(urlRegex);
+
+  if (!urls) return null;
+
+  return (
+    <div className="mt-2 space-y-2">
+      {urls.map((url, index) => {
+        // التحقق من روابط اليوتيوب
+        const youtubeMatch = url.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?(.+)/);
+        if (youtubeMatch) {
+          const videoId = youtubeMatch[1].split('&')[0].split('?')[0];
+          return (
+            <div key={index} className="rounded-xl overflow-hidden border bg-black aspect-video relative group">
+              <iframe
+                src={`https://www.youtube.com/embed/${videoId}`}
+                className="w-full h-full"
+                allowFullScreen
+              />
+            </div>
+          );
+        }
+
+        // التحقق من الصور المباشرة
+        if (url.match(/\.(jpeg|jpg|gif|png|webp)$/i)) {
+          return (
+            <div key={index} className="rounded-xl overflow-hidden border bg-muted">
+              <img src={url} alt="Preview" className="max-w-full h-auto object-contain max-h-60 mx-auto" />
+            </div>
+          );
+        }
+
+        // التحقق من الفيديوهات المباشرة
+        if (url.match(/\.(mp4|webm|ogg)$/i)) {
+          return (
+            <div key={index} className="rounded-xl overflow-hidden border bg-black aspect-video">
+              <video src={url} controls className="w-full h-full" />
+            </div>
+          );
+        }
+
+        // رابط عام (Link Card)
+        return (
+          <a 
+            key={index} 
+            href={url} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 p-3 bg-white/10 rounded-xl border border-white/20 hover:bg-white/20 transition-all group"
+          >
+            <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
+              <ExternalLink size={20} className="text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest truncate">Link</p>
+              <p className="text-xs truncate font-medium">{url}</p>
+            </div>
+          </a>
+        );
+      })}
+    </div>
+  );
+};
 
 export default function ChatRoomPage(props: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(props.params);
@@ -220,7 +289,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
     const msgData: any = {
       conversationId: activeConvId,
       senderId: user.uid,
-      messageText: newMessage,
+      messageText: customImageUrl ? (newMessage ? `${newMessage}\n${customImageUrl}` : customImageUrl) : newMessage,
       timestamp: serverTimestamp(),
       participantIds: convData?.participantIds
     };
@@ -242,7 +311,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
       setReplyingTo(null);
       await addDoc(collection(db, "conversations", activeConvId, "messages"), msgData);
       await updateDoc(doc(db, "conversations", activeConvId), {
-        lastMessageText: customImageUrl ? "📷 Image" : newMessage,
+        lastMessageText: customImageUrl ? "📷 Media" : newMessage,
         lastMessageTimestamp: serverTimestamp(),
         updatedAt: serverTimestamp(),
         unreadBy: arrayUnion(otherUserId),
@@ -353,12 +422,11 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
                       <span className="truncate opacity-80">{msg.replyTo.text}</span>
                     </div>
                   )}
-                  {msg.imageUrl && (
-                    <div className="mb-2 rounded-xl overflow-hidden border bg-muted">
-                      <img src={msg.imageUrl} alt="Attached" className="max-w-full h-auto object-contain max-h-60" onError={(e) => (e.currentTarget.style.display = 'none')} />
-                    </div>
-                  )}
-                  <div className="text-sm">{msg.messageText}</div>
+                  
+                  <div className="text-sm whitespace-pre-wrap">{msg.messageText}</div>
+                  
+                  <LinkPreview text={msg.messageText} />
+
                   <div className={cn("flex items-center justify-between mt-1", isOwn ? "flex-row-reverse" : "flex-row")}>
                     <span className="text-[9px] opacity-60">{msg.timestamp ? format(msg.timestamp.toDate(), "HH:mm", { locale: dateLocale }) : ""}</span>
                     {msg.isEdited && <span className="text-[8px] opacity-40 italic">{t('edited')}</span>}
@@ -449,7 +517,12 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
           <div className="space-y-4 py-4 text-start">
             <div className="space-y-2">
               <Label>{t('link_placeholder')}</Label>
-              <Input value={mediaUrlInput} onChange={(e) => setMediaUrlInput(e.target.value)} placeholder="https://..." className="rounded-xl h-12" />
+              <input 
+                value={mediaUrlInput} 
+                onChange={(e) => setMediaUrlInput(e.target.value)} 
+                placeholder="https://..." 
+                className="w-full rounded-xl h-12 px-4 bg-muted border-none outline-none focus:ring-2 focus:ring-primary"
+              />
               <p className="text-[10px] text-muted-foreground">{t('insert_link_desc')}</p>
             </div>
           </div>
@@ -461,3 +534,4 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
     </div>
   );
 }
+
