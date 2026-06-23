@@ -56,6 +56,13 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { type Listing } from "@/components/listings/ListingCard";
 import { ListingDetailView } from "@/components/listings/ListingDetailView";
@@ -152,6 +159,10 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isMediaDialogOpen, setIsMediaDialogOpen] = useState(false);
   const [isFinalizeDialogOpen, setIsFinalizeDialogOpen] = useState(false);
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+  const [reportType, setReportType] = useState<string>("other");
+  const [reportReason, setReportReason] = useState("");
+  const [submittingReport, setSubmittingReport] = useState(false);
   const [ratingStars, setRatingStars] = useState(5);
   const [ratingComment, setRatingComment] = useState("");
   const [finalizing, setFinalizing] = useState(false);
@@ -170,7 +181,6 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
 
   const isAdminView = profile?.isAdmin && convData && !convData.participantIds.includes(user?.uid || "");
 
-  // Determine Roles
   const isUserLister = user?.uid === listing?.listerId;
   const isTraveler = listing?.type === 'traveler' ? isUserLister : !isUserLister;
   const isBuyer = !isTraveler;
@@ -220,7 +230,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
               const otherUserId = data.participantIds.find(p => p !== user.uid);
               if (otherUserId) {
                 const uDoc = await getDoc(doc(db, "userProfiles", otherUserId));
-                if (uDoc.exists()) setOtherUser(uDoc.data());
+                if (uDoc.exists()) setOtherUser({ id: uDoc.id, ...uDoc.data() });
               }
             }
 
@@ -337,21 +347,18 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
           throw new Error("Insufficient balance");
         }
 
-        // 1. Deduct credit from traveler
         transaction.update(travelerRef, {
           walletBalance: increment(-1),
           successfulDealsCount: increment(1),
           updatedAt: serverTimestamp()
         });
 
-        // 2. Mark conversation as finalized
         transaction.update(convRef, {
           isFinalized: true,
           finalizedAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         });
 
-        // 3. Add transaction record
         const txRef = doc(collection(db, "userProfiles", travelerId, "transactions"));
         transaction.set(txRef, {
           amount: -1,
@@ -360,7 +367,6 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
           createdAt: serverTimestamp()
         });
 
-        // 4. Add rating record
         const ratingRef = doc(collection(db, "ratings"));
         transaction.set(ratingRef, {
           listingId: listing?.id,
@@ -372,7 +378,6 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
         });
       });
 
-      // Send System Message
       await addDoc(collection(db, "conversations", activeConvId, "messages"), {
         senderId: "system",
         messageText: "✅ " + t('deal_finalized'),
@@ -386,6 +391,30 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
       console.error("Finalize Error:", err);
     } finally {
       setFinalizing(false);
+    }
+  };
+
+  const handleReport = async () => {
+    if (!user || !activeConvId || !reportReason.trim() || submittingReport) return;
+    setSubmittingReport(true);
+    try {
+      const targetUserId = convData?.participantIds.find(p => p !== user.uid);
+      await addDoc(collection(db, "reports"), {
+        reporterId: user.uid,
+        targetUserId,
+        conversationId: activeConvId,
+        type: reportType,
+        reason: reportReason,
+        status: "pending",
+        createdAt: serverTimestamp(),
+      });
+      toast({ title: t('report_sent') });
+      setIsReportDialogOpen(false);
+      setReportReason("");
+    } catch (err) {
+      toast({ variant: "destructive", title: t('failed') });
+    } finally {
+      setSubmittingReport(false);
     }
   };
 
@@ -468,7 +497,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
           <DropdownMenu>
             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="rounded-full"><MoreHorizontal size={20} /></Button></DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="rounded-xl p-2 w-48 shadow-xl border-none">
-              {!isAdminView && <DropdownMenuItem className="gap-2 rounded-lg text-destructive" onClick={() => router.push(`/chat`)}><Flag size={14} /> {t('report_problem')}</DropdownMenuItem>}
+              {!isAdminView && <DropdownMenuItem className="gap-2 rounded-lg text-destructive" onClick={() => setIsReportDialogOpen(true)}><Flag size={14} /> {t('report_problem')}</DropdownMenuItem>}
               <DropdownMenuSeparator />
               <DropdownMenuItem className="gap-2 rounded-lg text-destructive" onClick={() => router.push('/chat')}><Trash2 size={14} /> {t('delete_chat')}</DropdownMenuItem>
             </DropdownMenuContent>
@@ -477,7 +506,6 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
       </div>
 
       <div className="flex-1 overflow-y-auto py-4 space-y-4 px-1">
-        {/* Prominent Finalize Deal Banner for Buyer */}
         {isBuyer && !convData?.isFinalized && !isAdminView && (
           <div className="mx-2 mb-6 p-4 bg-primary/10 rounded-3xl border border-primary/20 flex flex-col sm:flex-row items-center justify-between gap-4 animate-in slide-in-from-top duration-700 shadow-sm">
             <div className="text-start space-y-1">
@@ -636,6 +664,45 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
+        <DialogContent className="max-w-md rounded-2xl border-none shadow-2xl">
+          <DialogHeader className="text-start">
+            <DialogTitle>{t('report_issue_title')}</DialogTitle>
+            <DialogDescription>{t('report_issue_desc')}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4 text-start">
+            <div className="space-y-2">
+              <Label>{t('issue_type')}</Label>
+              <Select value={reportType} onValueChange={setReportType}>
+                <SelectTrigger className="rounded-xl h-12">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="scam">Scam</SelectItem>
+                  <SelectItem value="harassment">Harassment</SelectItem>
+                  <SelectItem value="fraud">Fraud</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>{t('issue_details')}</Label>
+              <Textarea 
+                value={reportReason} 
+                onChange={(e) => setReportReason(e.target.value)} 
+                placeholder={t('placeholder_description')} 
+                className="rounded-xl min-h-[100px] bg-muted/30 border-none resize-none"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleReport} disabled={submittingReport || !reportReason.trim()} className="w-full h-12 rounded-xl font-bold">
+              {submittingReport ? <Loader2 className="animate-spin" /> : t('send_report')}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
