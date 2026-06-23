@@ -285,14 +285,14 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
     const msgData: any = {
       conversationId: activeConvId,
       senderId: user.uid,
-      messageText: newMessage || (customImageUrl ? "📷 Media" : ""),
+      messageText: newMessage,
       timestamp: serverTimestamp(),
       participantIds: convData?.participantIds
     };
 
     if (customImageUrl) {
       msgData.imageUrl = customImageUrl;
-      msgData.messageText = newMessage ? `${newMessage}\n${customImageUrl}` : customImageUrl;
+      if (!newMessage) msgData.messageText = customImageUrl;
     }
 
     if (replyingTo) {
@@ -595,7 +595,10 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
 
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
         <DialogContent className="max-w-2xl rounded-2xl p-0 overflow-hidden border-none shadow-2xl">
-          <div className="p-6">{listing && <ListingDetailView listing={listing} />}</div>
+          <DialogHeader className="p-6 pb-0 text-start">
+            <DialogTitle className="text-xl font-bold">{t('listing_details')}</DialogTitle>
+          </DialogHeader>
+          <div className="p-6 pt-2">{listing && <ListingDetailView listing={listing} />}</div>
         </DialogContent>
       </Dialog>
 
