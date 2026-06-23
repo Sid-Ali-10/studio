@@ -32,6 +32,27 @@ export const translations: Translations = {
   confirm: { en: "Confirm", ar: "تأكيد", fr: "Confirmer" },
   status: { en: "Status", ar: "الحالة", fr: "Statut" },
   
+  // About Us & Legal
+  about_us: { en: "About Us", ar: "من نحن", fr: "À propos" },
+  about_title: { en: "About GetMeDZ", ar: "عن GetMeDZ", fr: "À propos de GetMeDZ" },
+  about_description: { 
+    en: "GetMeDZ is a peer-to-peer marketplace connecting travelers with spare luggage space to buyers in Algeria who need specific items from abroad. We aim to build a trusted community for mutual benefit.", 
+    ar: "GetMeDZ هو سوق نظير لنظير يربط المسافرين الذين لديهم مساحة أمتعة إضافية بالمشترين في الجزائر الذين يحتاجون إلى سلع معينة من الخارج. نهدف إلى بناء مجتمع موثوق للمنفعة المتبادلة.", 
+    fr: "GetMeDZ est une plateforme P2P connectant les voyageurs disposant d'espace bagages avec des acheteurs en Algérie. Notre objectif est de bâtir une communauté de confiance." 
+  },
+  policy_title: { en: "Platform Policy", ar: "سياسة المنصة", fr: "Politique de la plateforme" },
+  policy_content: { 
+    en: "1. Respectful communication in chat. 2. Accurate descriptions for all items. 3. Punctuality for deliveries. 4. Direct coordination between users for payments and meeting points.", 
+    ar: "1. التواصل المحترم في الدردشة. 2. وصف دقيق لجميع السلع. 3. الالتزام بالمواعيد عند التسليم. 4. التنسيق المباشر بين المستخدمين للمدفوعات ونقاط الالتقاء.", 
+    fr: "1. Communication respectueuse. 2. Descriptions précises des articles. 3. Ponctualité. 4. Coordination directe entre utilisateurs pour les paiements." 
+  },
+  disclaimer_title: { en: "Legal Disclaimer", ar: "إخلاء المسؤولية القانونية", fr: "Clause de non-responsabilité" },
+  disclaimer_content: { 
+    en: "GetMeDZ is a platform for connection only. We do not handle payments or goods. We strictly prohibit the transport of any illegal items (drugs, weapons, restricted substances, etc.). Users are solely responsible for compliance with local and international laws. We are not liable for any losses or legal issues arising from user transactions.", 
+    ar: "GetMeDZ هي منصة للتواصل فقط. نحن لا نتعامل مع المدفوعات أو البضائع. نمنع منعاً باتاً نقل أي سلع غير قانونية (مخدرات، أسلحة، مواد محظورة، إلخ). المستخدمون مسؤولون وحدهم عن الامتثال للقوانين المحلية والدولية. نحن لسنا مسؤولين عن أي خسائر أو مشاكل قانونية تنشأ عن معاملات المستخدمين.", 
+    fr: "GetMeDZ est uniquement une plateforme de mise en relation. Nous ne gérons pas les paiements ni les biens. Le transport d'objets illégaux est strictement interdit. Les utilisateurs sont seuls responsables du respect des lois." 
+  },
+  
   // Board / Listings
   board_title: { en: "Listings Board", ar: "لوحة الإعلانات", fr: "Tableau des annonces" },
   board_subtitle: { en: "Find travelers or buyers across the Algerian diaspora.", ar: "ابحث عن مسافرين أو مشترين في الشتات الجزائري.", fr: "Trouvez des voyageurs ou des acheteurs dans la diaspora algérienne." },
@@ -190,7 +211,7 @@ export const translations: Translations = {
   react: { en: "React", ar: "تفاعل", fr: "Réagir" },
   edited: { en: "edited", ar: "معدل", fr: "modifié" },
   you: { en: "You", ar: "أنت", fr: "Vous" },
-  rate_experience: { en: "Rate your experience", ar: "قيم تجربتك مع الطرف الآخر", fr: "Notez votre expérience" },
+  rate_experience: { en: "Rate your experience", ar: "قيم تجربتك مع الطرف الآخر", fr: "Noteز تجرbtك" },
   comment_optional: { en: "Comment (optional)", ar: "تعليق (اختياري)", fr: "Commentaire (optionnel)" },
   deal_completed_notice: { en: "This deal is completed. No more messages allowed.", ar: "هذه الصفقة مكتملة. لا يمكن إرسال المزيد من الرسائل.", fr: "Transaction terminée." },
   

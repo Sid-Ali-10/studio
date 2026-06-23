@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Star, CheckCircle, Package, LogOut, Loader2, Wallet, Moon, Sun, Languages } from "lucide-react";
+import { Star, CheckCircle, Package, LogOut, Loader2, Wallet, Moon, Sun, Languages, Info, ShieldAlert } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { useAuth } from "@/context/AuthContext";
 import { ListingCard, type Listing } from "@/components/listings/ListingCard";
@@ -26,6 +26,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { deleteDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 export default function ProfilePage(props: { params: Promise<{ id: string }> }) {
@@ -34,7 +42,7 @@ export default function ProfilePage(props: { params: Promise<{ id: string }> }) 
   
   const { user: currentUser, profile: myProfile } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const { t, language, setLanguage } = useLanguage();
+  const { t, language, setLanguage, isRTL } = useLanguage();
   const { toast } = useToast();
   const [profile, setProfile] = useState<any>(null);
   const [allListings, setAllListings] = useState<Listing[]>([]);
@@ -43,6 +51,7 @@ export default function ProfilePage(props: { params: Promise<{ id: string }> }) 
   const [loading, setLoading] = useState(true);
   const [totalRatings, setTotalRatings] = useState(0);
   const [avgRating, setAvgRating] = useState(0);
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
   const router = useRouter();
 
   const [advancedFilters, setAdvancedFilters] = useState({
@@ -138,7 +147,6 @@ export default function ProfilePage(props: { params: Promise<{ id: string }> }) 
   };
 
   const handleDeleteListing = (listingId: string) => {
-    // Confirmation handled by ListingCard
     try {
       deleteDocumentNonBlocking(doc(db, "listings", listingId));
       setAllListings(prev => prev.filter(l => l.id !== listingId));
@@ -211,6 +219,34 @@ export default function ProfilePage(props: { params: Promise<{ id: string }> }) 
                     <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-full bg-card shadow-sm h-10 w-10 transition-all active:scale-[0.98]">
                       {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
                     </Button>
+
+                    <Dialog open={isAboutOpen} onOpenChange={setIsAboutOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="ghost" className="rounded-xl h-10 gap-2 bg-card shadow-sm hover:bg-primary/10 hover:text-primary transition-all active:scale-[0.98]">
+                          <Info size={18} /> {t('about_us')}
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-md rounded-3xl border-none shadow-2xl overflow-hidden p-0" dir={isRTL ? "rtl" : "ltr"}>
+                        <div className="bg-primary p-6 text-white text-center">
+                          <DialogTitle className="text-2xl font-black">{t('about_title')}</DialogTitle>
+                        </div>
+                        <div className="p-6 space-y-6 text-start max-h-[70vh] overflow-y-auto">
+                          <section className="space-y-2">
+                            <h4 className="font-black text-primary flex items-center gap-2 uppercase text-xs tracking-widest"><Package size={14} /> {t('about_us')}</h4>
+                            <p className="text-sm leading-relaxed text-muted-foreground">{t('about_description')}</p>
+                          </section>
+                          <section className="space-y-2">
+                            <h4 className="font-black text-primary flex items-center gap-2 uppercase text-xs tracking-widest"><Star size={14} /> {t('policy_title')}</h4>
+                            <p className="text-sm leading-relaxed text-muted-foreground">{t('policy_content')}</p>
+                          </section>
+                          <section className="space-y-2 p-4 bg-destructive/5 rounded-2xl border border-destructive/10">
+                            <h4 className="font-black text-destructive flex items-center gap-2 uppercase text-xs tracking-widest"><ShieldAlert size={14} /> {t('disclaimer_title')}</h4>
+                            <p className="text-xs leading-relaxed text-destructive/80 font-medium italic">{t('disclaimer_content')}</p>
+                          </section>
+                          <Button onClick={() => setIsAboutOpen(false)} className="w-full rounded-xl h-12 font-black shadow-lg">{t('confirm')}</Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                     
                     <Button variant="destructive" className="rounded-xl px-6 h-10 shadow-lg transition-all active:scale-[0.98]" onClick={handleLogout}>
                       <LogOut size={18} className="mr-2" /> {t('logout')}
