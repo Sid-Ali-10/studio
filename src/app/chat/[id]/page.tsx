@@ -7,6 +7,8 @@ import { db } from "@/lib/firebase";
 import { 
   doc, 
   getDoc, 
+  getDocs,
+  where,
   collection, 
   query, 
   onSnapshot, 
@@ -334,6 +336,17 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
     setFinalizing(true);
 
     try {
+      // 1. Fetch all existing ratings for the traveler to calculate the new average
+      const ratingsQuery = query(collection(db, "ratings"), where("ratedUserId", "==", travelerId));
+      const ratingsSnap = await getDocs(ratingsQuery);
+      const ratingsData = ratingsSnap.docs.map(d => d.data());
+      
+      const totalRatingsCount = ratingsData.length;
+      const currentStarsSum = ratingsData.reduce((acc, curr) => acc + (curr.stars || 0), 0);
+      
+      const newStarsSum = currentStarsSum + ratingStars;
+      const newAverageRating = Number((newStarsSum / (totalRatingsCount + 1)).toFixed(1));
+
       await runTransaction(db, async (transaction) => {
         const travelerRef = doc(db, "userProfiles", travelerId);
         const convRef = doc(db, "conversations", activeConvId);
@@ -347,10 +360,11 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
           throw new Error("Insufficient balance");
         }
 
-        // 1. Deduct credit and increment deals
+        // 1. Deduct credit, increment deals, and update average rating
         transaction.update(travelerRef, {
           walletBalance: increment(-1),
           successfulDealsCount: increment(1),
+          averageRating: newAverageRating,
           updatedAt: serverTimestamp()
         });
 
