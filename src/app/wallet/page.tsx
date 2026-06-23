@@ -50,7 +50,7 @@ interface SubscriptionPackage {
 }
 
 const CardVisual = ({ info, isRTL }: { info: any, isRTL: boolean }) => {
-  const isEdahabia = info.number.startsWith('6280');
+  const isEdahabia = info.number.replace(/\s/g, '').startsWith('6280');
   
   return (
     <div className={cn(
@@ -147,7 +147,9 @@ export default function WalletPage() {
       setTransactions(txs);
       setLoading(false);
     }, (error) => {
-      console.error("Wallet listener error:", error);
+      if (error.code !== 'permission-denied') {
+        console.error("Wallet listener error:", error);
+      }
       setLoading(false);
     });
 
@@ -304,104 +306,106 @@ export default function WalletPage() {
           setCardInfo({ number: '', expiry: '', name: '', cvv: '' });
         }
       }}>
-        <DialogContent className="rounded-3xl border-none shadow-2xl max-w-lg" dir={isRTL ? "rtl" : "ltr"}>
-          <DialogHeader className="text-start">
-            <div className="flex items-center gap-2 mb-2">
-              {paymentStep === 'card' && (
-                <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" onClick={() => setPaymentStep('confirm')}>
-                  <ArrowLeft size={18} className={cn(isRTL && "rotate-180")} />
-                </Button>
-              )}
-              <DialogTitle className="text-2xl font-black">
-                {paymentStep === 'confirm' ? t('confirm') : t('payment_method')}
-              </DialogTitle>
-            </div>
-            <DialogDescription className="text-base">
-              {paymentStep === 'confirm' 
-                ? `${t('confirm')} ${selectedPackage?.name}: ${selectedPackage?.credits} ${t('currency_da')}`
-                : t('secure_payment_notice')
-              }
-            </DialogDescription>
-          </DialogHeader>
-
-          {paymentStep === 'confirm' ? (
-            <div className="py-6 space-y-6">
-              <div className="p-6 bg-muted/30 rounded-2xl space-y-4 text-start">
-                <div className="flex justify-between items-center text-lg font-black text-primary border-t-2 border-primary/10 pt-4">
-                  <span>{t('total_platform_revenue')}</span>
-                  <span className="text-2xl">{selectedPackage?.price} DA</span>
-                </div>
+        <DialogContent className="rounded-3xl border-none shadow-2xl max-w-lg p-0 overflow-hidden" dir={isRTL ? "rtl" : "ltr"}>
+          <div className="max-h-[90vh] overflow-y-auto p-6 sm:p-8">
+            <DialogHeader className="text-start">
+              <div className="flex items-center gap-2 mb-2">
+                {paymentStep === 'card' && (
+                  <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" onClick={() => setPaymentStep('confirm')}>
+                    <ArrowLeft size={18} className={cn(isRTL && "rotate-180")} />
+                  </Button>
+                )}
+                <DialogTitle className="text-2xl font-black">
+                  {paymentStep === 'confirm' ? t('confirm') : t('payment_method')}
+                </DialogTitle>
               </div>
-              <DialogFooter className="gap-3">
-                <Button variant="ghost" className="rounded-xl h-12 flex-1" onClick={() => setIsRechargeOpen(false)}>{t('cancel')}</Button>
-                <Button className="rounded-xl h-12 flex-1 font-black shadow-lg" onClick={() => setPaymentStep('card')}>
-                  {t('confirm')}
-                </Button>
-              </DialogFooter>
-            </div>
-          ) : (
-            <div className="py-4 space-y-6 animate-in slide-in-from-right duration-300">
-              <CardVisual info={cardInfo} isRTL={isRTL} />
-              
-              <div className="grid gap-4 text-start">
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-bold uppercase opacity-60 px-1">{t('card_number')}</Label>
-                  <div className="relative">
-                    <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-                    <Input 
-                      placeholder="6280 0000 0000 0000" 
-                      className="rounded-xl h-12 ps-10 font-mono tracking-widest text-lg" 
-                      value={cardInfo.number}
-                      onChange={handleCardNumberChange}
-                    />
-                  </div>
-                </div>
+              <DialogDescription className="text-base">
+                {paymentStep === 'confirm' 
+                  ? `${t('confirm')} ${selectedPackage?.name}: ${selectedPackage?.credits} ${t('currency_da')}`
+                  : t('secure_payment_notice')
+                }
+              </DialogDescription>
+            </DialogHeader>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] font-bold uppercase opacity-60 px-1">{t('expiry_date')}</Label>
-                    <Input 
-                      placeholder="MM/YY" 
-                      className="rounded-xl h-12 text-center font-mono" 
-                      value={cardInfo.expiry}
-                      onChange={handleExpiryChange}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] font-bold uppercase opacity-60 px-1">{t('cvv')}</Label>
-                    <Input 
-                      type="password"
-                      placeholder="***" 
-                      maxLength={3}
-                      className="rounded-xl h-12 text-center font-mono" 
-                      value={cardInfo.cvv}
-                      onChange={(e) => setCardInfo({...cardInfo, cvv: e.target.value.replace(/\D/g, '')})}
-                    />
+            {paymentStep === 'confirm' ? (
+              <div className="py-6 space-y-6">
+                <div className="p-6 bg-muted/30 rounded-2xl space-y-4 text-start">
+                  <div className="flex justify-between items-center text-lg font-black text-primary border-t-2 border-primary/10 pt-4">
+                    <span>{t('total_platform_revenue')}</span>
+                    <span className="text-2xl">{selectedPackage?.price} DA</span>
                   </div>
                 </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-bold uppercase opacity-60 px-1">{t('cardholder_name')}</Label>
-                  <Input 
-                    placeholder="MOHAMED DZ" 
-                    className="rounded-xl h-12 uppercase font-bold" 
-                    value={cardInfo.name}
-                    onChange={(e) => setCardInfo({...cardInfo, name: e.target.value})}
-                  />
-                </div>
+                <DialogFooter className="flex-row gap-3">
+                  <Button variant="ghost" className="rounded-xl h-12 flex-1" onClick={() => setIsRechargeOpen(false)}>{t('cancel')}</Button>
+                  <Button className="rounded-xl h-12 flex-1 font-black shadow-lg" onClick={() => setPaymentStep('card')}>
+                    {t('confirm')}
+                  </Button>
+                </DialogFooter>
               </div>
+            ) : (
+              <div className="py-4 space-y-6 animate-in slide-in-from-right duration-300">
+                <CardVisual info={cardInfo} isRTL={isRTL} />
+                
+                <div className="grid gap-4 text-start">
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold uppercase opacity-60 px-1">{t('card_number')}</Label>
+                    <div className="relative">
+                      <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+                      <Input 
+                        placeholder="6280 0000 0000 0000" 
+                        className="rounded-xl h-12 ps-10 font-mono tracking-widest text-lg" 
+                        value={cardInfo.number}
+                        onChange={handleCardNumberChange}
+                      />
+                    </div>
+                  </div>
 
-              <DialogFooter>
-                <Button 
-                  className="w-full h-14 rounded-2xl font-black text-lg shadow-xl hover:scale-[1.02] transition-transform" 
-                  onClick={handleRecharge} 
-                  disabled={rechargeLoading !== null || !cardInfo.number || !cardInfo.expiry || !cardInfo.name || cardInfo.cvv.length < 3}
-                >
-                  {rechargeLoading ? <Loader2 className="animate-spin" /> : <><ShoppingBag size={20} className="mr-2" /> {t('pay_now')}</>}
-                </Button>
-              </DialogFooter>
-            </div>
-          )}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold uppercase opacity-60 px-1">{t('expiry_date')}</Label>
+                      <Input 
+                        placeholder="MM/YY" 
+                        className="rounded-xl h-12 text-center font-mono" 
+                        value={cardInfo.expiry}
+                        onChange={handleExpiryChange}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold uppercase opacity-60 px-1">{t('cvv')}</Label>
+                      <Input 
+                        type="password"
+                        placeholder="***" 
+                        maxLength={3}
+                        className="rounded-xl h-12 text-center font-mono" 
+                        value={cardInfo.cvv}
+                        onChange={(e) => setCardInfo({...cardInfo, cvv: e.target.value.replace(/\D/g, '')})}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold uppercase opacity-60 px-1">{t('cardholder_name')}</Label>
+                    <Input 
+                      placeholder="MOHAMED DZ" 
+                      className="rounded-xl h-12 uppercase font-bold" 
+                      value={cardInfo.name}
+                      onChange={(e) => setCardInfo({...cardInfo, name: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                <DialogFooter>
+                  <Button 
+                    className="w-full h-14 rounded-2xl font-black text-lg shadow-xl hover:scale-[1.02] transition-transform" 
+                    onClick={handleRecharge} 
+                    disabled={rechargeLoading !== null || !cardInfo.number || !cardInfo.expiry || !cardInfo.name || cardInfo.cvv.length < 3}
+                  >
+                    {rechargeLoading ? <Loader2 className="animate-spin" /> : <><ShoppingBag size={20} className="mr-2" /> {t('pay_now')}</>}
+                  </Button>
+                </DialogFooter>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 
