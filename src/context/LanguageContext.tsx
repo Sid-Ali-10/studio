@@ -138,7 +138,7 @@ export const translations: Translations = {
   search_chats_placeholder: { en: "Search chats...", ar: "البحث في المحادثات...", fr: "Rechercher..." },
   no_chats: { en: "No chats yet", ar: "لا توجد محادثات بعد", fr: "Pas de discussions" },
   no_chats_desc: { en: "Start a deal on the board!", ar: "ابدأ صفقة من اللوحة!", fr: "Commencez une transaction !" },
-  conv_started: { en: "Conversation started", ar: "بدأت المحادثة", fr: "Discussion entamée" },
+  conv_started: { en: "Conversation started", ar: "بدأت المحادثة", fr: "Discussion entامée" },
   admin_monitor_notice: { en: "THIS CONVERSATION IS MONITORED BY GETMEDZ ADMINISTRATION", ar: "هذه المحادثة مراقبة من قبل إدارة GetMeDZ", fr: "CETTE CONVERSATION EST SURVEILLÉE PAR L'ADMINISTRATION" },
   rated: { en: "Rated", ar: "تم التقييم", fr: "Évalué" },
   agreed_price_label: { en: "AGREED PRICE", ar: "السعر المتفق عليه", fr: "PRIX CONVENU" },
@@ -164,7 +164,7 @@ export const translations: Translations = {
   make_price_offer: { en: "Make a Price Offer", ar: "تقديم عرض سعر", fr: "Faire une offre" },
   price_offer_desc: { en: "Propose a price. The other party must accept before finalizing.", ar: "اقترح سعراً. يجب على الطرف الآخر القبول قبل الإتمام.", fr: "Proposez un prix. L'autre partie doit accepter." },
   finalize_settle: { en: "Finalize & Complete", ar: "الإتمام والتأكيد", fr: "Finaliser" },
-  finalize_desc: { en: "Confirming this will complete the deal. Commission will be deducted from traveler.", ar: "تأكيد هذا سينهي الصفقة. سيتم خصم العمولة من رصيد المسافر.", fr: "Confirmer finalisera la transaction." },
+  finalize_desc: { en: "Confirming this will complete the deal. 1 operation credit will be deducted from traveler.", ar: "تأكيد هذا سينهي الصفقة. سيتم خصم نقطة واحدة من رصيد المسافر.", fr: "Confirmer finalisera la transaction. 1 crédit sera déduit." },
   rate_complete: { en: "Rate & Finalize Deal", ar: "تقييم وإتمام الصفقة", fr: "Évaluer et terminer" },
   listing_details: { en: "Listing Details", ar: "تفاصيل الإعلان", fr: "Détails de l'annonce" },
   offer_sent: { en: "Offer sent", ar: "تم إرسال العرض", fr: "Offre envoyée" },
@@ -188,6 +188,9 @@ export const translations: Translations = {
   react: { en: "React", ar: "تفاعل", fr: "Réagir" },
   edited: { en: "edited", ar: "معدل", fr: "modifié" },
   you: { en: "You", ar: "أنت", fr: "Vous" },
+  rate_experience: { en: "Rate your experience", ar: "قيم تجربتك مع الطرف الآخر", fr: "Notez votre expérience" },
+  comment_optional: { en: "Comment (optional)", ar: "تعليق (اختياري)", fr: "Commentaire (optionnel)" },
+  deal_completed_notice: { en: "This deal is completed. No more messages allowed.", ar: "هذه الصفقة مكتملة. لا يمكن إرسال المزيد من الرسائل.", fr: "Transaction terminée." },
   
   // Filters
   search_placeholder: { en: "Search by title or description...", ar: "البحث عن طريق العنوان أو الوصف...", fr: "Recherche par titre ou description..." },

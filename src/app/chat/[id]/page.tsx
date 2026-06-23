@@ -17,7 +17,9 @@ import {
   arrayUnion,
   arrayRemove,
   orderBy,
-  limit
+  limit,
+  increment,
+  runTransaction
 } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -37,6 +39,8 @@ import {
   Smile,
   ImageIcon,
   ExternalLink,
+  CheckCircle2,
+  Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -55,7 +59,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { type Listing } from "@/components/listings/ListingCard";
 import { ListingDetailView } from "@/components/listings/ListingDetailView";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -72,7 +76,7 @@ interface Message {
     text: string;
     senderName: string;
   };
-  reactions?: Record<string, string[]>; // emoji: [uids]
+  reactions?: Record<string, string[]>;
 }
 
 interface ConversationData {
@@ -82,38 +86,29 @@ interface ConversationData {
   listingTitle: string;
   listerId: string;
   unreadBy?: string[];
+  isFinalized?: boolean;
+  finalizedAt?: any;
 }
 
 const COMMON_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
 
-/**
- * مكوّن عرض معاينة الروابط داخل الرسالة
- */
 const LinkPreview = ({ text }: { text: string }) => {
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   const urls = text.match(urlRegex);
-
   if (!urls) return null;
 
   return (
     <div className="mt-2 space-y-2">
       {urls.map((url, index) => {
-        // التحقق من روابط اليوتيوب
         const youtubeMatch = url.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?(.+)/);
         if (youtubeMatch) {
           const videoId = youtubeMatch[1].split('&')[0].split('?')[0];
           return (
             <div key={index} className="rounded-xl overflow-hidden border bg-black aspect-video relative group">
-              <iframe
-                src={`https://www.youtube.com/embed/${videoId}`}
-                className="w-full h-full border-none"
-                allowFullScreen
-              />
+              <iframe src={`https://www.youtube.com/embed/${videoId}`} className="w-full h-full border-none" allowFullScreen />
             </div>
           );
         }
-
-        // التحقق من الصور المباشرة
         if (url.match(/\.(jpeg|jpg|gif|png|webp)$/i)) {
           return (
             <div key={index} className="rounded-xl overflow-hidden border bg-muted">
@@ -121,16 +116,8 @@ const LinkPreview = ({ text }: { text: string }) => {
             </div>
           );
         }
-
-        // رابط عام (Link Card)
         return (
-          <a 
-            key={index} 
-            href={url} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="flex items-center gap-3 p-3 bg-white/10 rounded-xl border border-white/20 hover:bg-white/20 transition-all group"
-          >
+          <a key={index} href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-white/10 rounded-xl border border-white/20 hover:bg-white/20 transition-all group">
             <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
               <ExternalLink size={20} className="text-primary" />
             </div>
@@ -164,6 +151,10 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
   const [convData, setConvData] = useState<ConversationData | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isMediaDialogOpen, setIsMediaDialogOpen] = useState(false);
+  const [isFinalizeDialogOpen, setIsFinalizeDialogOpen] = useState(false);
+  const [ratingStars, setRatingStars] = useState(5);
+  const [ratingComment, setRatingComment] = useState("");
+  const [finalizing, setFinalizing] = useState(false);
   const [mediaUrlInput, setMediaUrlInput] = useState("");
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
@@ -178,6 +169,12 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
   }, []);
 
   const isAdminView = profile?.isAdmin && convData && !convData.participantIds.includes(user?.uid || "");
+
+  // Determine Roles
+  const isUserLister = user?.uid === listing?.listerId;
+  const isTraveler = listing?.type === 'traveler' ? isUserLister : !isUserLister;
+  const isBuyer = !isTraveler;
+  const travelerId = listing?.type === 'traveler' ? listing?.listerId : convData?.participantIds.find(p => p !== listing?.listerId);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -208,7 +205,6 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
       
       try {
         const convRef = doc(db, "conversations", id);
-        
         unsubscribeConv = onSnapshot(convRef, async (snap) => {
           if (!mounted) return;
           if (snap.exists()) {
@@ -245,14 +241,12 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
                 setLoading(false);
               }, (err) => {
                 if (mounted) {
-                  console.error("Messages error:", err);
                   setError(t('error'));
                   setLoading(false);
                 }
               });
             }
           } else {
-            // Wait for creation
             setTimeout(() => {
               if (mounted && !convData && loading) {
                 setError(t('conv_not_found'));
@@ -287,18 +281,18 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
     if (!newMessage.trim() && !customImageUrl) return;
 
     const otherUserId = convData?.participantIds.find(p => p !== user.uid);
-    const finalMessageText = customImageUrl ? (newMessage ? `${newMessage}\n${customImageUrl}` : customImageUrl) : newMessage;
     
     const msgData: any = {
       conversationId: activeConvId,
       senderId: user.uid,
-      messageText: finalMessageText,
+      messageText: newMessage || (customImageUrl ? "📷 Media" : ""),
       timestamp: serverTimestamp(),
       participantIds: convData?.participantIds
     };
 
     if (customImageUrl) {
       msgData.imageUrl = customImageUrl;
+      msgData.messageText = newMessage ? `${newMessage}\n${customImageUrl}` : customImageUrl;
     }
 
     if (replyingTo) {
@@ -314,7 +308,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
       setReplyingTo(null);
       await addDoc(collection(db, "conversations", activeConvId, "messages"), msgData);
       await updateDoc(doc(db, "conversations", activeConvId), {
-        lastMessageText: finalMessageText,
+        lastMessageText: msgData.messageText,
         lastMessageTimestamp: serverTimestamp(),
         updatedAt: serverTimestamp(),
         unreadBy: arrayUnion(otherUserId),
@@ -322,6 +316,76 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
       });
     } catch (err) {
       toast({ variant: "destructive", title: t('failed') });
+    }
+  };
+
+  const handleFinalizeDeal = async () => {
+    if (!user || !activeConvId || !travelerId || finalizing) return;
+    setFinalizing(true);
+
+    try {
+      await runTransaction(db, async (transaction) => {
+        const travelerRef = doc(db, "userProfiles", travelerId);
+        const convRef = doc(db, "conversations", activeConvId);
+        const travelerSnap = await transaction.get(travelerRef);
+        
+        if (!travelerSnap.exists()) throw new Error("Traveler profile not found");
+        const balance = travelerSnap.data().walletBalance || 0;
+        
+        if (balance < 1) {
+          toast({ variant: "destructive", title: t('insufficient_balance') });
+          throw new Error("Insufficient balance");
+        }
+
+        // 1. Deduct credit from traveler
+        transaction.update(travelerRef, {
+          walletBalance: increment(-1),
+          successfulDealsCount: increment(1),
+          updatedAt: serverTimestamp()
+        });
+
+        // 2. Mark conversation as finalized
+        transaction.update(convRef, {
+          isFinalized: true,
+          finalizedAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+
+        // 3. Add transaction record
+        const txRef = doc(collection(db, "userProfiles", travelerId, "transactions"));
+        transaction.set(txRef, {
+          amount: -1,
+          type: "payment",
+          description: `Deduction for successful deal in conversation: ${listing?.title || activeConvId}`,
+          createdAt: serverTimestamp()
+        });
+
+        // 4. Add rating record
+        const ratingRef = doc(collection(db, "ratings"));
+        transaction.set(ratingRef, {
+          listingId: listing?.id,
+          raterId: user.uid,
+          ratedUserId: travelerId,
+          stars: ratingStars,
+          comment: ratingComment,
+          createdAt: serverTimestamp()
+        });
+      });
+
+      // Send System Message
+      await addDoc(collection(db, "conversations", activeConvId, "messages"), {
+        senderId: "system",
+        messageText: "✅ " + t('deal_finalized'),
+        timestamp: serverTimestamp(),
+        participantIds: convData?.participantIds
+      });
+
+      toast({ title: t('success'), description: t('deal_finalized') });
+      setIsFinalizeDialogOpen(false);
+    } catch (err: any) {
+      console.error("Finalize Error:", err);
+    } finally {
+      setFinalizing(false);
     }
   };
 
@@ -400,18 +464,31 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
           <h2 className="font-bold truncate text-sm sm:text-base">{otherUser?.username || "Private User"}</h2>
           <button onClick={() => setIsDetailsOpen(true)} className="text-[10px] sm:text-xs text-muted-foreground truncate italic hover:text-primary flex items-center gap-1">{listing?.title || t('listing_details')} <Info size={10} /></button>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="rounded-full"><MoreHorizontal size={20} /></Button></DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="rounded-xl p-2 w-48 shadow-xl border-none">
-            {!isAdminView && <DropdownMenuItem className="gap-2 rounded-lg text-destructive" onClick={() => router.push(`/chat`)}><Flag size={14} /> {t('report_problem')}</DropdownMenuItem>}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="gap-2 rounded-lg text-destructive" onClick={() => router.push('/chat')}><Trash2 size={14} /> {t('delete_chat')}</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-2">
+          {isBuyer && !convData?.isFinalized && !isAdminView && (
+            <Button onClick={() => setIsFinalizeDialogOpen(true)} className="rounded-xl h-9 px-4 gap-2 font-bold shadow-md animate-in fade-in zoom-in duration-300">
+              <CheckCircle2 size={16} /> {t('complete_deal')}
+            </Button>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="rounded-full"><MoreHorizontal size={20} /></Button></DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="rounded-xl p-2 w-48 shadow-xl border-none">
+              {!isAdminView && <DropdownMenuItem className="gap-2 rounded-lg text-destructive" onClick={() => router.push(`/chat`)}><Flag size={14} /> {t('report_problem')}</DropdownMenuItem>}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="gap-2 rounded-lg text-destructive" onClick={() => router.push('/chat')}><Trash2 size={14} /> {t('delete_chat')}</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto py-4 space-y-4 px-1">
         {messages.map((msg) => {
+          if (msg.senderId === 'system') return (
+            <div key={msg.id} className="flex justify-center py-2">
+              <div className="px-4 py-1.5 bg-muted/50 rounded-full text-[10px] font-black uppercase tracking-widest text-muted-foreground border border-muted-foreground/10">{msg.messageText}</div>
+            </div>
+          );
+
           const isOwn = !!user && msg.senderId === user.uid;
           const reactions = msg.reactions || {};
 
@@ -427,7 +504,6 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
                   )}
                   
                   <div className="text-sm whitespace-pre-wrap">{msg.messageText}</div>
-                  
                   <LinkPreview text={msg.messageText} />
 
                   <div className={cn("flex items-center justify-between mt-1", isOwn ? "flex-row-reverse" : "flex-row")}>
@@ -475,7 +551,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
         <div ref={messagesEndRef} />
       </div>
 
-      <div className={cn("pt-4 border-t space-y-2", isAdminView && "opacity-50 pointer-events-none")}>
+      <div className={cn("pt-4 border-t space-y-2", (isAdminView || convData?.isFinalized) && "opacity-50 pointer-events-none")}>
         {replyingTo && (
           <div className="mx-2 p-3 bg-muted/50 rounded-xl flex items-center justify-between border-s-4 border-primary">
             <div className="flex flex-col min-w-0 text-start">
@@ -492,14 +568,15 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
           <form className="flex-1 flex items-end gap-2" onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}>
             <Textarea 
               ref={textareaRef}
-              placeholder={t('type_message')} 
+              placeholder={convData?.isFinalized ? t('deal_completed_notice') : t('type_message')} 
+              disabled={convData?.isFinalized}
               className="flex-1 min-h-[44px] max-h-[160px] rounded-2xl px-5 py-3 bg-transparent border-none text-start resize-none shadow-none focus-visible:ring-0 overflow-y-auto" 
               value={newMessage} 
               onChange={(e) => setNewMessage(e.target.value)} 
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
               rows={1}
             />
-            <Button type="submit" size="icon" className="w-10 h-10 rounded-full shadow-md shrink-0 mb-0.5" disabled={!newMessage.trim()}>
+            <Button type="submit" size="icon" className="w-10 h-10 rounded-full shadow-md shrink-0 mb-0.5" disabled={!newMessage.trim() || finalizing || convData?.isFinalized}>
               <Send size={20} className={cn(isRTL && "rotate-180")} />
             </Button>
           </form>
@@ -512,6 +589,43 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
         </DialogContent>
       </Dialog>
 
+      <Dialog open={isFinalizeDialogOpen} onOpenChange={setIsFinalizeDialogOpen}>
+        <DialogContent className="max-w-md rounded-3xl border-none shadow-2xl overflow-hidden p-0">
+          <div className="bg-primary p-8 text-white text-center space-y-2">
+            <div className="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center mx-auto mb-2 animate-bounce"><CheckCircle2 size={40} /></div>
+            <DialogTitle className="text-2xl font-black">{t('finalize_settle')}</DialogTitle>
+            <DialogDescription className="text-white/80">{t('finalize_desc')}</DialogDescription>
+          </div>
+          <div className="p-6 space-y-6 text-start">
+            <div className="space-y-4">
+              <Label className="text-xs font-bold uppercase tracking-widest opacity-60">{t('rate_experience')}</Label>
+              <div className="flex justify-center gap-2">
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <button key={s} onClick={() => setRatingStars(s)} className="transition-all active:scale-90">
+                    <Star size={36} className={cn(s <= ratingStars ? "fill-yellow-400 text-yellow-400" : "text-muted")} />
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-widest opacity-60">{t('issue_details')}</Label>
+              <Textarea 
+                value={ratingComment} 
+                onChange={(e) => setRatingComment(e.target.value)} 
+                placeholder={t('comment_optional')} 
+                className="rounded-2xl min-h-[100px] bg-muted/30 border-none resize-none"
+              />
+            </div>
+            <div className="flex gap-3">
+              <Button variant="ghost" className="flex-1 rounded-xl h-12" onClick={() => setIsFinalizeDialogOpen(false)}>{t('cancel')}</Button>
+              <Button className="flex-1 rounded-xl h-12 font-black shadow-lg" onClick={handleFinalizeDeal} disabled={finalizing}>
+                {finalizing ? <Loader2 className="animate-spin" /> : t('confirm')}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={isMediaDialogOpen} onOpenChange={setIsMediaDialogOpen}>
         <DialogContent className="max-w-md rounded-2xl border-none shadow-2xl">
           <DialogHeader className="text-start">
@@ -520,12 +634,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
           <div className="space-y-4 py-4 text-start">
             <div className="space-y-2">
               <Label>{t('link_placeholder')}</Label>
-              <input 
-                value={mediaUrlInput} 
-                onChange={(e) => setMediaUrlInput(e.target.value)} 
-                placeholder="https://..." 
-                className="w-full rounded-xl h-12 px-4 bg-muted border-none outline-none focus:ring-2 focus:ring-primary"
-              />
+              <input value={mediaUrlInput} onChange={(e) => setMediaUrlInput(e.target.value)} placeholder="https://..." className="w-full rounded-xl h-12 px-4 bg-muted border-none outline-none focus:ring-2 focus:ring-primary" />
               <p className="text-[10px] text-muted-foreground">{t('insert_link_desc')}</p>
             </div>
           </div>
