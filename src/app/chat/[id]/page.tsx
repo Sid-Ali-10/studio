@@ -465,11 +465,6 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
           <button onClick={() => setIsDetailsOpen(true)} className="text-[10px] sm:text-xs text-muted-foreground truncate italic hover:text-primary flex items-center gap-1">{listing?.title || t('listing_details')} <Info size={10} /></button>
         </div>
         <div className="flex items-center gap-2">
-          {isBuyer && !convData?.isFinalized && !isAdminView && (
-            <Button onClick={() => setIsFinalizeDialogOpen(true)} className="rounded-xl h-9 px-4 gap-2 font-bold shadow-md animate-in fade-in zoom-in duration-300">
-              <CheckCircle2 size={16} /> {t('complete_deal')}
-            </Button>
-          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="rounded-full"><MoreHorizontal size={20} /></Button></DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="rounded-xl p-2 w-48 shadow-xl border-none">
@@ -482,6 +477,21 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
       </div>
 
       <div className="flex-1 overflow-y-auto py-4 space-y-4 px-1">
+        {/* Prominent Finalize Deal Banner for Buyer */}
+        {isBuyer && !convData?.isFinalized && !isAdminView && (
+          <div className="mx-2 mb-6 p-4 bg-primary/10 rounded-3xl border border-primary/20 flex flex-col sm:flex-row items-center justify-between gap-4 animate-in slide-in-from-top duration-700 shadow-sm">
+            <div className="text-start space-y-1">
+              <p className="font-black text-sm text-primary flex items-center gap-2">
+                <CheckCircle2 size={20} className="animate-bounce" /> {t('complete_deal')}
+              </p>
+              <p className="text-[10px] text-muted-foreground font-medium">{t('finalize_desc_short')}</p>
+            </div>
+            <Button onClick={() => setIsFinalizeDialogOpen(true)} className="w-full sm:w-auto rounded-2xl font-black shadow-lg hover:scale-105 transition-transform">
+              {t('finalize_now')}
+            </Button>
+          </div>
+        )}
+
         {messages.map((msg) => {
           if (msg.senderId === 'system') return (
             <div key={msg.id} className="flex justify-center py-2">
