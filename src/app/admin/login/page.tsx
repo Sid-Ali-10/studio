@@ -75,8 +75,8 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div dir="ltr" className="min-h-screen flex items-center justify-center bg-muted/30 p-4 text-left">
-      <Card className="w-full max-w-md border-none shadow-2xl overflow-hidden rounded-3xl">
+    <div dir="ltr" className="min-h-screen flex items-center justify-center bg-background p-4 text-left transition-colors duration-300">
+      <Card className="w-full max-w-md border-none shadow-2xl overflow-hidden rounded-3xl bg-card">
         <div className="bg-primary h-2 w-full" />
         <CardHeader className="text-center pb-2">
           <div className="mx-auto w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-4">
@@ -93,8 +93,8 @@ export default function AdminLoginPage() {
                 <Input
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Enter Secret Key"
-                  className={`pl-10 pr-10 h-14 rounded-2xl border-2 transition-all duration-200 text-left ${
-                    error ? 'border-destructive' : 'focus:border-primary'
+                  className={`pl-10 pr-10 h-14 rounded-2xl border-2 transition-all duration-200 text-left bg-muted/30 ${
+                    error ? 'border-destructive' : 'border-transparent focus:border-primary'
                   }`}
                   value={key}
                   onChange={(e) => {
@@ -113,7 +113,7 @@ export default function AdminLoginPage() {
                 </button>
               </div>
               {error && (
-                <p className="text-xs text-destructive flex items-center gap-1 pl-1">
+                <p className="text-xs text-destructive flex items-center gap-1 pl-1 font-medium">
                   <AlertCircle size={12} /> Incorrect secret key
                 </p>
               )}
@@ -128,7 +128,7 @@ export default function AdminLoginPage() {
             </Button>
           </form>
 
-          <p className="text-center text-[10px] text-muted-foreground mt-8 uppercase tracking-widest font-bold">
+          <p className="text-center text-[10px] text-muted-foreground mt-8 uppercase tracking-widest font-bold opacity-60">
             Authorized Personnel Only
           </p>
         </CardContent>

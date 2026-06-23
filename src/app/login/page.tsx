@@ -134,17 +134,17 @@ export default function AuthPage() {
   };
 
   return (
-    <div dir="ltr" className="min-h-screen flex items-center justify-center p-4 bg-[#F0F2F5] text-left">
+    <div dir="ltr" className="min-h-screen flex items-center justify-center p-4 bg-background text-left transition-colors duration-300">
       <div className="w-full max-w-md space-y-8 animate-in fade-in duration-700">
         <div className="text-center space-y-2">
           <div className="inline-flex items-center justify-center mb-4">
-            <Logo size={64} />
+            <Logo size={80} />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-primary">GetMeDZ</h1>
-          <p className="text-muted-foreground">The peer-to-peer marketplace for Algerians</p>
+          <h1 className="text-4xl font-black tracking-tight text-primary">GetMeDZ</h1>
+          <p className="text-muted-foreground font-medium">The peer-to-peer marketplace for Algerians</p>
         </div>
 
-        <Card className="border-none shadow-2xl">
+        <Card className="border-none shadow-2xl bg-card transition-colors duration-300">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-bold text-left">{isLogin ? "Login" : "Create Account"}</CardTitle>
             <CardDescription className="text-left">
@@ -161,7 +161,7 @@ export default function AuthPage() {
                       name="username"
                       autoComplete="username"
                       placeholder="Username"
-                      className="pl-10 h-12 rounded-xl text-left"
+                      className="pl-10 h-12 rounded-xl text-left bg-muted/50 border-none"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       required={!isLogin}
@@ -177,7 +177,7 @@ export default function AuthPage() {
                     type="email"
                     autoComplete="email"
                     placeholder="Email"
-                    className="pl-10 h-12 rounded-xl text-left"
+                    className="pl-10 h-12 rounded-xl text-left bg-muted/50 border-none"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -192,7 +192,7 @@ export default function AuthPage() {
                     type={showPassword ? "text" : "password"}
                     autoComplete={isLogin ? "current-password" : "new-password"}
                     placeholder="Password"
-                    className="pl-10 pr-10 h-12 rounded-xl text-left"
+                    className="pl-10 pr-10 h-12 rounded-xl text-left bg-muted/50 border-none"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -210,21 +210,21 @@ export default function AuthPage() {
 
               <Button
                 type="submit"
-                className="w-full h-12 rounded-xl font-semibold bg-primary hover:bg-primary/90 transition-all shadow-lg"
+                className="w-full h-14 rounded-xl font-bold bg-primary hover:bg-primary/90 transition-all shadow-lg text-lg"
                 disabled={loading}
               >
                 {loading ? "Processing..." : isLogin ? (
-                  <span className="flex items-center gap-2"><LogIn size={20} /> Login</span>
+                  <span className="flex items-center justify-center gap-2"><LogIn size={20} /> Login</span>
                 ) : (
-                  <span className="flex items-center gap-2"><UserPlus size={20} /> Sign Up</span>
+                  <span className="flex items-center justify-center gap-2"><UserPlus size={20} /> Sign Up</span>
                 )}
               </Button>
             </form>
 
-            <div className="mt-6 flex flex-col items-center gap-3">
+            <div className="mt-6 flex flex-col items-center gap-4">
               <button
                 onClick={() => setIsLogin(!isLogin)}
-                className="text-sm font-medium text-primary hover:underline transition-colors"
+                className="text-sm font-semibold text-primary hover:underline transition-colors"
               >
                 {isLogin ? "New to GetMeDZ? Create account" : "Already have an account? Login"}
               </button>
@@ -232,11 +232,11 @@ export default function AuthPage() {
               {isLogin && (
                 <Dialog open={isResetOpen} onOpenChange={setIsResetOpen}>
                   <DialogTrigger asChild>
-                    <button className="text-xs text-muted-foreground hover:text-primary hover:underline transition-colors">
+                    <button className="text-xs text-muted-foreground hover:text-primary hover:underline transition-colors font-medium">
                       Forgot Password?
                     </button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-md rounded-2xl" dir="ltr">
+                  <DialogContent className="sm:max-w-md rounded-2xl border-none shadow-2xl" dir="ltr">
                     <DialogHeader>
                       <DialogTitle className="text-left">Reset Password</DialogTitle>
                       <DialogDescription className="text-left">
@@ -251,14 +251,14 @@ export default function AuthPage() {
                           type="email"
                           autoComplete="email"
                           placeholder="Email Address"
-                          className="pl-10 h-12 rounded-xl text-left"
+                          className="pl-10 h-12 rounded-xl text-left bg-muted/50 border-none"
                           value={resetEmail}
                           onChange={(e) => setResetEmail(e.target.value)}
                           required
                         />
                       </div>
                       <DialogFooter>
-                        <Button type="submit" className="w-full rounded-xl" disabled={resetLoading}>
+                        <Button type="submit" className="w-full rounded-xl h-12 font-bold" disabled={resetLoading}>
                           {resetLoading ? "Sending..." : "Send Reset Link"}
                         </Button>
                       </DialogFooter>
