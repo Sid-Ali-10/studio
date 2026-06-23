@@ -347,18 +347,21 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
           throw new Error("Insufficient balance");
         }
 
+        // 1. Deduct credit and increment deals
         transaction.update(travelerRef, {
           walletBalance: increment(-1),
           successfulDealsCount: increment(1),
           updatedAt: serverTimestamp()
         });
 
+        // 2. Mark conversation as finalized
         transaction.update(convRef, {
           isFinalized: true,
           finalizedAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         });
 
+        // 3. Add transaction record to traveler's wallet
         const txRef = doc(collection(db, "userProfiles", travelerId, "transactions"));
         transaction.set(txRef, {
           amount: -1,
@@ -367,6 +370,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
           createdAt: serverTimestamp()
         });
 
+        // 4. Save the rating
         const ratingRef = doc(collection(db, "ratings"));
         transaction.set(ratingRef, {
           listingId: listing?.id,
@@ -378,6 +382,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
         });
       });
 
+      // Send a system message to the chat
       await addDoc(collection(db, "conversations", activeConvId, "messages"), {
         senderId: "system",
         messageText: "✅ " + t('deal_finalized'),
@@ -389,6 +394,9 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
       setIsFinalizeDialogOpen(false);
     } catch (err: any) {
       console.error("Finalize Error:", err);
+      if (err.message !== "Insufficient balance") {
+        toast({ variant: "destructive", title: t('error'), description: t('failed') });
+      }
     } finally {
       setFinalizing(false);
     }
