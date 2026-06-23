@@ -59,14 +59,19 @@ export default function ChatListPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   const dateLocale = language === 'ar' ? arSA : language === 'fr' ? fr : enUS;
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
 
     setLoading(true);
-    let isMounted = true;
+    let mounted = true;
     
     // CRITICAL: Security Rules require limit <= 50
     const q = query(
@@ -76,7 +81,7 @@ export default function ChatListPage() {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (!isMounted) return;
+      if (!mounted) return;
       const chatList = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
@@ -95,13 +100,13 @@ export default function ChatListPage() {
       setError(null);
     }, (err) => {
       console.error("Chat list error:", err);
-      if (isMounted) {
+      if (mounted) {
         setLoading(false);
         setError(err.code === 'permission-denied' ? t('access_restricted') : t('error'));
       }
     });
 
-    return () => { isMounted = false; unsubscribe(); };
+    return () => { mounted = false; unsubscribe(); };
   }, [user, t]);
 
   const handleDeleteConversation = async (chatId: string, e: React.MouseEvent) => {
@@ -214,7 +219,7 @@ export default function ChatListPage() {
                             {otherUserName}
                           </h3>
                           <span className="text-[10px] text-muted-foreground hidden sm:block">
-                            {chat.lastMessageTimestamp ? formatDistanceToNow(chat.lastMessageTimestamp.toDate(), { addSuffix: true, locale: dateLocale }) : "..."}
+                            {isMounted && chat.lastMessageTimestamp ? formatDistanceToNow(chat.lastMessageTimestamp.toDate(), { addSuffix: true, locale: dateLocale }) : "..."}
                           </span>
                         </div>
                         <p className="text-xs sm:text-sm truncate font-semibold text-foreground/80">{chat.listingTitle}</p>

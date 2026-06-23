@@ -37,8 +37,6 @@ import {
   Smile,
   ImageIcon,
   ExternalLink,
-  Play,
-  FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -108,7 +106,7 @@ const LinkPreview = ({ text }: { text: string }) => {
             <div key={index} className="rounded-xl overflow-hidden border bg-black aspect-video relative group">
               <iframe
                 src={`https://www.youtube.com/embed/${videoId}`}
-                className="w-full h-full"
+                className="w-full h-full border-none"
                 allowFullScreen
               />
             </div>
@@ -120,15 +118,6 @@ const LinkPreview = ({ text }: { text: string }) => {
           return (
             <div key={index} className="rounded-xl overflow-hidden border bg-muted">
               <img src={url} alt="Preview" className="max-w-full h-auto object-contain max-h-60 mx-auto" />
-            </div>
-          );
-        }
-
-        // التحقق من الفيديوهات المباشرة
-        if (url.match(/\.(mp4|webm|ogg)$/i)) {
-          return (
-            <div key={index} className="rounded-xl overflow-hidden border bg-black aspect-video">
-              <video src={url} controls className="w-full h-full" />
             </div>
           );
         }
@@ -178,10 +167,15 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
   const [mediaUrlInput, setMediaUrlInput] = useState("");
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
   
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dateLocale = language === 'ar' ? arSA : language === 'fr' ? fr : enUS;
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const isAdminView = profile?.isAdmin && convData && !convData.participantIds.includes(user?.uid || "");
 
@@ -204,7 +198,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
   useEffect(() => {
     if (!user || !id) return;
 
-    let isMounted = true;
+    let mounted = true;
     let unsubscribeConv: (() => void) | null = null;
     let unsubscribeMessages: (() => void) | null = null;
 
@@ -216,7 +210,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
         const convRef = doc(db, "conversations", id);
         
         unsubscribeConv = onSnapshot(convRef, async (snap) => {
-          if (!isMounted) return;
+          if (!mounted) return;
           if (snap.exists()) {
             const data = snap.data() as ConversationData;
             setConvData(data);
@@ -246,33 +240,40 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
                 limit(100)
               );
               unsubscribeMessages = onSnapshot(messagesQuery, (snapshot) => {
-                if (!isMounted) return;
+                if (!mounted) return;
                 setMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message)));
                 setLoading(false);
+              }, (err) => {
+                if (mounted) {
+                  console.error("Messages error:", err);
+                  setError(t('error'));
+                  setLoading(false);
+                }
               });
             }
           } else {
+            // Wait for creation
             setTimeout(() => {
-              if (isMounted && !convData && loading) {
+              if (mounted && !convData && loading) {
                 setError(t('conv_not_found'));
                 setLoading(false);
               }
             }, 3000);
           }
         }, (err) => {
-          if (isMounted) {
+          if (mounted) {
             setError(err.code === 'permission-denied' ? t('access_restricted') : t('error'));
             setLoading(false);
           }
         });
       } catch (err) {
-        if (isMounted) setLoading(false);
+        if (mounted) setLoading(false);
       }
     };
 
     setupChat();
     return () => {
-      isMounted = false;
+      mounted = false;
       unsubscribeConv?.();
       unsubscribeMessages?.();
     };
@@ -430,7 +431,7 @@ export default function ChatRoomPage(props: { params: Promise<{ id: string }> })
                   <LinkPreview text={msg.messageText} />
 
                   <div className={cn("flex items-center justify-between mt-1", isOwn ? "flex-row-reverse" : "flex-row")}>
-                    <span className="text-[9px] opacity-60">{msg.timestamp ? format(msg.timestamp.toDate(), "HH:mm", { locale: dateLocale }) : ""}</span>
+                    <span className="text-[9px] opacity-60">{isMounted && msg.timestamp ? format(msg.timestamp.toDate(), "HH:mm", { locale: dateLocale }) : ""}</span>
                     {msg.isEdited && <span className="text-[8px] opacity-40 italic">{t('edited')}</span>}
                   </div>
                   {Object.keys(reactions).length > 0 && (
