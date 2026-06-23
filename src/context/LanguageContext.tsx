@@ -49,7 +49,7 @@ export const translations: Translations = {
   disclaimer_title: { en: "Legal Disclaimer", ar: "إخلاء المسؤولية القانونية", fr: "Clause de non-responsabilité" },
   disclaimer_content: { 
     en: "GetMeDZ is a platform for connection only. We do not handle payments or goods. We strictly prohibit the transport of any illegal items (drugs, weapons, restricted substances, etc.). Users are solely responsible for compliance with local and international laws. We are not liable for any losses or legal issues arising from user transactions.", 
-    ar: "GetMeDZ هي منصة للتواصل فقط. نحن لا نتعامل مع المدفوعات أو البضائع. نمنع منعاً باتاً نقل أي سلع غير قانونية (مخدرات، أسلحة، مواد محظورة، إلخ). المستخدمون مسؤولون وحدهم عن الامتثال للقوانين المحلية والدولية. نحن لسنا مسؤولين عن أي خسائر أو مشاكل قانونية تنشأ عن معاملات المستخدمين.", 
+    ar: "GetMeDZ هي منصة للتواصل فقط. نحن لا نتعامل مع المدفوعات أو البضائع. نمنع منعاً باتاً نقل أي سلع غير قانونية (مخدرات، أسلحة، مواد محظورة، إلخ). المستخدمون مسؤولون وحدهم عن الامتثال للقوانين المحلية الدولية. نحن لسنا مسؤولين عن أي خسائر أو مشاكل قانونية تنشأ عن معاملات المستخدمين.", 
     fr: "GetMeDZ est uniquement une plateforme de mise en relation. Nous ne gérons pas les paiements ni les biens. Le transport d'objets illégaux est strictement interdit. Les utilisateurs sont seuls responsables du respect des lois." 
   },
   
@@ -154,11 +154,19 @@ export const translations: Translations = {
   failed: { en: "Failed", ar: "فشل", fr: "Échec" },
   populaire: { en: "POPULAR", ar: "شائع", fr: "POPULAIRE" },
   
+  // Card Payment
+  card_number: { en: "Card Number", ar: "رقم البطاقة", fr: "Numéro de carte" },
+  expiry_date: { en: "Expiry Date (MM/YY)", ar: "تاريخ الانتهاء (شهر/سنة)", fr: "Date d'expiration (MM/AA)" },
+  cvv: { en: "CVV", ar: "رمز الأمان (CVV)", fr: "CVV" },
+  cardholder_name: { en: "Cardholder Name", ar: "اسم صاحب البطاقة", fr: "Nom du titulaire" },
+  secure_payment_notice: { en: "Enter your card details to complete the purchase.", ar: "أدخل معلومات بطاقتك لإتمام عملية الشراء.", fr: "Entrez vos coordonnées bancaires pour finaliser l'achat." },
+  pay_now: { en: "Pay Now", ar: "ادفع الآن", fr: "Payer maintenant" },
+  
   // Chat & Messages
   messages_subtitle: { en: "Manage your deals and connections.", ar: "إدارة صفقاتك واتصالاتك.", fr: "Gérez vos transactions et vos relations." },
   search_chats_placeholder: { en: "Search chats...", ar: "البحث في المحادثات...", fr: "Rechercher..." },
   no_chats: { en: "No chats yet", ar: "لا توجد محادثات بعد", fr: "Pas de discussions" },
-  no_chats_desc: { en: "Start a deal on the board!", ar: "ابدأ صفقة من اللوحة!", fr: "Commencez une transaction !" },
+  no_chats_desc: { en: "Start a deal on the board!", ar: "ابدأ صفقة من اللوحة!", fr: "Commenceز une transaction !" },
   conv_started: { en: "Conversation started", ar: "بدأت المحادثة", fr: "Discussion entamée" },
   admin_monitor_notice: { en: "THIS CONVERSATION IS MONITORED BY GETMEDZ ADMINISTRATION", ar: "هذه المحادثة مراقبة من قبل إدارة GetMeDZ", fr: "CETTE CONVERSATION EST SURVEILLÉE PAR L'ADMINISTRATION" },
   rated: { en: "Rated", ar: "تم التقييم", fr: "Évalué" },
